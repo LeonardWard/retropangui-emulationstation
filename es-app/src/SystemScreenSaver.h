@@ -3,6 +3,7 @@
 #define ES_APP_SYSTEM_SCREEN_SAVER_H
 
 #include "Window.h"
+#include <thread>
 
 class ImageComponent;
 class Sound;
@@ -25,16 +26,15 @@ public:
 
 	virtual FileData* getCurrentGame();
 	virtual void launchGame();
-	inline virtual void resetCounts() { mVideosCounted = false; mImagesCounted = false; };
 
 private:
-	unsigned long countGameListNodes(const char *nodeName);
-	void countVideos();
-	void countImages();
-	void pickGameListNode(unsigned long index, const char *nodeName, std::string& path);
+	void pickGameListNode(const char *nodeName, std::string& path);
 	void pickRandomVideo(std::string& path);
 	void pickRandomGameListImage(std::string& path);
 	void pickRandomCustomImage(std::string& path);
+	std::vector<std::string> getCustomImageFiles(const std::string &imageDir);
+	std::vector<FileData*> getAllGamelistNodes();
+	void backgroundIndexing();
 
 	void input(InputConfig* config, Input input);
 
@@ -46,22 +46,21 @@ private:
 	};
 
 private:
-	bool			mVideosCounted;
-	unsigned long		mVideoCount;
 	VideoComponent*		mVideoScreensaver;
-	bool			mImagesCounted;
-	unsigned long		mImageCount;
 	ImageComponent*		mImageScreensaver;
 	Window*			mWindow;
 	STATE			mState;
 	float			mOpacity;
 	int			mTimer;
 	FileData*		mCurrentGame;
-	std::string		mGameName;
-	std::string		mSystemName;
 	int 			mSwapTimeout;
 	std::shared_ptr<Sound>	mBackgroundAudio;
 	bool			mStopBackgroundAudio;
+	std::vector<FileData*> 		mAllFiles;
+	std::vector<std::string>	mCustomImageFiles;
+	int 				mAllFilesSize;
+	std::thread*				mThread;
+	bool 						mExit;
 };
 
 #endif // ES_APP_SYSTEM_SCREEN_SAVER_H

@@ -13,7 +13,7 @@
 
 VideoGameListView::VideoGameListView(Window* window, FileData* root) :
 	BasicGameListView(window, root),
-	mDescContainer(window), mDescription(window),
+	mDescContainer(window, DESCRIPTION_SCROLL_DELAY), mDescription(window),
 	mThumbnail(window),
 	mMarquee(window),
 	mImage(window),
@@ -31,6 +31,7 @@ VideoGameListView::VideoGameListView(Window* window, FileData* root) :
 
 	// Create the correct type of video window
 #ifdef _RPI_
+	Utils::FileSystem::removeFile(getTitlePath());
 	if (Settings::getInstance()->getBool("VideoOmxPlayer"))
 		mVideo = new VideoPlayerComponent(window, "");
 	else
@@ -44,36 +45,39 @@ VideoGameListView::VideoGameListView(Window* window, FileData* root) :
 	mList.setAlignment(TextListComponent<FileData*>::ALIGN_LEFT);
 	mList.setCursorChangedCallback([&](const CursorState& /*state*/) { updateInfoPanel(); });
 
-	// Thumbnail
-	mThumbnail.setOrigin(0.5f, 0.5f);
-	mThumbnail.setPosition(2.0f, 2.0f);
-	mThumbnail.setVisible(false);
-	mThumbnail.setMaxSize(mSize.x() * (0.25f - 2*padding), mSize.y() * 0.10f);
-	mThumbnail.setDefaultZIndex(35);
-	addChild(&mThumbnail);
-
-	// Marquee
-	mMarquee.setOrigin(0.5f, 0.5f);
-	mMarquee.setPosition(mSize.x() * 0.25f, mSize.y() * 0.10f);
-	mMarquee.setMaxSize(mSize.x() * (0.5f - 2*padding), mSize.y() * 0.18f);
-	mMarquee.setDefaultZIndex(35);
-	addChild(&mMarquee);
-
 	// Image
-	mImage.setOrigin(0.5f, 0.5f);
 	// Default to off the screen
+	mImage.setOrigin(0.5f, 0.5f);
 	mImage.setPosition(2.0f, 2.0f);
-	mImage.setVisible(false);
-	mImage.setMaxSize(1.0f, 1.0f);
+	mImage.setMaxSize(mSize.x(), mSize.y());
 	mImage.setDefaultZIndex(30);
+	mImage.setVisible(false);
 	addChild(&mImage);
 
-	// video
+	// Video
 	mVideo->setOrigin(0.5f, 0.5f);
 	mVideo->setPosition(mSize.x() * 0.25f, mSize.y() * 0.4f);
 	mVideo->setSize(mSize.x() * (0.5f - 2*padding), mSize.y() * 0.4f);
 	mVideo->setDefaultZIndex(30);
 	addChild(mVideo);
+
+	// Thumbnail
+	// Default to off the screen
+	mThumbnail.setOrigin(0.5f, 0.5f);
+	mThumbnail.setPosition(2.0f, 2.0f);
+	mThumbnail.setMaxSize(mSize.x(), mSize.y());
+	mThumbnail.setDefaultZIndex(35);
+	mThumbnail.setVisible(false);
+	addChild(&mThumbnail);
+
+	// Marquee
+	// Default to off the screen
+	mMarquee.setOrigin(0.5f, 0.5f);
+	mMarquee.setPosition(2.0f, 2.0f);
+	mMarquee.setMaxSize(mSize.x(), mSize.y());
+	mMarquee.setDefaultZIndex(35);
+	mImage.setVisible(false);
+	addChild(&mMarquee);
 
 	// metadata labels + values
 	mLblRating.setText("Rating: ");
@@ -244,8 +248,6 @@ void VideoGameListView::updateInfoPanel()
 {
 	FileData* file = (mList.size() == 0 || mList.isScrolling()) ? NULL : mList.getSelected();
 
-	Utils::FileSystem::removeFile(getTitlePath());
-
 	bool fadingOut;
 	if(file == NULL)
 	{
@@ -395,4 +397,8 @@ void VideoGameListView::onShow()
 {
 	GuiComponent::onShow();
 	updateInfoPanel();
+}
+
+void VideoGameListView::onFocusLost() {
+	mDescContainer.reset();
 }

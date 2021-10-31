@@ -76,7 +76,8 @@ bool TextureData::initSVGFromMemory(const unsigned char* fileData, size_t length
 	unsigned char* dataRGBA = new unsigned char[mWidth * mHeight * 4];
 
 	NSVGrasterizer* rast = nsvgCreateRasterizer();
-	nsvgRasterize(rast, svgImage, 0, 0, mHeight / svgImage->height, dataRGBA, (int)mWidth, (int)mHeight, (int)mWidth * 4);
+	float scale = Math::min(mHeight / svgImage->height, mWidth / svgImage->width);
+	nsvgRasterize(rast, svgImage, 0, 0, scale, dataRGBA, (int)mWidth, (int)mHeight, (int)mWidth * 4);
 	nsvgDeleteRasterizer(rast);
 
 	ImageIO::flipPixelsVert(dataRGBA, mWidth, mHeight);
@@ -175,7 +176,7 @@ bool TextureData::uploadAndBind()
 			return false;
 
 		// Upload texture
-		mTextureID = Renderer::createTexture(Renderer::Texture::RGBA, true, mTile, mWidth, mHeight, mDataRGBA);
+		mTextureID = Renderer::createTexture(Renderer::Texture::RGBA, true, mTile, (int)mWidth, (int)mHeight, mDataRGBA);
 	}
 	return true;
 }

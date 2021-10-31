@@ -105,7 +105,7 @@ void VideoComponent::onSizeChanged()
 bool VideoComponent::setVideo(std::string path)
 {
 	// Convert the path into a generic format
-	std::string fullPath = Utils::FileSystem::getCanonicalPath(path);
+	std::string fullPath = path.empty() ? path : Utils::FileSystem::getAbsolutePath(path);
 
 	// Check that it's changed
 	if (fullPath == mVideoPath)
@@ -295,8 +295,8 @@ void VideoComponent::update(int deltaTime)
 void VideoComponent::manageState()
 {
 	// We will only show if the component is on display and the screensaver
-	// is not active
-	bool show = mShowing && !mScreensaverActive && !mDisable;
+	// is not active and the component is visible
+	bool show = mShowing && !mScreensaverActive && !mDisable && mVisible;
 
 	// See if we're already playing
 	if (mIsPlaying)
