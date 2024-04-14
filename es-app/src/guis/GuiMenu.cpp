@@ -301,8 +301,7 @@ void GuiMenu::openUISettings()
 			{
 				Scripting::fireEvent("theme-changed", theme_set->getSelected(), oldTheme);
 				CollectionSystemManager::get()->updateSystemsList();
-				ViewController::get()->goToStart();
-				ViewController::get()->reloadAll(); // TODO - replace this with some sort of signal-based implementation
+				ViewController::get()->reloadAll(true); // TODO - replace this with some sort of signal-based implementation
 			}
 		});
 	}

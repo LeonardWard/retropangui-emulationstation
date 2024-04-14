@@ -555,7 +555,7 @@ void ViewController::reloadGameListView(IGameListView* view, bool reloadTheme)
 
 }
 
-void ViewController::reloadAll()
+void ViewController::reloadAll(bool themeChanged)
 {
 	// clear all gamelistviews
 	std::map<SystemData*, FileData*> cursorMap;
@@ -567,7 +567,6 @@ void ViewController::reloadAll()
 	}
 	mGameListViews.clear();
 
-
 	// load themes, create gamelistviews and reset filters
 	for(auto it = cursorMap.cbegin(); it != cursorMap.cend(); it++)
 	{
@@ -576,10 +575,13 @@ void ViewController::reloadAll()
 		getGameListView(it->first)->setCursor(it->second);
 	}
 
-	// restore index of first list item on display
-	for(auto it = viewportTopMap.cbegin(); it != viewportTopMap.cend(); it++)
+	if(!themeChanged || !Settings::getInstance()->getBool("UseFullscreenPaging"))
 	{
-		getGameListView(it->first)->setViewportTop(it->second);
+		// restore index of first list item on display
+		for(auto it = viewportTopMap.cbegin(); it != viewportTopMap.cend(); it++)
+		{
+			getGameListView(it->first)->setViewportTop(it->second);
+		}
 	}
 
 	// Rebuild SystemListView

@@ -392,6 +392,11 @@ void TextListComponent<T>::onCursorChanged(const CursorState& state)
 template <typename T>
 void TextListComponent<T>::applyTheme(const std::shared_ptr<ThemeData>& theme, const std::string& view, const std::string& element, unsigned int properties)
 {
+	if(Settings::getInstance()->getBool("UseFullscreenPaging"))
+	{
+		mViewportTop = REFRESH_LIST_CURSOR_POS;
+	}
+
 	GuiComponent::applyTheme(theme, view, element, properties);
 
 	const ThemeData::ThemeElement* elem = theme->getElement(view, element, "textlist");

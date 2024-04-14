@@ -1,5 +1,6 @@
 #include "CollectionSystemManager.h"
 
+#include "components/TextListComponent.h"
 #include "guis/GuiInfoPopup.h"
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
@@ -284,6 +285,8 @@ void CollectionSystemManager::updateCollectionSystem(FileData* file, CollectionS
 		{
 			trimCollectionCount(rootFolder, LAST_PLAYED_MAX, false);
 			ViewController::get()->onFileChanged(rootFolder, FILE_METADATA_CHANGED);
+			// Force re-calculation of cursor position
+			ViewController::get()->getGameListView(curSys)->setViewportTop(TextListComponent<FileData>::REFRESH_LIST_CURSOR_POS);
 		}
 		else
 			ViewController::get()->onFileChanged(rootFolder, FILE_SORTED);
