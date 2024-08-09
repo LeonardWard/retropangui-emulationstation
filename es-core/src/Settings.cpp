@@ -13,27 +13,28 @@ Settings* Settings::sInstance = NULL;
 // these values are NOT saved to es_settings.xml
 // since they're set through command-line arguments, and not the in-program settings menu
 std::vector<const char*> settings_dont_save {
-	 "Debug" ,
-	 "DebugGrid" ,
-	 "DebugText" ,
-	 "DebugImage" ,
-	 "ForceKid" ,
-	 "ForceKiosk" ,
-	 "IgnoreGamelist" ,
-	 "HideConsole" ,
-	 "ShowExit" ,
-	 "ConfirmQuit" ,
-	 "SplashScreen" ,
-	 "VSync" ,
-	 "FullscreenBorderless" ,
-	 "Windowed" ,
-	 "WindowWidth" ,
-	 "WindowHeight" ,
-	 "ScreenWidth" ,
-	 "ScreenHeight" ,
-	 "ScreenOffsetX" ,
-	 "ScreenOffsetY" ,
-	 "ScreenRotate"
+	"Debug",
+	"DebugGrid",
+	"DebugText",
+	"DebugImage",
+	"ForceKid",
+	"ForceKiosk",
+	"IgnoreGamelist",
+	"HideConsole",
+	"ShowExit",
+	"ConfirmQuit",
+	"SplashScreen",
+	"VSync",
+	"FullscreenBorderless",
+	"Windowed",
+	"WindowWidth",
+	"WindowHeight",
+	"ScreenWidth",
+	"ScreenHeight",
+	"ScreenOffsetX",
+	"ScreenOffsetY",
+	"ScreenRotate",
+	"MonitorID"
 };
 
 Settings::Settings()
@@ -178,6 +179,7 @@ void Settings::setDefaults()
 	mIntMap["ScreenOffsetX"] = 0;
 	mIntMap["ScreenOffsetY"] = 0;
 	mIntMap["ScreenRotate"]  = 0;
+	mIntMap["MonitorID"] = 0;
 
 	mBoolMap["UseFullscreenPaging"] = false;
 
