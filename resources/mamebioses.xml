@@ -1,4 +1,4 @@
-<!-- Generated on 2024-02-22, from MAME 0.262 (arcade).dat, fbneo.dat, mame2003-plus.xml -->
+<!-- Generated on 2025-03-10, from MAME 0.275 (arcade).dat, fbneo.dat, mame2003-plus.xml -->
 <bios>3dobios</bios>
 <bios>acpsx</bios>
 <bios>airlbios</bios>
@@ -24,6 +24,7 @@
 <bios>coh1001l</bios>
 <bios>coh1002e</bios>
 <bios>coh1002m</bios>
+<bios>coh1002t</bios>
 <bios>coh1002v</bios>
 <bios>coh3002c</bios>
 <bios>coh3002t</bios>
