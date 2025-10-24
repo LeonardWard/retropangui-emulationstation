@@ -33,7 +33,7 @@ void GuiSettings::save()
 
 bool GuiSettings::input(InputConfig* config, Input input)
 {
-	if(config->isMappedTo("b", input) && input.value != 0)
+	if(config->isMappedToAction("back", input) && input.value != 0)
 	{
 		delete this;
 		return true;

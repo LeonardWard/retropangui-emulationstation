@@ -101,7 +101,7 @@ bool GuiScraperStart::input(InputConfig* config, Input input)
 	if(consumed)
 		return true;
 
-	if(input.value != 0 && config->isMappedTo("b", input))
+	if(input.value != 0 && config->isMappedToAction("back", input))
 	{
 		delete this;
 		return true;

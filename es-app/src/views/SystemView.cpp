@@ -177,7 +177,7 @@ bool SystemView::input(InputConfig* config, Input input)
 			break;
 		}
 
-		if(config->isMappedTo("a", input))
+		if(config->isMappedToAction("accept", input))
 		{
 			stopScrolling();
 			ViewController::get()->goToGameList(getSelected());

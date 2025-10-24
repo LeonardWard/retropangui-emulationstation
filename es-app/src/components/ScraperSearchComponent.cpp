@@ -341,7 +341,7 @@ void ScraperSearchComponent::updateInfoPane()
 
 bool ScraperSearchComponent::input(InputConfig* config, Input input)
 {
-	if(config->isMappedTo("a", input) && input.value != 0)
+	if(config->isMappedToAction("accept", input) && input.value != 0)
 	{
 		if(mBlockAccept)
 			return true;

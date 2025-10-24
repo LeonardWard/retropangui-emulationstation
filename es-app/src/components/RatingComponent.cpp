@@ -121,7 +121,7 @@ void RatingComponent::render(const Transform4x4f& parentTrans)
 
 bool RatingComponent::input(InputConfig* config, Input input)
 {
-	if(config->isMappedTo("a", input) && input.value != 0)
+	if(config->isMappedToAction("accept", input) && input.value != 0)
 	{
 		mValue += 1.f / NUM_RATING_STARS;
 		if(mValue > 1.0f)
