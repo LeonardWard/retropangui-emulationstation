@@ -1,0 +1,150 @@
+# EmulationStation translation template
+# Copyright (C) 2025 RetroPangui
+# This file is distributed under the same license as the EmulationStation package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: EmulationStation 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-24 12:00+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# Main Menu
+msgid "MAIN MENU"
+msgstr ""
+
+msgid "GAME SETTINGS"
+msgstr ""
+
+msgid "UI SETTINGS"
+msgstr ""
+
+msgid "SOUND SETTINGS"
+msgstr ""
+
+msgid "SYSTEM SETTINGS"
+msgstr ""
+
+msgid "OTHER SETTINGS"
+msgstr ""
+
+msgid "CONFIGURE INPUT"
+msgstr ""
+
+msgid "QUIT"
+msgstr ""
+
+# UI Settings
+msgid "SCREENSAVER SETTINGS"
+msgstr ""
+
+msgid "SHOW FRAMERATE"
+msgstr ""
+
+msgid "ON-SCREEN HELP"
+msgstr ""
+
+msgid "ENABLE SOUNDS"
+msgstr ""
+
+msgid "QUICK SYSTEM SELECT"
+msgstr ""
+
+msgid "CAROUSEL TRANSITIONS"
+msgstr ""
+
+msgid "TRANSITION STYLE"
+msgstr ""
+
+msgid "THEME SET"
+msgstr ""
+
+msgid "GAMELIST VIEW STYLE"
+msgstr ""
+
+msgid "SHOW FOLDERS"
+msgstr ""
+
+msgid "LANGUAGE"
+msgstr ""
+
+# Sound Settings
+msgid "SYSTEM VOLUME"
+msgstr ""
+
+msgid "FRONTEND MUSIC"
+msgstr ""
+
+# Scraper Settings
+msgid "SCRAPER"
+msgstr ""
+
+msgid "SCRAPE FROM"
+msgstr ""
+
+msgid "SCRAPE RATINGS"
+msgstr ""
+
+msgid "SCRAPE NOW"
+msgstr ""
+
+# Game Collection
+msgid "GAME COLLECTION SETTINGS"
+msgstr ""
+
+msgid "AUTOMATIC GAME COLLECTIONS"
+msgstr ""
+
+msgid "CUSTOM GAME COLLECTIONS"
+msgstr ""
+
+# Common
+msgid "BACK"
+msgstr ""
+
+msgid "CLOSE"
+msgstr ""
+
+msgid "SELECT"
+msgstr ""
+
+msgid "CANCEL"
+msgstr ""
+
+msgid "YES"
+msgstr ""
+
+msgid "NO"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "LOADING..."
+msgstr ""
+
+msgid "PLEASE WAIT..."
+msgstr ""
+
+# Quit
+msgid "REALLY QUIT?"
+msgstr ""
+
+msgid "QUIT EMULATIONSTATION"
+msgstr ""
+
+# Folders
+msgid "ALWAYS"
+msgstr ""
+
+msgid "NEVER"
+msgstr ""
+
+msgid "HAVING MULTIPLE GAMES"
+msgstr ""

@@ -16,12 +16,22 @@ class FileFilterIndex;
 class ThemeData;
 class Window;
 
+// RetroPangui: Multi-core support
+struct CoreInfo
+{
+	std::string name;
+	int priority;
+	std::vector<std::string> extensions;
+};
+
 struct SystemEnvironmentData
 {
 	std::string mStartPath;
 	std::vector<std::string> mSearchExtensions;
 	std::string mLaunchCommand;
 	std::vector<PlatformIds::PlatformId> mPlatformIds;
+	// RetroPangui: Store multiple cores for this system
+	std::vector<CoreInfo> mCores;
 };
 
 class SystemData

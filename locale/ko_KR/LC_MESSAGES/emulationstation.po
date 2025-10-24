@@ -1,0 +1,151 @@
+# EmulationStation Korean translation
+# Copyright (C) 2025 RetroPangui
+# This file is distributed under the same license as the EmulationStation package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: EmulationStation 2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-24 12:00+0900\n"
+"PO-Revision-Date: 2025-10-24 12:00+0900\n"
+"Last-Translator: RetroPangui Team\n"
+"Language-Team: Korean\n"
+"Language: ko_KR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# Main Menu
+msgid "MAIN MENU"
+msgstr "메인 메뉴"
+
+msgid "GAME SETTINGS"
+msgstr "게임 설정"
+
+msgid "UI SETTINGS"
+msgstr "화면 설정"
+
+msgid "SOUND SETTINGS"
+msgstr "사운드 설정"
+
+msgid "SYSTEM SETTINGS"
+msgstr "시스템 설정"
+
+msgid "OTHER SETTINGS"
+msgstr "기타 설정"
+
+msgid "CONFIGURE INPUT"
+msgstr "입력 설정"
+
+msgid "QUIT"
+msgstr "종료"
+
+# UI Settings
+msgid "SCREENSAVER SETTINGS"
+msgstr "화면 보호기 설정"
+
+msgid "SHOW FRAMERATE"
+msgstr "프레임 표시"
+
+msgid "ON-SCREEN HELP"
+msgstr "화면 도움말"
+
+msgid "ENABLE SOUNDS"
+msgstr "사운드 효과"
+
+msgid "QUICK SYSTEM SELECT"
+msgstr "빠른 시스템 선택"
+
+msgid "CAROUSEL TRANSITIONS"
+msgstr "캐러셀 전환"
+
+msgid "TRANSITION STYLE"
+msgstr "전환 스타일"
+
+msgid "THEME SET"
+msgstr "테마"
+
+msgid "GAMELIST VIEW STYLE"
+msgstr "게임 목록 스타일"
+
+msgid "SHOW FOLDERS"
+msgstr "폴더 표시"
+
+msgid "LANGUAGE"
+msgstr "언어"
+
+# Sound Settings
+msgid "SYSTEM VOLUME"
+msgstr "시스템 볼륨"
+
+msgid "FRONTEND MUSIC"
+msgstr "프론트엔드 음악"
+
+# Scraper Settings
+msgid "SCRAPER"
+msgstr "스크래퍼"
+
+msgid "SCRAPE FROM"
+msgstr "스크랩 소스"
+
+msgid "SCRAPE RATINGS"
+msgstr "평점 스크랩"
+
+msgid "SCRAPE NOW"
+msgstr "지금 스크랩"
+
+# Game Collection
+msgid "GAME COLLECTION SETTINGS"
+msgstr "게임 컬렉션 설정"
+
+msgid "AUTOMATIC GAME COLLECTIONS"
+msgstr "자동 게임 컬렉션"
+
+msgid "CUSTOM GAME COLLECTIONS"
+msgstr "사용자 게임 컬렉션"
+
+# Common
+msgid "BACK"
+msgstr "뒤로"
+
+msgid "CLOSE"
+msgstr "닫기"
+
+msgid "SELECT"
+msgstr "선택"
+
+msgid "CANCEL"
+msgstr "취소"
+
+msgid "YES"
+msgstr "예"
+
+msgid "NO"
+msgstr "아니오"
+
+msgid "OK"
+msgstr "확인"
+
+msgid "LOADING..."
+msgstr "로딩 중..."
+
+msgid "PLEASE WAIT..."
+msgstr "잠시만 기다려주세요..."
+
+# Quit
+msgid "REALLY QUIT?"
+msgstr "정말로 종료하시겠습니까?"
+
+msgid "QUIT EMULATIONSTATION"
+msgstr "에뮬레이션스테이션 종료"
+
+# Folders
+msgid "ALWAYS"
+msgstr "항상"
+
+msgid "NEVER"
+msgstr "사용 안 함"
+
+msgid "HAVING MULTIPLE GAMES"
+msgstr "여러 게임이 있을 때"

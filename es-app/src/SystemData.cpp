@@ -194,6 +194,42 @@ SystemData* SystemData::loadSystem(pugi::xml_node system)
 
 	cmd = system.child("command").text().get();
 
+	// RetroPangui: Parse cores if available
+	std::vector<CoreInfo> cores;
+	pugi::xml_node coresNode = system.child("cores");
+	if (coresNode)
+	{
+		for (pugi::xml_node coreNode = coresNode.child("core"); coreNode; coreNode = coreNode.next_sibling("core"))
+		{
+			CoreInfo coreInfo;
+			coreInfo.name = coreNode.attribute("name").as_string();
+			coreInfo.priority = coreNode.attribute("priority").as_int(999);
+
+			// Parse core-specific extensions
+			std::string coreExtensions = coreNode.attribute("extensions").as_string();
+			if (!coreExtensions.empty())
+			{
+				std::vector<std::string> coreExtList = readList(coreExtensions.c_str());
+				for (auto& ext : coreExtList)
+				{
+					if (!ext.empty())
+						coreInfo.extensions.push_back(ext);
+				}
+			}
+
+			if (!coreInfo.name.empty())
+			{
+				cores.push_back(coreInfo);
+				LOG(LogInfo) << "  Core: " << coreInfo.name << " (priority: " << coreInfo.priority << ")";
+			}
+		}
+
+		// Sort cores by priority (lower number = higher priority)
+		std::sort(cores.begin(), cores.end(), [](const CoreInfo& a, const CoreInfo& b) {
+			return a.priority < b.priority;
+		});
+	}
+
 	// platform id list
 	const char* platformList = system.child("platform").text().get();
 	std::vector<std::string> platformStrs = readList(platformList);
@@ -224,9 +260,10 @@ SystemData* SystemData::loadSystem(pugi::xml_node system)
 	themeFolder = system.child("theme").text().as_string(name.c_str());
 
 	//validate
-	if (name.empty() || path.empty() || extensions.empty() || cmd.empty())
+	// RetroPangui: Allow empty command if cores are defined
+	if (name.empty() || path.empty() || extensions.empty() || (cmd.empty() && cores.empty()))
 	{
-		LOG(LogError) << "System \"" << name << "\" is missing name, path, extension, or command!";
+		LOG(LogError) << "System \"" << name << "\" is missing name, path, extension, or command/cores!";
 		return nullptr;
 	}
 
@@ -246,6 +283,7 @@ SystemData* SystemData::loadSystem(pugi::xml_node system)
 	envData->mSearchExtensions = extensions;
 	envData->mLaunchCommand = cmd;
 	envData->mPlatformIds = platformIds;
+	envData->mCores = cores; // RetroPangui: Store cores
 
 	SystemData* newSys = new SystemData(name, fullname, envData, themeFolder);
 	if (newSys->getRootFolder()->getChildren().size() == 0)
@@ -270,7 +308,7 @@ bool SystemData::loadConfig(Window* window)
 
 	if (!Utils::FileSystem::exists(path))
 	{
-		LOG(LogError) << "es_systems.cfg file does not exist!";
+		LOG(LogError) << "es_systems.xml file does not exist!";
 		writeExampleConfig(getConfigPath(true));
 		return false;
 	}
@@ -280,7 +318,7 @@ bool SystemData::loadConfig(Window* window)
 
 	if(!res)
 	{
-		LOG(LogError) << "Could not parse es_systems.cfg file!";
+		LOG(LogError) << "Could not parse es_systems.xml file!";
 		LOG(LogError) << res.description();
 		return false;
 	}
@@ -290,7 +328,7 @@ bool SystemData::loadConfig(Window* window)
 
 	if(!systemList)
 	{
-		LOG(LogError) << "es_systems.cfg is missing the <systemList> tag!";
+		LOG(LogError) << "es_systems.xml is missing the <systemList> tag!";
 		return false;
 	}
 
@@ -447,11 +485,11 @@ void SystemData::deleteSystems()
 
 std::string SystemData::getConfigPath(bool forWrite)
 {
-	std::string path = Utils::FileSystem::getHomePath() + "/.emulationstation/es_systems.cfg";
+	std::string path = Utils::FileSystem::getHomePath() + "/.emulationstation/es_systems.xml";
 	if(forWrite || Utils::FileSystem::exists(path))
 		return path;
 
-	return "/etc/emulationstation/es_systems.cfg";
+	return "/etc/emulationstation/es_systems.xml";
 }
 
 bool SystemData::isVisible()

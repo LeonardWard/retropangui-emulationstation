@@ -9,6 +9,7 @@
 #include "CollectionSystemManager.h"
 #include "EmulationStation.h"
 #include "InputManager.h"
+#include "LocaleES.h"
 #include "Log.h"
 #include "MameNames.h"
 #include "platform.h"
@@ -345,6 +346,10 @@ int main(int argc, char* argv[])
 
 	//always close the log on exit
 	atexit(&onExit);
+
+	// RetroPangui: Initialize locale
+	std::string language = Settings::getInstance()->getString("Language");
+	LocaleES::init(language);
 
 	Window window;
 	SystemScreenSaver screensaver(&window);
