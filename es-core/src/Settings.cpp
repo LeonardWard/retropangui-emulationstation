@@ -112,6 +112,9 @@ void Settings::setDefaults()
 	// RetroPangui: Language support
 	mStringMap["Language"] = "en_US";
 
+	// RetroPangui: Fallback font for CJK characters
+	mStringMap["FallbackFont"] = "";
+
 	mBoolMap["ScreenSaverControls"] = true;
 	mStringMap["ScreenSaverGameInfo"] = "never";
 	mBoolMap["StretchVideoOnScreenSaver"] = false;

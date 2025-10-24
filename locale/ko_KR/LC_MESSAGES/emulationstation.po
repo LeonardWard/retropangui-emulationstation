@@ -75,6 +75,9 @@ msgstr "폴더 표시"
 msgid "LANGUAGE"
 msgstr "언어"
 
+msgid "FALLBACK FONT"
+msgstr "보조 글꼴"
+
 # Sound Settings
 msgid "SYSTEM VOLUME"
 msgstr "시스템 볼륨"

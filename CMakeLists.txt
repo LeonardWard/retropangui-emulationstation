@@ -102,6 +102,7 @@ find_package(SDL2 REQUIRED)
 find_package(CURL REQUIRED)
 find_package(VLC REQUIRED)
 find_package(RapidJSON REQUIRED)
+find_package(Gettext)
 
 #add libCEC support
 if(CEC)
@@ -277,6 +278,35 @@ set(dir ${CMAKE_CURRENT_SOURCE_DIR})
 set(EXECUTABLE_OUTPUT_PATH ${dir} CACHE PATH "Build directory" FORCE)
 set(LIBRARY_OUTPUT_PATH ${dir} CACHE PATH "Build directory" FORCE)
 
+
+#-------------------------------------------------------------------------------
+# Compile and install locale files
+if(GETTEXT_FOUND)
+    file(GLOB PO_FILES "${CMAKE_CURRENT_SOURCE_DIR}/locale/*/LC_MESSAGES/*.po")
+    foreach(PO_FILE ${PO_FILES})
+        get_filename_component(PO_DIR ${PO_FILE} DIRECTORY)
+        get_filename_component(LANG_DIR ${PO_DIR} DIRECTORY)
+        get_filename_component(LANG ${LANG_DIR} NAME)
+        get_filename_component(PO_NAME ${PO_FILE} NAME_WE)
+
+        set(MO_FILE "${PO_DIR}/${PO_NAME}.mo")
+
+        add_custom_command(
+            OUTPUT ${MO_FILE}
+            COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} -o ${MO_FILE} ${PO_FILE}
+            DEPENDS ${PO_FILE}
+            COMMENT "Compiling ${LANG} locale"
+        )
+
+        install(FILES ${MO_FILE}
+            DESTINATION share/locale/${LANG}/LC_MESSAGES
+        )
+
+        list(APPEND MO_FILES ${MO_FILE})
+    endforeach()
+
+    add_custom_target(locales ALL DEPENDS ${MO_FILES})
+endif()
 
 #-------------------------------------------------------------------------------
 # add each component
