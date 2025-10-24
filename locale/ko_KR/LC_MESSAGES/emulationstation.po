@@ -41,6 +41,53 @@ msgstr "입력 설정"
 msgid "QUIT"
 msgstr "종료"
 
+# Other Settings
+msgid "VRAM LIMIT"
+msgstr "VRAM 제한"
+
+msgid "POWER SAVER MODES"
+msgstr "절전 모드"
+
+msgid "SAVE METADATA"
+msgstr "메타데이터 저장"
+
+msgid "PARSE GAMESLISTS ONLY"
+msgstr "게임목록만 파싱"
+
+msgid "SEARCH FOR LOCAL ART"
+msgstr "로컬 아트 검색"
+
+msgid "SHOW HIDDEN FILES"
+msgstr "숨김 파일 표시"
+
+msgid "USE OMX PLAYER (HW ACCELERATED)"
+msgstr "OMX 플레이어 사용 (하드웨어 가속)"
+
+msgid "INDEX FILES DURING SCREENSAVER"
+msgstr "화면보호기 동안 파일 색인"
+
+# Quit Menu
+msgid "REALLY RESTART?"
+msgstr "정말로 재시작하시겠습니까?"
+
+msgid "RESTART EMULATIONSTATION"
+msgstr "EmulationStation 재시작"
+
+msgid "QUIT EMULATIONSTATION"
+msgstr "EmulationStation 종료"
+
+msgid "RESTART SYSTEM"
+msgstr "시스템 재시작"
+
+msgid "REALLY SHUTDOWN?"
+msgstr "정말로 종료하시겠습니까?"
+
+msgid "SHUTDOWN SYSTEM"
+msgstr "시스템 종료"
+
+msgid "ARE YOU SURE YOU WANT TO CONFIGURE INPUT?"
+msgstr "정말로 입력을 설정하시겠습니까?"
+
 # UI Settings
 msgid "SCREENSAVER SETTINGS"
 msgstr "화면 보호기 설정"
@@ -78,9 +125,63 @@ msgstr "언어"
 msgid "FALLBACK FONT"
 msgstr "보조 글꼴"
 
+msgid "UI MODE"
+msgstr "UI 모드"
+
+msgid "You are changing the UI to a restricted mode:\n"
+msgstr "UI를 제한 모드로 변경합니다:\n"
+
+msgid "This will hide most menu-options to prevent changes to the system.\n"
+msgstr "시스템 변경을 방지하기 위해 대부분의 메뉴 옵션이 숨겨집니다.\n"
+
+msgid "To unlock and return to the full UI, enter this code: \n"
+msgstr "잠금을 해제하고 전체 UI로 돌아가려면 이 코드를 입력하세요: \n"
+
+msgid "Do you want to proceed?"
+msgstr "계속하시겠습니까?"
+
+msgid "IGNORE ARTICLES (NAME SORT ONLY)"
+msgstr "관사 무시 (이름 정렬만)"
+
+msgid "Files sorted"
+msgstr "파일 정렬됨"
+
+msgid "USE FULL SCREEN PAGING FOR LB/RB"
+msgstr "LB/RB 전체 화면 페이징"
+
+msgid "START ON SYSTEM"
+msgstr "시작 시스템"
+
+msgid "NONE"
+msgstr "없음"
+
+msgid "ENABLE FILTERS"
+msgstr "필터 활성화"
+
+msgid "DISABLE START MENU IN KID MODE"
+msgstr "키드 모드에서 시작 메뉴 비활성화"
+
+msgid "Language has been changed.\nPlease restart EmulationStation for full effect."
+msgstr "언어가 변경되었습니다.\n완전히 적용하려면 EmulationStation을 재시작하세요."
+
 # Sound Settings
 msgid "SYSTEM VOLUME"
 msgstr "시스템 볼륨"
+
+msgid "AUDIO CARD"
+msgstr "오디오 카드"
+
+msgid "AUDIO DEVICE"
+msgstr "오디오 장치"
+
+msgid "ENABLE NAVIGATION SOUNDS"
+msgstr "탐색 사운드"
+
+msgid "ENABLE VIDEO AUDIO"
+msgstr "비디오 오디오"
+
+msgid "OMX PLAYER AUDIO DEVICE"
+msgstr "OMX 플레이어 오디오 장치"
 
 msgid "FRONTEND MUSIC"
 msgstr "프론트엔드 음악"
@@ -135,13 +236,6 @@ msgstr "로딩 중..."
 
 msgid "PLEASE WAIT..."
 msgstr "잠시만 기다려주세요..."
-
-# Quit
-msgid "REALLY QUIT?"
-msgstr "정말로 종료하시겠습니까?"
-
-msgid "QUIT EMULATIONSTATION"
-msgstr "에뮬레이션스테이션 종료"
 
 # Folders
 msgid "ALWAYS"
