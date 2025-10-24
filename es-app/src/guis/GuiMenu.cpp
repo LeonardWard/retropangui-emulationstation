@@ -24,20 +24,22 @@
 #include "views/gamelist/IGameListView.h"
 #include "guis/GuiInfoPopup.h"
 
-GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
+GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, "MAIN MENU"), mVersion(window)
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 
-	// RetroPangui: Reorganized menu structure
 	if (isFullUI) {
-		addEntry(_("GAME SETTINGS"), 0x777777FF, true, [this] { openGameSettings(); });
-		addEntry(_("UI SETTINGS"), 0x777777FF, true, [this] { openUISettings(); });
-		addEntry(_("SYSTEM SETTINGS"), 0x777777FF, true, [this] { openSystemSettings(); });
+		addEntry("SCRAPER", 0x777777FF, true, [this] { openScraperSettings(); });
+		addEntry("SOUND SETTINGS", 0x777777FF, true, [this] { openSoundSettings(); });
+		addEntry("UI SETTINGS", 0x777777FF, true, [this] { openUISettings(); });
+		addEntry("GAME COLLECTION SETTINGS", 0x777777FF, true, [this] { openCollectionSystemSettings(); });
+		addEntry("OTHER SETTINGS", 0x777777FF, true, [this] { openOtherSettings(); });
+		addEntry("CONFIGURE INPUT", 0x777777FF, true, [this] { openConfigInput(); });
 	} else {
-		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
+		addEntry("SOUND SETTINGS", 0x777777FF, true, [this] { openSoundSettings(); });
 	}
 
-	addEntry(_("QUIT"), 0x777777FF, true, [this] {openQuitMenu(); });
+	addEntry("QUIT", 0x777777FF, true, [this] {openQuitMenu(); });
 
 	addChild(&mMenu);
 	addVersionInfo();
@@ -195,7 +197,7 @@ void GuiMenu::openSoundSettings()
 
 void GuiMenu::openUISettings()
 {
-	auto s = new GuiSettings(mWindow, _("UI SETTINGS"));
+	auto s = new GuiSettings(mWindow, "UI SETTINGS");
 
 	//UI mode
 	auto UImodeSelection = std::make_shared< OptionListComponent<std::string> >(mWindow, "UI MODE", false);
@@ -273,7 +275,7 @@ void GuiMenu::openUISettings()
 	});
 
 	// RetroPangui: Language selection
-	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LANGUAGE"), false);
+	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, "LANGUAGE", false);
 	std::vector<std::string> languages;
 	languages.push_back("en_US");
 	languages.push_back("ko_KR");
@@ -284,7 +286,7 @@ void GuiMenu::openUISettings()
 		else if (*it == "ko_KR") displayName = "한국어 (Korean)";
 		language->add(displayName, *it, Settings::getInstance()->getString("Language") == *it);
 	}
-	s->addWithLabel(_("LANGUAGE"), language);
+	s->addWithLabel("LANGUAGE", language);
 	Window* window2 = mWindow;
 	s->addSaveFunc([language, window2] {
 		std::string oldLang = Settings::getInstance()->getString("Language");

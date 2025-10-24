@@ -5,8 +5,8 @@
 #include <locale.h>
 
 // Translation macros
-#define _(String) LocaleES::translate(String)
-#define _U(String) LocaleES::translate(String).c_str()
+#define _(String) LocaleES::translate(String).c_str()
+#define _S(String) LocaleES::translate(String)
 
 /*!
  * @brief Simple locale management for EmulationStation
