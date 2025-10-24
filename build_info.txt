@@ -1,5 +1,0 @@
-빌드 일시: 2025-10-24 16:12:36
-빌드 사용자: pangui
-Git 커밋: 6234ee52c0e1661e3f80faab0f208cc1d6bbc31c
-Git 브랜치: master
-빌드 타입: Debug
