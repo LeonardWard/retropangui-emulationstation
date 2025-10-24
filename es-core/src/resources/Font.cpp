@@ -4,6 +4,7 @@
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
 #include "Log.h"
+#include "Settings.h"
 
 #ifdef WIN32
 #include <Windows.h>
@@ -260,13 +261,23 @@ std::vector<std::string> getFallbackFontPaths()
 #else
 	// Linux
 
+	std::vector<std::string> fontPaths;
+
+	// RetroPangui: Check user-configured fallback font first
+	std::string userFont = Settings::getInstance()->getString("FallbackFont");
+	if(!userFont.empty() && ResourceManager::getInstance()->fileExists(userFont))
+	{
+		fontPaths.push_back(userFont);
+	}
+
 	const char* paths[] = {
+		"/usr/share/fonts/truetype/nanum/NanumGothic.ttf",           // Korean
+		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",    // CJK unified
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
 		"/usr/share/fonts/truetype/freefont/FreeMono.ttf",
-		"/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf" // japanese, chinese, present on Debian
+		"/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"  // japanese, chinese, present on Debian
 	};
 
-	std::vector<std::string> fontPaths;
 	for(unsigned int i = 0; i < sizeof(paths) / sizeof(paths[0]); i++)
 	{
 		if(ResourceManager::getInstance()->fileExists(paths[i]))

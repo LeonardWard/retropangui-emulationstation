@@ -24,22 +24,22 @@
 #include "views/gamelist/IGameListView.h"
 #include "guis/GuiInfoPopup.h"
 
-GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, "MAIN MENU"), mVersion(window)
+GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 
 	if (isFullUI) {
-		addEntry("SCRAPER", 0x777777FF, true, [this] { openScraperSettings(); });
-		addEntry("SOUND SETTINGS", 0x777777FF, true, [this] { openSoundSettings(); });
-		addEntry("UI SETTINGS", 0x777777FF, true, [this] { openUISettings(); });
-		addEntry("GAME COLLECTION SETTINGS", 0x777777FF, true, [this] { openCollectionSystemSettings(); });
-		addEntry("OTHER SETTINGS", 0x777777FF, true, [this] { openOtherSettings(); });
-		addEntry("CONFIGURE INPUT", 0x777777FF, true, [this] { openConfigInput(); });
+		addEntry(_("SCRAPER"), 0x777777FF, true, [this] { openScraperSettings(); });
+		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
+		addEntry(_("UI SETTINGS"), 0x777777FF, true, [this] { openUISettings(); });
+		addEntry(_("GAME COLLECTION SETTINGS"), 0x777777FF, true, [this] { openCollectionSystemSettings(); });
+		addEntry(_("OTHER SETTINGS"), 0x777777FF, true, [this] { openOtherSettings(); });
+		addEntry(_("CONFIGURE INPUT"), 0x777777FF, true, [this] { openConfigInput(); });
 	} else {
-		addEntry("SOUND SETTINGS", 0x777777FF, true, [this] { openSoundSettings(); });
+		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
 	}
 
-	addEntry("QUIT", 0x777777FF, true, [this] {openQuitMenu(); });
+	addEntry(_("QUIT"), 0x777777FF, true, [this] {openQuitMenu(); });
 
 	addChild(&mMenu);
 	addVersionInfo();
@@ -275,7 +275,7 @@ void GuiMenu::openUISettings()
 	});
 
 	// RetroPangui: Language selection
-	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, "LANGUAGE", false);
+	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LANGUAGE"), false);
 	std::vector<std::string> languages;
 	languages.push_back("en_US");
 	languages.push_back("ko_KR");
@@ -286,7 +286,7 @@ void GuiMenu::openUISettings()
 		else if (*it == "ko_KR") displayName = "한국어 (Korean)";
 		language->add(displayName, *it, Settings::getInstance()->getString("Language") == *it);
 	}
-	s->addWithLabel("LANGUAGE", language);
+	s->addWithLabel(_("LANGUAGE"), language);
 	Window* window2 = mWindow;
 	s->addSaveFunc([language, window2] {
 		std::string oldLang = Settings::getInstance()->getString("Language");
@@ -302,6 +302,24 @@ void GuiMenu::openUISettings()
 				"Language has been changed.\nPlease restart EmulationStation for full effect.",
 				"OK", nullptr));
 		}
+	});
+
+	// RetroPangui: Fallback font selection for CJK characters
+	auto fallback_font = std::make_shared< OptionListComponent<std::string> >(mWindow, _("FALLBACK FONT"), false);
+	std::vector<std::pair<std::string, std::string>> fontOptions;
+	fontOptions.push_back(std::make_pair("Auto (System Default)", ""));
+	fontOptions.push_back(std::make_pair("Nanum Gothic", "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"));
+	fontOptions.push_back(std::make_pair("Nanum Barun Gothic", "/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf"));
+	fontOptions.push_back(std::make_pair("Droid Sans Fallback", "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"));
+
+	std::string currentFont = Settings::getInstance()->getString("FallbackFont");
+	for(auto it = fontOptions.cbegin(); it != fontOptions.cend(); it++)
+	{
+		fallback_font->add(it->first, it->second, it->second == currentFont);
+	}
+	s->addWithLabel(_("FALLBACK FONT"), fallback_font);
+	s->addSaveFunc([fallback_font] {
+		Settings::getInstance()->setString("FallbackFont", fallback_font->getSelected());
 	});
 
 	// theme set
