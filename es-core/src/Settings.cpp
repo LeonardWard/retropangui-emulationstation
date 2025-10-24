@@ -104,6 +104,14 @@ void Settings::setDefaults()
 	mStringMap["GamelistViewStyle"] = "automatic";
 	mStringMap["SaveGamelistsMode"] = "on exit";
 
+	// RetroPangui: Paths for multi-core support
+	mStringMap["RetroArchPath"] = "/opt/retropangui/bin/retroarch";
+	mStringMap["LibretroCoresPath"] = "/opt/retropangui/libretro/cores";
+	mStringMap["CoreConfigPath"] = "/home/pangui/share/system/configs/cores";
+
+	// RetroPangui: Language support
+	mStringMap["Language"] = "en_US";
+
 	mBoolMap["ScreenSaverControls"] = true;
 	mStringMap["ScreenSaverGameInfo"] = "never";
 	mBoolMap["StretchVideoOnScreenSaver"] = false;

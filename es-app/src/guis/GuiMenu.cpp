@@ -13,6 +13,7 @@
 #include "views/ViewController.h"
 #include "CollectionSystemManager.h"
 #include "EmulationStation.h"
+#include "LocaleES.h"
 #include "Scripting.h"
 #include "SystemData.h"
 #include "VolumeControl.h"
@@ -23,22 +24,20 @@
 #include "views/gamelist/IGameListView.h"
 #include "guis/GuiInfoPopup.h"
 
-GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, "MAIN MENU"), mVersion(window)
+GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 
+	// RetroPangui: Reorganized menu structure
 	if (isFullUI) {
-		addEntry("SCRAPER", 0x777777FF, true, [this] { openScraperSettings(); });
-		addEntry("SOUND SETTINGS", 0x777777FF, true, [this] { openSoundSettings(); });
-		addEntry("UI SETTINGS", 0x777777FF, true, [this] { openUISettings(); });
-		addEntry("GAME COLLECTION SETTINGS", 0x777777FF, true, [this] { openCollectionSystemSettings(); });
-		addEntry("OTHER SETTINGS", 0x777777FF, true, [this] { openOtherSettings(); });
-		addEntry("CONFIGURE INPUT", 0x777777FF, true, [this] { openConfigInput(); });
+		addEntry(_("GAME SETTINGS"), 0x777777FF, true, [this] { openGameSettings(); });
+		addEntry(_("UI SETTINGS"), 0x777777FF, true, [this] { openUISettings(); });
+		addEntry(_("SYSTEM SETTINGS"), 0x777777FF, true, [this] { openSystemSettings(); });
 	} else {
-		addEntry("SOUND SETTINGS", 0x777777FF, true, [this] { openSoundSettings(); });
+		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
 	}
 
-	addEntry("QUIT", 0x777777FF, true, [this] {openQuitMenu(); });
+	addEntry(_("QUIT"), 0x777777FF, true, [this] {openQuitMenu(); });
 
 	addChild(&mMenu);
 	addVersionInfo();
@@ -196,7 +195,7 @@ void GuiMenu::openSoundSettings()
 
 void GuiMenu::openUISettings()
 {
-	auto s = new GuiSettings(mWindow, "UI SETTINGS");
+	auto s = new GuiSettings(mWindow, _("UI SETTINGS"));
 
 	//UI mode
 	auto UImodeSelection = std::make_shared< OptionListComponent<std::string> >(mWindow, "UI MODE", false);
@@ -271,6 +270,36 @@ void GuiMenu::openUISettings()
 			PowerSaver::init();
 		}
 		Settings::getInstance()->setString("TransitionStyle", transition_style->getSelected());
+	});
+
+	// RetroPangui: Language selection
+	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LANGUAGE"), false);
+	std::vector<std::string> languages;
+	languages.push_back("en_US");
+	languages.push_back("ko_KR");
+	for(auto it = languages.cbegin(); it != languages.cend(); it++)
+	{
+		std::string displayName = *it;
+		if (*it == "en_US") displayName = "English";
+		else if (*it == "ko_KR") displayName = "한국어 (Korean)";
+		language->add(displayName, *it, Settings::getInstance()->getString("Language") == *it);
+	}
+	s->addWithLabel(_("LANGUAGE"), language);
+	Window* window2 = mWindow;
+	s->addSaveFunc([language, window2] {
+		std::string oldLang = Settings::getInstance()->getString("Language");
+		std::string newLang = language->getSelected();
+		if(oldLang != newLang)
+		{
+			Settings::getInstance()->setString("Language", newLang);
+			LOG(LogInfo) << "Language changed from " << oldLang << " to " << newLang;
+			// Reinitialize locale
+			LocaleES::init(newLang);
+			// Show restart message
+			window2->pushGui(new GuiMsgBox(window2,
+				"Language has been changed.\nPlease restart EmulationStation for full effect.",
+				"OK", nullptr));
+		}
 	});
 
 	// theme set

@@ -12,6 +12,7 @@
 #include "MameNames.h"
 #include "platform.h"
 #include "Scripting.h"
+#include "Settings.h"
 #include "SystemData.h"
 #include "VolumeControl.h"
 #include "Window.h"
@@ -286,6 +287,22 @@ void FileData::launchGame(Window* window)
 	window->deinit();
 
 	std::string command = mEnvData->mLaunchCommand;
+
+	// RetroPangui: If cores are defined and command is empty, build command from settings
+	if (!mEnvData->mCores.empty() && command.empty())
+	{
+		const CoreInfo& defaultCore = mEnvData->mCores[0]; // Already sorted by priority
+		std::string systemName = mSystem->getName();
+
+		std::string retroarchPath = Settings::getInstance()->getString("RetroArchPath");
+		std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
+		std::string configPath = Settings::getInstance()->getString("CoreConfigPath");
+
+		command = retroarchPath + " -L " + coresPath + "/" + defaultCore.name + "_libretro.so " +
+		          "--config " + configPath + "/" + systemName + "/retroarch.cfg %ROM%";
+
+		LOG(LogInfo) << "Using core: " << defaultCore.name << " (priority: " << defaultCore.priority << ")";
+	}
 
 	const std::string rom      = Utils::FileSystem::getEscapedPath(getPath());
 	const std::string basename = Utils::FileSystem::getStem(getPath());
