@@ -125,6 +125,9 @@ msgstr "언어"
 msgid "FALLBACK FONT"
 msgstr "보조 글꼴"
 
+msgid "BUTTON LAYOUT"
+msgstr "버튼 레이아웃"
+
 msgid "UI MODE"
 msgstr "UI 모드"
 

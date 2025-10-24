@@ -94,7 +94,7 @@ void GuiGameScraper::onSizeChanged()
 
 bool GuiGameScraper::input(InputConfig* config, Input input)
 {
-	if(config->isMappedTo("b", input) && input.value)
+	if(config->isMappedToAction("back", input) && input.value)
 	{
 		PowerSaver::resume();
 		delete this;

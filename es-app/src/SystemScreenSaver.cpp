@@ -82,7 +82,7 @@ bool SystemScreenSaver::inputDuringScreensaver(InputConfig* config, Input input)
 		bool is_previous_input = config->isMappedLike("left", input);
 		bool is_favorite_input = config->isMappedLike("y", input);
 		bool is_start_input = config->isMappedTo("start", input);
-		bool is_select_game_input =  config->isMappedTo("a", input);
+		bool is_select_game_input =  config->isMappedToAction("accept", input);
 		bool use_gamelistmedia = screensaver_type == "random video" || !Settings::getInstance()->getBool("SlideshowScreenSaverCustomMediaSource");
 
 		if (input.value != 0)

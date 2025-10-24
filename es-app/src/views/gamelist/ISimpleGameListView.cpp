@@ -81,7 +81,7 @@ bool ISimpleGameListView::input(InputConfig* config, Input input)
 {
 	if(input.value != 0)
 	{
-		if(config->isMappedTo("a", input))
+		if(config->isMappedToAction("accept", input))
 		{
 			FileData* cursor = getCursor();
 			if(cursor->getType() == GAME)
@@ -100,7 +100,7 @@ bool ISimpleGameListView::input(InputConfig* config, Input input)
 			}
 
 			return true;
-		}else if(config->isMappedTo("b", input))
+		}else if(config->isMappedToAction("back", input))
 		{
 			if(mCursorStack.size())
 			{

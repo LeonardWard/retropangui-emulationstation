@@ -13,6 +13,7 @@
 #include "views/ViewController.h"
 #include "CollectionSystemManager.h"
 #include "EmulationStation.h"
+#include "InputConfig.h"
 #include "LocaleES.h"
 #include "Scripting.h"
 #include "SystemData.h"
@@ -320,6 +321,24 @@ void GuiMenu::openUISettings()
 	s->addWithLabel(_("FALLBACK FONT"), fallback_font);
 	s->addSaveFunc([fallback_font] {
 		Settings::getInstance()->setString("FallbackFont", fallback_font->getSelected());
+	});
+
+	// RetroPangui: Button Layout selection
+	auto button_layout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("BUTTON LAYOUT"), false);
+	std::vector<std::string> layouts;
+	layouts.push_back("nintendo");
+	layouts.push_back("sony");
+	layouts.push_back("xbox");
+
+	std::string currentLayout = Settings::getInstance()->getString("ButtonLayout");
+	for(auto it = layouts.cbegin(); it != layouts.cend(); it++)
+	{
+		button_layout->add(*it, *it, *it == currentLayout);
+	}
+	s->addWithLabel(_("BUTTON LAYOUT"), button_layout);
+	s->addSaveFunc([button_layout] {
+		Settings::getInstance()->setString("ButtonLayout", button_layout->getSelected());
+		InputConfig::initActionMapping();
 	});
 
 	// theme set
@@ -712,7 +731,7 @@ bool GuiMenu::input(InputConfig* config, Input input)
 	if(GuiComponent::input(config, input))
 		return true;
 
-	if((config->isMappedTo("b", input) || config->isMappedTo("start", input)) && input.value != 0)
+	if((config->isMappedToAction("back", input) || config->isMappedTo("start", input)) && input.value != 0)
 	{
 		delete this;
 		return true;
