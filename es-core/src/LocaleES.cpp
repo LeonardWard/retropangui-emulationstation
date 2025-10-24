@@ -40,8 +40,8 @@ bool LocaleES::init(const std::string& language)
     LOG(LogInfo) << "Locale: Set to " << result;
 
     // Set up gettext
-    // RetroPangui: Use system locale directory
-    std::string localeDir = "/usr/local/share/locale";
+    // RetroPangui: Use RetroPangui locale directory
+    std::string localeDir = "/opt/retropangui/share/locale";
     bindtextdomain("emulationstation", localeDir.c_str());
     bind_textdomain_codeset("emulationstation", "UTF-8");
     textdomain("emulationstation");
