@@ -1,8 +1,13 @@
 #include "InputConfig.h"
 
 #include "Log.h"
+#include "Settings.h"
 #include "utils/StringUtil.h"
 #include <pugixml.hpp>
+
+// RetroPangui: Static member initialization
+std::map<std::string, std::string> InputConfig::sActionMapping;
+std::string InputConfig::sButtonLayout = "";
 
 //some util functions
 std::string inputTypeToString(InputType type)
@@ -120,6 +125,91 @@ bool InputConfig::isMappedLike(const std::string& name, Input input)
 		return isMappedTo("rightshoulder", input) || isMappedTo("pagedown", input);
 	}
 	return isMappedTo(name, input);
+}
+
+// RetroPangui: Initialize action mapping
+void InputConfig::initActionMapping()
+{
+	sActionMapping.clear();
+
+	// Read button layout from Settings (default: nintendo)
+	std::string layout = Settings::getInstance()->getString("ButtonLayout");
+	if (layout.empty())
+		layout = "nintendo";
+
+	if (layout == "nintendo")
+	{
+		// Nintendo style: B=accept, A=back
+		sActionMapping["accept"] = "b";
+		sActionMapping["back"] = "a";
+	}
+	else if (layout == "sony" || layout == "xbox")
+	{
+		// Sony/Xbox style: A=accept, B=back
+		sActionMapping["accept"] = "a";
+		sActionMapping["back"] = "b";
+	}
+	else
+	{
+		// Unknown layout: use nintendo default
+		LOG(LogWarning) << "Unknown ButtonLayout: " << layout << ", using nintendo style";
+		sActionMapping["accept"] = "b";
+		sActionMapping["back"] = "a";
+	}
+
+	sButtonLayout = layout;
+	LOG(LogInfo) << "Button Layout: " << layout
+	             << " (Accept=" << sActionMapping["accept"]
+	             << ", Back=" << sActionMapping["back"] << ")";
+}
+
+// RetroPangui: Check logical action
+bool InputConfig::isMappedToAction(const std::string& action, Input input)
+{
+	// Initialize mapping if not already done
+	if (sActionMapping.empty() || sButtonLayout.empty())
+	{
+		initActionMapping();
+	}
+
+	// Convert logical action to physical button
+	auto it = sActionMapping.find(action);
+	if (it != sActionMapping.end())
+	{
+		// Check if input is mapped to the physical button
+		return isMappedTo(it->second, input);
+	}
+
+	// If action not found, fall back to original behavior
+	return isMappedTo(action, input);
+}
+
+// RetroPangui: Set button layout
+void InputConfig::setButtonLayout(const std::string& layout)
+{
+	Settings::getInstance()->setString("ButtonLayout", layout);
+	initActionMapping();
+}
+
+// RetroPangui: Get button layout
+std::string InputConfig::getButtonLayout()
+{
+	if (sButtonLayout.empty())
+		initActionMapping();
+	return sButtonLayout;
+}
+
+// RetroPangui: Get physical button for action
+std::string InputConfig::getActionButton(const std::string& action)
+{
+	if (sActionMapping.empty())
+		initActionMapping();
+
+	auto it = sActionMapping.find(action);
+	if (it != sActionMapping.end())
+		return it->second;
+
+	return action; // Fallback
 }
 
 std::vector<std::string> InputConfig::getMappedTo(Input input)

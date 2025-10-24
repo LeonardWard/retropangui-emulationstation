@@ -376,6 +376,21 @@ void GuiMenu::openUISettings()
 			ViewController::get()->reloadAll();
 	});
 
+	// RetroPangui: Show folders
+	auto show_folders = std::make_shared< OptionListComponent<std::string> >(mWindow, _("SHOW FOLDERS"), false);
+	std::vector<std::string> folderOptions;
+	folderOptions.push_back("always");
+	folderOptions.push_back("never");
+	folderOptions.push_back("having multiple games");
+	for(auto it = folderOptions.cbegin(); it != folderOptions.cend(); it++)
+		show_folders->add(*it, *it, Settings::getInstance()->getString("ShowFolders") == *it);
+	s->addWithLabel(_("SHOW FOLDERS"), show_folders);
+	s->addSaveFunc([show_folders] {
+		Settings::getInstance()->setString("ShowFolders", show_folders->getSelected());
+		// Reload to apply folder visibility changes
+		ViewController::get()->reloadAll();
+	});
+
 	// Optionally ignore leading articles when sorting game titles
 	auto ignore_articles = std::make_shared<SwitchComponent>(mWindow);
 	ignore_articles->setState(Settings::getInstance()->getBool("IgnoreLeadingArticles"));

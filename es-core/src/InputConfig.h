@@ -115,6 +115,15 @@ public:
 	bool isMappedTo(const std::string& name, Input input);
 	bool isMappedLike(const std::string& name, Input input);
 
+	// RetroPangui: Logical button mapping (separates physical buttons from logical actions)
+	bool isMappedToAction(const std::string& action, Input input);
+
+	// RetroPangui: Button layout management
+	static void setButtonLayout(const std::string& layout);
+	static std::string getButtonLayout();
+	static std::string getActionButton(const std::string& action);
+	static void initActionMapping();
+
 	//Returns a list of names this input is mapped to.
 	std::vector<std::string> getMappedTo(Input input);
 
@@ -135,6 +144,10 @@ private:
 
 	unsigned short mVendorId;
 	unsigned short mProductId;
+
+	// RetroPangui: Logical mapping table (accept, back, etc.)
+	static std::map<std::string, std::string> sActionMapping;
+	static std::string sButtonLayout;
 };
 
 #endif // ES_CORE_INPUT_CONFIG_H

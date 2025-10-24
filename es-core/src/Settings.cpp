@@ -115,6 +115,12 @@ void Settings::setDefaults()
 	// RetroPangui: Fallback font for CJK characters
 	mStringMap["FallbackFont"] = "";
 
+	// RetroPangui: Show Folders setting
+	mStringMap["ShowFolders"] = "always";
+
+	// RetroPangui: Button Layout (nintendo, sony, xbox)
+	mStringMap["ButtonLayout"] = "nintendo";
+
 	mBoolMap["ScreenSaverControls"] = true;
 	mStringMap["ScreenSaverGameInfo"] = "never";
 	mBoolMap["StretchVideoOnScreenSaver"] = false;

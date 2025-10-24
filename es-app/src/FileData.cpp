@@ -97,13 +97,47 @@ const std::string& FileData::getSortName()
 const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 
 	FileFilterIndex* idx = CollectionSystemManager::get()->getSystemToView(mSystem)->getIndex();
-	if (idx->isFiltered()) {
+	std::string showFoldersSetting = Settings::getInstance()->getString("ShowFolders");
+	bool needsFolderFiltering = (showFoldersSetting == "never" || showFoldersSetting == "having multiple games");
+
+	if (idx->isFiltered() || needsFolderFiltering) {
 		mFilteredChildren.clear();
 		for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
 		{
-			if (idx->showFile((*it))) {
-				mFilteredChildren.push_back(*it);
+			FileData* child = *it;
+
+			// Apply regular filter first
+			if (idx->isFiltered() && !idx->showFile(child)) {
+				continue;
 			}
+
+			// Apply ShowFolders filter
+			if (needsFolderFiltering && child->getType() == FOLDER) {
+				size_t childCount = child->getChildrenByFilename().size();
+
+				// "never" - skip all folders, show their children instead
+				if (showFoldersSetting == "never") {
+					// Add folder's children directly
+					for(auto grandchild : child->getChildren()) {
+						if (!idx->isFiltered() || idx->showFile(grandchild)) {
+							mFilteredChildren.push_back(grandchild);
+						}
+					}
+					continue;
+				}
+				// "having multiple games" - skip folders with only one child
+				else if (showFoldersSetting == "having multiple games" && childCount == 1) {
+					// Add the single child instead of the folder
+					FileData* onlyChild = child->getChildren()[0];
+					if (!idx->isFiltered() || idx->showFile(onlyChild)) {
+						mFilteredChildren.push_back(onlyChild);
+					}
+					continue;
+				}
+			}
+
+			// If we reach here, add the item normally
+			mFilteredChildren.push_back(child);
 		}
 
 		return mFilteredChildren;
