@@ -165,39 +165,35 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 				continue;
 			}
 
-			// === SCRAPED MODE: Show only registered files ===
+			// === SCRAPED MODE: Show only registered files (including inside folders) ===
 			if (showFoldersSetting == "SCRAPED") {
-				if (child->getType() == GAME) {
+				if (child->getType() == FOLDER) {
+					// Show registered games inside folders directly (no folder)
+					std::vector<FileData*> folderGames = child->getFilesRecursive(GAME, false);
+					for (auto game : folderGames) {
+						if (gamelistPaths.find(game->getPath()) != gamelistPaths.end()) {
+							if (!idx->isFiltered() || idx->showFile(game)) {
+								mFilteredChildren.push_back(game);
+							}
+						}
+					}
+				} else if (child->getType() == GAME) {
+					// Files outside folders
 					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
 						if (!idx->isFiltered() || idx->showFile(child)) {
 							mFilteredChildren.push_back(child);
 						}
 					}
 				}
-				// Skip folders in SCRAPED mode
 				continue;
 			}
 
-			// === AUTO MODE: Smart filtering ===
+			// === AUTO MODE: Smart filtering for all folders ===
 			if (showFoldersSetting == "AUTO") {
 				if (child->getType() == FOLDER) {
-					// Check if folder contains registered games
+					// Apply same smart logic to ALL folders (registered or not)
 					std::vector<FileData*> folderGames = child->getFilesRecursive(GAME, false);
-					bool hasRegisteredGame = false;
-					for (auto game : folderGames) {
-						if (gamelistPaths.find(game->getPath()) != gamelistPaths.end()) {
-							hasRegisteredGame = true;
-							break;
-						}
-					}
 
-					if (hasRegisteredGame) {
-						// Folder has registered games - show folder
-						mFilteredChildren.push_back(child);
-						continue;
-					}
-
-					// No registered games - apply smart logic
 					FileData* m3uFile = nullptr;
 					FileData* cueFile = nullptr;
 					int playableCount = 0;
@@ -237,18 +233,10 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 					continue;
 				}
 				else if (child->getType() == GAME) {
-					// For files outside folders
-					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
-						// Registered game - always show
+					// Files outside folders: apply smart filtering
+					if (shouldShowFile(child)) {
 						if (!idx->isFiltered() || idx->showFile(child)) {
 							mFilteredChildren.push_back(child);
-						}
-					} else {
-						// Unregistered game - apply smart filtering
-						if (shouldShowFile(child)) {
-							if (!idx->isFiltered() || idx->showFile(child)) {
-								mFilteredChildren.push_back(child);
-							}
 						}
 					}
 					continue;
