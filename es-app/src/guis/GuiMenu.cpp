@@ -402,9 +402,12 @@ void GuiMenu::openUISettings()
 	show_folders->add(_("등록 우선"), "AUTO", Settings::getInstance()->getString("ShowFolders") == "AUTO");
 	s->addWithLabel(_("폴더 표시"), show_folders);
 	s->addSaveFunc([show_folders] {
+		bool needReload = false;
+		if (Settings::getInstance()->getString("ShowFolders") != show_folders->getSelected())
+			needReload = true;
 		Settings::getInstance()->setString("ShowFolders", show_folders->getSelected());
-		// Reload to apply folder visibility changes
-		ViewController::get()->reloadAll();
+		if (needReload)
+			ViewController::get()->reloadAll();
 	});
 
 	// Optionally ignore leading articles when sorting game titles
