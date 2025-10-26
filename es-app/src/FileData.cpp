@@ -124,7 +124,7 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 						if (pathNode) {
 							std::string path = pathNode.text().get();
 							// Resolve relative path
-							path = Utils::FileSystem::resolveRelativePath(path, romPath, false);
+							path = Utils::FileSystem::resolveRelativePath(path, romPath, false, true);
 							gamelistPaths.insert(path);
 						}
 					}
