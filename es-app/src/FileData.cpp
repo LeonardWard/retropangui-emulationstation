@@ -17,6 +17,7 @@
 #include "VolumeControl.h"
 #include "Window.h"
 #include <assert.h>
+#include <fstream>
 #include <set>
 #include <algorithm>
 #include <functional>
@@ -521,8 +522,21 @@ void FileData::launchGame(Window* window)
 		if (!selectedCore.empty())
 		{
 			std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
-			// Core path structure: $LIBRETRO_CORE_PATH/$module_id/$module_id.so
-			std::string corePath = coresPath + "/" + selectedCore + "/" + selectedCore + ".so";
+			// Core directory: lr-{core_name} (e.g., lr-pcsx-rearmed)
+			std::string coreDir = coresPath + "/lr-" + selectedCore;
+
+			// Read actual .so filename from .installed_so_name
+			std::string installedSoPath = coreDir + "/.installed_so_name";
+			std::string soName = selectedCore + "_libretro.so"; // fallback
+
+			std::ifstream soFile(installedSoPath);
+			if (soFile.is_open())
+			{
+				std::getline(soFile, soName);
+				soFile.close();
+			}
+
+			std::string corePath = coreDir + "/" + soName;
 			command = Utils::String::replace(command, "%CORE%", corePath);
 		}
 
