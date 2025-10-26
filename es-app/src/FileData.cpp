@@ -143,14 +143,26 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 
 			// SCRAPED mode: show only games that exactly match gamelist.xml paths
 			if (showFoldersSetting == "SCRAPED") {
-				if (child->getType() == GAME) {
+				if (child->getType() == FOLDER) {
+					// Check if folder contains any registered games
+					std::vector<FileData*> folderGames = child->getFilesRecursive(GAME, false);
+					bool hasRegisteredGame = false;
+					for (auto game : folderGames) {
+						if (gamelistPaths.find(game->getPath()) != gamelistPaths.end()) {
+							hasRegisteredGame = true;
+							break;
+						}
+					}
+					if (hasRegisteredGame) {
+						mFilteredChildren.push_back(child);
+					}
+				} else if (child->getType() == GAME) {
 					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
 						if (!idx->isFiltered() || idx->showFile(child)) {
 							mFilteredChildren.push_back(child);
 						}
 					}
 				}
-				// Skip folders in SCRAPED mode
 				continue;
 			}
 
@@ -215,14 +227,10 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 				}
 				// AUTO mode: for GAME (non-folder) items
 				else if (child->getType() == GAME) {
-					// If in gamelist, show it; otherwise skip
-					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
-						if (!idx->isFiltered() || idx->showFile(child)) {
-							mFilteredChildren.push_back(child);
-						}
-						continue;
+					// Show all game files in AUTO mode (registered or not)
+					if (!idx->isFiltered() || idx->showFile(child)) {
+						mFilteredChildren.push_back(child);
 					}
-					// Not in gamelist - skip this file
 					continue;
 				}
 			}
