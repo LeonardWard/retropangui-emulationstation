@@ -521,7 +521,8 @@ void FileData::launchGame(Window* window)
 		if (!selectedCore.empty())
 		{
 			std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
-			std::string corePath = coresPath + "/" + selectedCore + "_libretro.so";
+			// Core path structure: $LIBRETRO_CORE_PATH/$module_id/$module_id.so
+			std::string corePath = coresPath + "/" + selectedCore + "/" + selectedCore + ".so";
 			command = Utils::String::replace(command, "%CORE%", corePath);
 		}
 
