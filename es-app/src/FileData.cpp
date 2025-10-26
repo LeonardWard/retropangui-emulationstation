@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <set>
 #include <algorithm>
+#include "pugixml/pugixml.hpp"
 
 FileData::FileData(FileType type, const std::string& path, SystemEnvironmentData* envData, SystemData* system)
 	: mType(type), mPath(path), mSystem(system), mEnvData(envData), mSourceFileData(NULL), mParent(NULL), metadata(type == GAME ? GAME_METADATA : FOLDER_METADATA) // metadata is REALLY set in the constructor!
@@ -107,18 +108,26 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 	if (idx->isFiltered() || needsFolderFiltering) {
 		mFilteredChildren.clear();
 
-		// Get games registered in gamelist.xml by checking metadata
+		// Parse gamelist.xml directly to get registered game paths
 		std::set<std::string> gamelistPaths;
 		if (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO") {
-			std::vector<FileData*> allGames = mSystem->getRootFolder()->getFilesRecursive(GAME);
-			for (auto game : allGames) {
-				// Game is in gamelist.xml if it has metadata beyond just the name
-				if (game->metadata.wasChanged() ||
-				    !game->metadata.get("desc").empty() ||
-				    !game->metadata.get("image").empty() ||
-				    !game->metadata.get("rating").empty() ||
-				    game->metadata.getInt("playcount") > 0) {
-					gamelistPaths.insert(game->getPath());
+			std::string gamelistPath = mSystem->getGamelistPath(false);
+			if (Utils::FileSystem::exists(gamelistPath)) {
+				pugi::xml_document doc;
+				pugi::xml_parse_result result = doc.load_file(gamelistPath.c_str());
+				if (result) {
+					pugi::xml_node root = doc.child("gameList");
+					std::string romPath = Utils::FileSystem::getParent(gamelistPath);
+
+					for (pugi::xml_node gameNode = root.child("game"); gameNode; gameNode = gameNode.next_sibling("game")) {
+						pugi::xml_node pathNode = gameNode.child("path");
+						if (pathNode) {
+							std::string path = pathNode.text().get();
+							// Resolve relative path
+							path = Utils::FileSystem::resolveRelativePath(path, romPath, false);
+							gamelistPaths.insert(path);
+						}
+					}
 				}
 			}
 		}
@@ -132,11 +141,13 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 				continue;
 			}
 
-			// SCRAPED mode: show only games in gamelist.xml
+			// SCRAPED mode: show only games that exactly match gamelist.xml paths
 			if (showFoldersSetting == "SCRAPED") {
 				if (child->getType() == GAME) {
 					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
-						mFilteredChildren.push_back(child);
+						if (!idx->isFiltered() || idx->showFile(child)) {
+							mFilteredChildren.push_back(child);
+						}
 					}
 				}
 				// Skip folders in SCRAPED mode
@@ -144,63 +155,76 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 			}
 
 			// AUTO mode: smart handling
-			if (showFoldersSetting == "AUTO" && child->getType() == FOLDER) {
-				std::vector<FileData*> folderChildren = child->getChildren();
+			if (showFoldersSetting == "AUTO") {
+				if (child->getType() == FOLDER) {
+					std::vector<FileData*> folderChildren = child->getChildren();
 
-				// Check if folder contains games from gamelist.xml
-				std::vector<FileData*> gamelistGamesInFolder;
-				for (auto grandchild : folderChildren) {
-					if (grandchild->getType() == GAME &&
-					    gamelistPaths.find(grandchild->getPath()) != gamelistPaths.end()) {
-						gamelistGamesInFolder.push_back(grandchild);
-					}
-				}
-
-				// If folder has games from gamelist, show only those
-				if (!gamelistGamesInFolder.empty()) {
-					for (auto game : gamelistGamesInFolder) {
-						if (!idx->isFiltered() || idx->showFile(game)) {
-							mFilteredChildren.push_back(game);
+					// Check if folder contains games from gamelist.xml
+					FileData* gamelistGameInFolder = nullptr;
+					for (auto grandchild : folderChildren) {
+						if (grandchild->getType() == GAME &&
+						    gamelistPaths.find(grandchild->getPath()) != gamelistPaths.end()) {
+							gamelistGameInFolder = grandchild;
+							break; // Found one, that's enough
 						}
 					}
+
+					// If folder has a game from gamelist, show only that game
+					if (gamelistGameInFolder != nullptr) {
+						if (!idx->isFiltered() || idx->showFile(gamelistGameInFolder)) {
+							mFilteredChildren.push_back(gamelistGameInFolder);
+						}
+						continue;
+					}
+
+					// No gamelist games - apply smart logic (.m3u priority)
+					FileData* m3uFile = nullptr;
+					std::vector<FileData*> playableFiles;
+
+					for (auto grandchild : folderChildren) {
+						if (grandchild->getType() != GAME) continue;
+
+						std::string extension = Utils::FileSystem::getExtension(grandchild->getPath());
+						std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+						if (extension == ".m3u") {
+							m3uFile = grandchild;
+						} else if (extension == ".cue" || extension == ".chd" ||
+						           extension == ".iso" || extension == ".pbp") {
+							playableFiles.push_back(grandchild);
+						}
+					}
+
+					// If .m3u exists, show only .m3u
+					if (m3uFile != nullptr) {
+						if (!idx->isFiltered() || idx->showFile(m3uFile)) {
+							mFilteredChildren.push_back(m3uFile);
+						}
+						continue;
+					}
+
+					// No .m3u - if 1 playable file, show it; otherwise show folder
+					if (playableFiles.size() == 1) {
+						if (!idx->isFiltered() || idx->showFile(playableFiles[0])) {
+							mFilteredChildren.push_back(playableFiles[0]);
+						}
+						continue;
+					}
+
+					// Multiple files or no playable files - show folder
+				}
+				// AUTO mode: for GAME (non-folder) items
+				else if (child->getType() == GAME) {
+					// If in gamelist, show it; otherwise skip
+					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
+						if (!idx->isFiltered() || idx->showFile(child)) {
+							mFilteredChildren.push_back(child);
+						}
+						continue;
+					}
+					// Not in gamelist - skip this file
 					continue;
 				}
-
-				// No gamelist games - apply smart logic (.m3u priority)
-				FileData* m3uFile = nullptr;
-				std::vector<FileData*> playableFiles;
-
-				for (auto grandchild : folderChildren) {
-					if (grandchild->getType() != GAME) continue;
-
-					std::string extension = Utils::FileSystem::getExtension(grandchild->getPath());
-					std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-
-					if (extension == ".m3u") {
-						m3uFile = grandchild;
-					} else if (extension == ".cue" || extension == ".chd" ||
-					           extension == ".iso" || extension == ".pbp") {
-						playableFiles.push_back(grandchild);
-					}
-				}
-
-				// If .m3u exists, show only .m3u
-				if (m3uFile != nullptr) {
-					if (!idx->isFiltered() || idx->showFile(m3uFile)) {
-						mFilteredChildren.push_back(m3uFile);
-					}
-					continue;
-				}
-
-				// No .m3u - if 1 playable file, show it; otherwise show folder
-				if (playableFiles.size() == 1) {
-					if (!idx->isFiltered() || idx->showFile(playableFiles[0])) {
-						mFilteredChildren.push_back(playableFiles[0]);
-					}
-					continue;
-				}
-
-				// Multiple files or no playable files - show folder
 			}
 
 			// If we reach here, add the item normally
