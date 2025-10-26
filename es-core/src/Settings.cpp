@@ -104,10 +104,10 @@ void Settings::setDefaults()
 	mStringMap["GamelistViewStyle"] = "automatic";
 	mStringMap["SaveGamelistsMode"] = "on exit";
 
-	// RetroPangui: Paths for multi-core support
-	mStringMap["RetroArchPath"] = "/opt/retropangui/bin/retroarch";
-	mStringMap["LibretroCoresPath"] = "/opt/retropangui/libretro/cores";
-	mStringMap["CoreConfigPath"] = "/home/pangui/share/system/configs/cores";
+	// RetroPangui: Paths for multi-core support (set by installer, not hardcoded)
+	mStringMap["RetroArchPath"] = "";
+	mStringMap["LibretroCoresPath"] = "";
+	mStringMap["CoreConfigPath"] = "";
 
 	// RetroPangui: Language support
 	mStringMap["Language"] = "en_US";
