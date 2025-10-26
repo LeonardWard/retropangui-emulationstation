@@ -398,8 +398,8 @@ void GuiMenu::openUISettings()
 	// RetroPangui: Show folders (gamelist.xml-based)
 	auto show_folders = std::make_shared< OptionListComponent<std::string> >(mWindow, _("폴더 표시"), false);
 	show_folders->add(_("전체"), "ALL", Settings::getInstance()->getString("ShowFolders") == "ALL");
-	show_folders->add(_("스크래핑된 것만"), "SCRAPED", Settings::getInstance()->getString("ShowFolders") == "SCRAPED");
-	show_folders->add(_("자동"), "AUTO", Settings::getInstance()->getString("ShowFolders") == "AUTO");
+	show_folders->add(_("등록 게임만"), "SCRAPED", Settings::getInstance()->getString("ShowFolders") == "SCRAPED");
+	show_folders->add(_("등록 우선"), "AUTO", Settings::getInstance()->getString("ShowFolders") == "AUTO");
 	s->addWithLabel(_("폴더 표시"), show_folders);
 	s->addSaveFunc([show_folders] {
 		Settings::getInstance()->setString("ShowFolders", show_folders->getSelected());
