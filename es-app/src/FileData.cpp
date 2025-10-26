@@ -520,12 +520,14 @@ void FileData::launchGame(Window* window)
 		// Replace %CORE% with full core path
 		if (!selectedCore.empty())
 		{
-			std::string corePath = "/opt/retropangui/libretro/cores/" + selectedCore + "_libretro.so";
+			std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
+			std::string corePath = coresPath + "/" + selectedCore + "_libretro.so";
 			command = Utils::String::replace(command, "%CORE%", corePath);
 		}
 
 		// Replace %CONFIG% with system-specific config path
-		std::string configPath = "/home/pangui/share/system/configs/cores/" + mSystem->getName() + "/retroarch.cfg";
+		std::string configBasePath = Settings::getInstance()->getString("CoreConfigPath");
+		std::string configPath = configBasePath + "/" + mSystem->getName() + "/retroarch.cfg";
 		command = Utils::String::replace(command, "%CONFIG%", configPath);
 	}
 
