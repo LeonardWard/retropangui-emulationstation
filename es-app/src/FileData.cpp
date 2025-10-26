@@ -202,13 +202,17 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 				}
 			}
 
+			LOG(LogDebug) << "AUTO mode: Added " << addedPaths.size() << " registered games";
+
 			// Step 2: Add unregistered items with smart filtering
 			for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
 			{
 				FileData* child = *it;
+				LOG(LogDebug) << "AUTO mode Step 2: Checking " << child->getName() << " (type=" << child->getType() << ")";
 
 				// Apply regular filter first
 				if (idx->isFiltered() && !idx->showFile(child)) {
+					LOG(LogDebug) << "  Filtered out by idx filter";
 					continue;
 				}
 
@@ -223,8 +227,11 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 						}
 					}
 
+					LOG(LogDebug) << "  Folder has " << folderGames.size() << " games, hasRegistered=" << hasRegisteredGame;
+
 					if (hasRegisteredGame) {
 						// Skip folder, registered games already added individually
+						LOG(LogDebug) << "  Skipping folder (has registered games)";
 						continue;
 					}
 
@@ -247,10 +254,13 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 						}
 					}
 
+					LOG(LogDebug) << "  Smart logic: playableCount=" << playableCount << ", hasCue=" << (cueFile != nullptr) << ", hasM3u=" << (m3uFile != nullptr);
+
 					// If .m3u exists, show it directly (skip folder)
 					if (m3uFile != nullptr) {
 						if (!idx->isFiltered() || idx->showFile(m3uFile)) {
 							mFilteredChildren.push_back(m3uFile);
+							LOG(LogDebug) << "  Added .m3u file";
 						}
 						continue;
 					}
@@ -259,12 +269,16 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 					if (playableCount == 1 && cueFile != nullptr) {
 						if (!idx->isFiltered() || idx->showFile(cueFile)) {
 							mFilteredChildren.push_back(cueFile);
+							LOG(LogDebug) << "  Added single .cue file: " << cueFile->getName();
+						} else {
+							LOG(LogDebug) << "  .cue file filtered out by idx";
 						}
 						continue;
 					}
 
 					// Multiple files or other cases - show folder
 					mFilteredChildren.push_back(child);
+					LOG(LogDebug) << "  Added folder itself";
 					continue;
 				}
 				else if (child->getType() == GAME) {
