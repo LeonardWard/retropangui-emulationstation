@@ -487,20 +487,46 @@ void FileData::launchGame(Window* window)
 
 	std::string command = mEnvData->mLaunchCommand;
 
-	// RetroPangui: If cores are defined and command is empty, build command from settings
-	if (!mEnvData->mCores.empty() && command.empty())
+	// RetroPangui: Handle %CORE% and %CONFIG% variables
+	if (command.find("%CORE%") != std::string::npos || command.find("%CONFIG%") != std::string::npos)
 	{
-		const CoreInfo& defaultCore = mEnvData->mCores[0]; // Already sorted by priority
-		std::string systemName = mSystem->getName();
+		// Get the file extension
+		std::string gameExt = Utils::FileSystem::getExtension(getPath());
 
-		std::string retroarchPath = Settings::getInstance()->getString("RetroArchPath");
-		std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
-		std::string configPath = Settings::getInstance()->getString("CoreConfigPath");
+		// Find the best matching core for this extension
+		std::string selectedCore;
+		for (const auto& core : mEnvData->mCores)
+		{
+			// Check if this core supports the game's extension
+			for (const auto& ext : core.extensions)
+			{
+				if (ext == gameExt)
+				{
+					selectedCore = core.name;
+					LOG(LogInfo) << "Using core: " << selectedCore << " (priority: " << core.priority << ")";
+					break;
+				}
+			}
+			if (!selectedCore.empty()) break;
+		}
 
-		command = retroarchPath + " -L " + coresPath + "/" + defaultCore.name + "_libretro.so " +
-		          "--config " + configPath + "/" + systemName + "/retroarch.cfg %ROM%";
+		// If no matching core found, use the first (highest priority) core
+		if (selectedCore.empty() && !mEnvData->mCores.empty())
+		{
+			selectedCore = mEnvData->mCores[0].name;
+			LOG(LogInfo) << "Using default core: " << selectedCore;
+		}
 
-		LOG(LogInfo) << "Using core: " << defaultCore.name << " (priority: " << defaultCore.priority << ")";
+		// Replace %CORE% with full core path
+		if (!selectedCore.empty())
+		{
+			std::string corePath = "/opt/retropangui/libretro/cores/" + selectedCore + "_libretro.so";
+			command = Utils::String::replace(command, "%CORE%", corePath);
+		}
+
+		// Replace %CONFIG% with system-specific config path
+		std::string configPath = "/home/pangui/share/system/configs/cores/" + mSystem->getName() + "/retroarch.cfg";
+		command = Utils::String::replace(command, "%CONFIG%", configPath);
 	}
 
 	const std::string rom      = Utils::FileSystem::getEscapedPath(getPath());
