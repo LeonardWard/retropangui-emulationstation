@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <set>
 #include <algorithm>
+#include <functional>
 #include <pugixml.hpp>
 
 FileData::FileData(FileType type, const std::string& path, SystemEnvironmentData* envData, SystemData* system)
