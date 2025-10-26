@@ -522,8 +522,11 @@ void FileData::launchGame(Window* window)
 		if (!selectedCore.empty())
 		{
 			std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
-			// Core directory: lr-{core_name} (e.g., lr-pcsx-rearmed)
-			std::string coreDir = coresPath + "/lr-" + selectedCore;
+			// Core directory: lr-{core_name} with underscores replaced by hyphens
+			// (e.g., pcsx_rearmed -> lr-pcsx-rearmed)
+			std::string coreName = selectedCore;
+			std::replace(coreName.begin(), coreName.end(), '_', '-');
+			std::string coreDir = coresPath + "/lr-" + coreName;
 
 			// Read actual .so filename from .installed_so_name
 			std::string installedSoPath = coreDir + "/.installed_so_name";
