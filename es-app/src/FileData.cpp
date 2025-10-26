@@ -107,12 +107,19 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 	if (idx->isFiltered() || needsFolderFiltering) {
 		mFilteredChildren.clear();
 
-		// Get all games registered in gamelist.xml
+		// Get games registered in gamelist.xml by checking metadata
 		std::set<std::string> gamelistPaths;
 		if (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO") {
 			std::vector<FileData*> allGames = mSystem->getRootFolder()->getFilesRecursive(GAME);
 			for (auto game : allGames) {
-				gamelistPaths.insert(game->getPath());
+				// Game is in gamelist.xml if it has metadata beyond just the name
+				if (game->metadata.wasChanged() ||
+				    !game->metadata.get("desc").empty() ||
+				    !game->metadata.get("image").empty() ||
+				    !game->metadata.get("rating").empty() ||
+				    game->metadata.getInt("playcount") > 0) {
+					gamelistPaths.insert(game->getPath());
+				}
 			}
 		}
 
