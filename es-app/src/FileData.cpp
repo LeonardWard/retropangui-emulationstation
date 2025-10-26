@@ -87,6 +87,14 @@ const std::string FileData::getThumbnailPath() const
 
 const std::string& FileData::getName()
 {
+	// RetroPangui: In ALL mode, show filename/foldername as-is
+	if (Settings::getInstance()->getString("ShowFolders") == "ALL") {
+		// Return filename with extension for files, folder name for folders
+		static std::string filename;
+		filename = Utils::FileSystem::getFileName(mPath);
+		return filename;
+	}
+
 	return metadata.get("name");
 }
 
