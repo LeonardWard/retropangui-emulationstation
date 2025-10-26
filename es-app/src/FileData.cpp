@@ -132,6 +132,30 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 			}
 		}
 
+		// Helper function to check if file should be shown (smart filtering)
+		auto shouldShowFile = [&](FileData* file) -> bool {
+			std::string ext = Utils::FileSystem::getExtension(file->getPath());
+			std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+			// Priority extensions that should always show
+			if (ext == ".m3u" || ext == ".chd" || ext == ".iso" || ext == ".pbp" ||
+			    ext == ".cue" || ext == ".ccd" || ext == ".img") {
+				return true;
+			}
+
+			// Skip .bin files if there's a corresponding .cue
+			if (ext == ".bin") {
+				std::string cuePath = Utils::FileSystem::getParent(file->getPath()) + "/" +
+				                      Utils::FileSystem::getStem(file->getPath()) + ".cue";
+				if (Utils::FileSystem::exists(cuePath)) {
+					return false; // Skip .bin if .cue exists
+				}
+				return true; // Show .bin if no .cue
+			}
+
+			return true; // Show other files
+		};
+
 		for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
 		{
 			FileData* child = *it;
@@ -141,10 +165,23 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 				continue;
 			}
 
-			// SCRAPED mode: show only games that exactly match gamelist.xml paths
+			// === SCRAPED MODE: Show only registered files ===
 			if (showFoldersSetting == "SCRAPED") {
+				if (child->getType() == GAME) {
+					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
+						if (!idx->isFiltered() || idx->showFile(child)) {
+							mFilteredChildren.push_back(child);
+						}
+					}
+				}
+				// Skip folders in SCRAPED mode
+				continue;
+			}
+
+			// === AUTO MODE: Smart filtering ===
+			if (showFoldersSetting == "AUTO") {
 				if (child->getType() == FOLDER) {
-					// Check if folder contains any registered games
+					// Check if folder contains registered games
 					std::vector<FileData*> folderGames = child->getFilesRecursive(GAME, false);
 					bool hasRegisteredGame = false;
 					for (auto game : folderGames) {
@@ -153,61 +190,33 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 							break;
 						}
 					}
+
 					if (hasRegisteredGame) {
+						// Folder has registered games - show folder
 						mFilteredChildren.push_back(child);
-					}
-				} else if (child->getType() == GAME) {
-					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
-						if (!idx->isFiltered() || idx->showFile(child)) {
-							mFilteredChildren.push_back(child);
-						}
-					}
-				}
-				continue;
-			}
-
-			// AUTO mode: smart handling
-			if (showFoldersSetting == "AUTO") {
-				if (child->getType() == FOLDER) {
-					std::vector<FileData*> folderChildren = child->getChildren();
-
-					// Check if folder contains games from gamelist.xml
-					FileData* gamelistGameInFolder = nullptr;
-					for (auto grandchild : folderChildren) {
-						if (grandchild->getType() == GAME &&
-						    gamelistPaths.find(grandchild->getPath()) != gamelistPaths.end()) {
-							gamelistGameInFolder = grandchild;
-							break; // Found one, that's enough
-						}
-					}
-
-					// If folder has a game from gamelist, show only that game
-					if (gamelistGameInFolder != nullptr) {
-						if (!idx->isFiltered() || idx->showFile(gamelistGameInFolder)) {
-							mFilteredChildren.push_back(gamelistGameInFolder);
-						}
 						continue;
 					}
 
-					// No gamelist games - apply smart logic (.m3u priority)
+					// No registered games - apply smart logic
 					FileData* m3uFile = nullptr;
-					std::vector<FileData*> playableFiles;
+					FileData* cueFile = nullptr;
+					int playableCount = 0;
 
-					for (auto grandchild : folderChildren) {
-						if (grandchild->getType() != GAME) continue;
+					for (auto game : folderGames) {
+						std::string ext = Utils::FileSystem::getExtension(game->getPath());
+						std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
-						std::string extension = Utils::FileSystem::getExtension(grandchild->getPath());
-						std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-
-						if (extension == ".m3u") {
-							m3uFile = grandchild;
-						} else if (extension == ".cue" || extension == ".chd" ||
-						           extension == ".iso" || extension == ".pbp") {
-							playableFiles.push_back(grandchild);
+						if (ext == ".m3u") {
+							m3uFile = game;
+						} else if (ext == ".cue") {
+							cueFile = game;
+							playableCount++;
+						} else if (ext == ".chd" || ext == ".iso" || ext == ".pbp") {
+							playableCount++;
 						}
 					}
 
-					// If .m3u exists, show only .m3u
+					// If .m3u exists, show it directly (skip folder)
 					if (m3uFile != nullptr) {
 						if (!idx->isFiltered() || idx->showFile(m3uFile)) {
 							mFilteredChildren.push_back(m3uFile);
@@ -215,27 +224,38 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 						continue;
 					}
 
-					// No .m3u - if 1 playable file, show it; otherwise show folder
-					if (playableFiles.size() == 1) {
-						if (!idx->isFiltered() || idx->showFile(playableFiles[0])) {
-							mFilteredChildren.push_back(playableFiles[0]);
+					// If exactly 1 playable file, show it directly
+					if (playableCount == 1 && cueFile != nullptr) {
+						if (!idx->isFiltered() || idx->showFile(cueFile)) {
+							mFilteredChildren.push_back(cueFile);
 						}
 						continue;
 					}
 
-					// Multiple files or no playable files - show folder
+					// Multiple files or other cases - show folder
+					mFilteredChildren.push_back(child);
+					continue;
 				}
-				// AUTO mode: for GAME (non-folder) items
 				else if (child->getType() == GAME) {
-					// Show all game files in AUTO mode (registered or not)
-					if (!idx->isFiltered() || idx->showFile(child)) {
-						mFilteredChildren.push_back(child);
+					// For files outside folders
+					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
+						// Registered game - always show
+						if (!idx->isFiltered() || idx->showFile(child)) {
+							mFilteredChildren.push_back(child);
+						}
+					} else {
+						// Unregistered game - apply smart filtering
+						if (shouldShowFile(child)) {
+							if (!idx->isFiltered() || idx->showFile(child)) {
+								mFilteredChildren.push_back(child);
+							}
+						}
 					}
 					continue;
 				}
 			}
 
-			// If we reach here, add the item normally
+			// If we reach here, add the item normally (shouldn't happen in SCRAPED/AUTO)
 			mFilteredChildren.push_back(child);
 		}
 
@@ -247,6 +267,7 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 		return mChildren;
 	}
 }
+
 
 const std::string FileData::getVideoPath() const
 {
