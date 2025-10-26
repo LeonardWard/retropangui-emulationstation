@@ -187,8 +187,22 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 			return mFilteredChildren;
 		}
 
-		// === AUTO MODE: Smart filtering ===
+		// === AUTO MODE: Registered games first, then smart filtering ===
 		if (showFoldersSetting == "AUTO") {
+			std::set<std::string> addedPaths; // Track what we've already added
+
+			// Step 1: Add registered games first (gamelist.xml priority)
+			for (const std::string& path : gamelistPaths) {
+				FileData* file = findFileByPath(path);
+				if (file != nullptr) {
+					if (!idx->isFiltered() || idx->showFile(file)) {
+						mFilteredChildren.push_back(file);
+						addedPaths.insert(path);
+					}
+				}
+			}
+
+			// Step 2: Add unregistered items with smart filtering
 			for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
 			{
 				FileData* child = *it;
@@ -199,9 +213,22 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 				}
 
 				if (child->getType() == FOLDER) {
-					// Apply same smart logic to ALL folders (registered or not)
+					// Check if folder has any registered games
 					std::vector<FileData*> folderGames = child->getFilesRecursive(GAME, false);
+					bool hasRegisteredGame = false;
+					for (auto game : folderGames) {
+						if (addedPaths.find(game->getPath()) != addedPaths.end()) {
+							hasRegisteredGame = true;
+							break;
+						}
+					}
 
+					if (hasRegisteredGame) {
+						// Skip folder, registered games already added individually
+						continue;
+					}
+
+					// Unregistered folder - apply smart logic
 					FileData* m3uFile = nullptr;
 					FileData* cueFile = nullptr;
 					int playableCount = 0;
@@ -241,7 +268,12 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 					continue;
 				}
 				else if (child->getType() == GAME) {
-					// Files outside folders: apply smart filtering
+					// Skip if already added as registered game
+					if (addedPaths.find(child->getPath()) != addedPaths.end()) {
+						continue;
+					}
+
+					// Unregistered file - apply smart filtering
 					if (shouldShowFile(child)) {
 						if (!idx->isFiltered() || idx->showFile(child)) {
 							mFilteredChildren.push_back(child);
