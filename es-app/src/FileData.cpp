@@ -113,26 +113,55 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 
 			// Apply ShowFolders filter
 			if (needsFolderFiltering && child->getType() == FOLDER) {
+				std::vector<FileData*> folderChildren = child->getChildren();
 				size_t childCount = child->getChildrenByFilename().size();
+
+				// RetroPangui: Smart multi-disc handling
+				// Check if folder contains .m3u file (multi-disc game playlist)
+				FileData* m3uFile = nullptr;
+				for(auto grandchild : folderChildren) {
+					std::string extension = Utils::FileSystem::getExtension(grandchild->getPath());
+					std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+					if (extension == ".m3u") {
+						m3uFile = grandchild;
+						break;
+					}
+				}
 
 				// "never" - skip all folders, show their children instead
 				if (showFoldersSetting == "never") {
-					// Add folder's children directly
-					for(auto grandchild : child->getChildren()) {
-						if (!idx->isFiltered() || idx->showFile(grandchild)) {
-							mFilteredChildren.push_back(grandchild);
+					// If .m3u exists, show only .m3u (hide individual disc files)
+					if (m3uFile != nullptr) {
+						if (!idx->isFiltered() || idx->showFile(m3uFile)) {
+							mFilteredChildren.push_back(m3uFile);
+						}
+					} else {
+						// No .m3u - add all folder's children directly
+						for(auto grandchild : folderChildren) {
+							if (!idx->isFiltered() || idx->showFile(grandchild)) {
+								mFilteredChildren.push_back(grandchild);
+							}
 						}
 					}
 					continue;
 				}
-				// "having multiple games" - skip folders with only one child
-				else if (showFoldersSetting == "having multiple games" && childCount == 1) {
-					// Add the single child instead of the folder
-					FileData* onlyChild = child->getChildren()[0];
-					if (!idx->isFiltered() || idx->showFile(onlyChild)) {
-						mFilteredChildren.push_back(onlyChild);
+				// "having multiple games" - skip folders with only one game
+				else if (showFoldersSetting == "having multiple games") {
+					// If .m3u exists, treat as single game (skip folder, show only .m3u)
+					if (m3uFile != nullptr) {
+						if (!idx->isFiltered() || idx->showFile(m3uFile)) {
+							mFilteredChildren.push_back(m3uFile);
+						}
+						continue;
 					}
-					continue;
+					// No .m3u - use original logic (skip folder if childCount == 1)
+					else if (childCount == 1) {
+						FileData* onlyChild = folderChildren[0];
+						if (!idx->isFiltered() || idx->showFile(onlyChild)) {
+							mFilteredChildren.push_back(onlyChild);
+						}
+						continue;
+					}
 				}
 			}
 
