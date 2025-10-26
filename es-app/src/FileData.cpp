@@ -132,6 +132,22 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 			}
 		}
 
+		// Helper: Find FileData by path (recursive search)
+		auto findFileByPath = [&](const std::string& targetPath) -> FileData* {
+			std::function<FileData*(FileData*, const std::string&)> search =
+				[&search](FileData* node, const std::string& path) -> FileData* {
+				if (node->getType() == GAME && node->getPath() == path) {
+					return node;
+				}
+				for (auto child : node->getChildren()) {
+					FileData* result = search(child, path);
+					if (result != nullptr) return result;
+				}
+				return nullptr;
+			};
+			return search(const_cast<FileData*>(this), targetPath);
+		};
+
 		// Helper function to check if file should be shown (smart filtering)
 		auto shouldShowFile = [&](FileData* file) -> bool {
 			std::string ext = Utils::FileSystem::getExtension(file->getPath());
@@ -156,40 +172,31 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 			return true; // Show other files
 		};
 
-		for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
-		{
-			FileData* child = *it;
-
-			// Apply regular filter first
-			if (idx->isFiltered() && !idx->showFile(child)) {
-				continue;
-			}
-
-			// === SCRAPED MODE: Show only registered files (including inside folders) ===
-			if (showFoldersSetting == "SCRAPED") {
-				if (child->getType() == FOLDER) {
-					// Show registered games inside folders directly (no folder)
-					std::vector<FileData*> folderGames = child->getFilesRecursive(GAME, false);
-					for (auto game : folderGames) {
-						if (gamelistPaths.find(game->getPath()) != gamelistPaths.end()) {
-							if (!idx->isFiltered() || idx->showFile(game)) {
-								mFilteredChildren.push_back(game);
-							}
-						}
-					}
-				} else if (child->getType() == GAME) {
-					// Files outside folders
-					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
-						if (!idx->isFiltered() || idx->showFile(child)) {
-							mFilteredChildren.push_back(child);
-						}
+		// === SCRAPED MODE: Use gamelist.xml directly ===
+		if (showFoldersSetting == "SCRAPED") {
+			// Iterate through gamelist paths and find corresponding FileData
+			for (const std::string& path : gamelistPaths) {
+				FileData* file = findFileByPath(path);
+				if (file != nullptr) {
+					if (!idx->isFiltered() || idx->showFile(file)) {
+						mFilteredChildren.push_back(file);
 					}
 				}
-				continue;
 			}
+			return mFilteredChildren;
+		}
 
-			// === AUTO MODE: Smart filtering for all folders ===
-			if (showFoldersSetting == "AUTO") {
+		// === AUTO MODE: Smart filtering ===
+		if (showFoldersSetting == "AUTO") {
+			for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
+			{
+				FileData* child = *it;
+
+				// Apply regular filter first
+				if (idx->isFiltered() && !idx->showFile(child)) {
+					continue;
+				}
+
 				if (child->getType() == FOLDER) {
 					// Apply same smart logic to ALL folders (registered or not)
 					std::vector<FileData*> folderGames = child->getFilesRecursive(GAME, false);
@@ -242,8 +249,16 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 					continue;
 				}
 			}
+			return mFilteredChildren;
+		}
 
-			// If we reach here, add the item normally (shouldn't happen in SCRAPED/AUTO)
+		// Other filtering modes
+		for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
+		{
+			FileData* child = *it;
+			if (idx->isFiltered() && !idx->showFile(child)) {
+				continue;
+			}
 			mFilteredChildren.push_back(child);
 		}
 
