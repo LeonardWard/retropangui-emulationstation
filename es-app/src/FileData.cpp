@@ -19,7 +19,7 @@
 #include <assert.h>
 #include <set>
 #include <algorithm>
-#include "pugixml/pugixml.hpp"
+#include <pugixml.hpp>
 
 FileData::FileData(FileType type, const std::string& path, SystemEnvironmentData* envData, SystemData* system)
 	: mType(type), mPath(path), mSystem(system), mEnvData(envData), mSourceFileData(NULL), mParent(NULL), metadata(type == GAME ? GAME_METADATA : FOLDER_METADATA) // metadata is REALLY set in the constructor!
