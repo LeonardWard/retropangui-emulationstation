@@ -115,8 +115,8 @@ void Settings::setDefaults()
 	// RetroPangui: Fallback font for CJK characters
 	mStringMap["FallbackFont"] = "";
 
-	// RetroPangui: Show Folders setting
-	mStringMap["ShowFolders"] = "always";
+	// RetroPangui: Show Folders setting (ALL/SCRAPED/AUTO)
+	mStringMap["ShowFolders"] = "AUTO";
 
 	// RetroPangui: Button Layout (nintendo, sony, xbox)
 	mStringMap["ButtonLayout"] = "nintendo";

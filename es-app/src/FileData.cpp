@@ -17,6 +17,8 @@
 #include "VolumeControl.h"
 #include "Window.h"
 #include <assert.h>
+#include <set>
+#include <algorithm>
 
 FileData::FileData(FileType type, const std::string& path, SystemEnvironmentData* envData, SystemData* system)
 	: mType(type), mPath(path), mSystem(system), mEnvData(envData), mSourceFileData(NULL), mParent(NULL), metadata(type == GAME ? GAME_METADATA : FOLDER_METADATA) // metadata is REALLY set in the constructor!
@@ -98,10 +100,22 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 
 	FileFilterIndex* idx = CollectionSystemManager::get()->getSystemToView(mSystem)->getIndex();
 	std::string showFoldersSetting = Settings::getInstance()->getString("ShowFolders");
-	bool needsFolderFiltering = (showFoldersSetting == "never" || showFoldersSetting == "having multiple games");
+
+	// RetroPangui: gamelist.xml-based filtering
+	bool needsFolderFiltering = (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
 
 	if (idx->isFiltered() || needsFolderFiltering) {
 		mFilteredChildren.clear();
+
+		// Get all games registered in gamelist.xml
+		std::set<std::string> gamelistPaths;
+		if (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO") {
+			std::vector<FileData*> allGames = mSystem->getRootFolder()->getFilesRecursive(GAME);
+			for (auto game : allGames) {
+				gamelistPaths.insert(game->getPath());
+			}
+		}
+
 		for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
 		{
 			FileData* child = *it;
@@ -111,58 +125,75 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 				continue;
 			}
 
-			// Apply ShowFolders filter
-			if (needsFolderFiltering && child->getType() == FOLDER) {
-				std::vector<FileData*> folderChildren = child->getChildren();
-				size_t childCount = child->getChildrenByFilename().size();
+			// SCRAPED mode: show only games in gamelist.xml
+			if (showFoldersSetting == "SCRAPED") {
+				if (child->getType() == GAME) {
+					if (gamelistPaths.find(child->getPath()) != gamelistPaths.end()) {
+						mFilteredChildren.push_back(child);
+					}
+				}
+				// Skip folders in SCRAPED mode
+				continue;
+			}
 
-				// RetroPangui: Smart multi-disc handling
-				// Check if folder contains .m3u file (multi-disc game playlist)
-				FileData* m3uFile = nullptr;
-				for(auto grandchild : folderChildren) {
-					std::string extension = Utils::FileSystem::getExtension(grandchild->getPath());
-					std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-					if (extension == ".m3u") {
-						m3uFile = grandchild;
-						break;
+			// AUTO mode: smart handling
+			if (showFoldersSetting == "AUTO" && child->getType() == FOLDER) {
+				std::vector<FileData*> folderChildren = child->getChildren();
+
+				// Check if folder contains games from gamelist.xml
+				std::vector<FileData*> gamelistGamesInFolder;
+				for (auto grandchild : folderChildren) {
+					if (grandchild->getType() == GAME &&
+					    gamelistPaths.find(grandchild->getPath()) != gamelistPaths.end()) {
+						gamelistGamesInFolder.push_back(grandchild);
 					}
 				}
 
-				// "never" - skip all folders, show their children instead
-				if (showFoldersSetting == "never") {
-					// If .m3u exists, show only .m3u (hide individual disc files)
-					if (m3uFile != nullptr) {
-						if (!idx->isFiltered() || idx->showFile(m3uFile)) {
-							mFilteredChildren.push_back(m3uFile);
-						}
-					} else {
-						// No .m3u - add all folder's children directly
-						for(auto grandchild : folderChildren) {
-							if (!idx->isFiltered() || idx->showFile(grandchild)) {
-								mFilteredChildren.push_back(grandchild);
-							}
+				// If folder has games from gamelist, show only those
+				if (!gamelistGamesInFolder.empty()) {
+					for (auto game : gamelistGamesInFolder) {
+						if (!idx->isFiltered() || idx->showFile(game)) {
+							mFilteredChildren.push_back(game);
 						}
 					}
 					continue;
 				}
-				// "having multiple games" - skip folders with only one game
-				else if (showFoldersSetting == "having multiple games") {
-					// If .m3u exists, treat as single game (skip folder, show only .m3u)
-					if (m3uFile != nullptr) {
-						if (!idx->isFiltered() || idx->showFile(m3uFile)) {
-							mFilteredChildren.push_back(m3uFile);
-						}
-						continue;
-					}
-					// No .m3u - use original logic (skip folder if childCount == 1)
-					else if (childCount == 1) {
-						FileData* onlyChild = folderChildren[0];
-						if (!idx->isFiltered() || idx->showFile(onlyChild)) {
-							mFilteredChildren.push_back(onlyChild);
-						}
-						continue;
+
+				// No gamelist games - apply smart logic (.m3u priority)
+				FileData* m3uFile = nullptr;
+				std::vector<FileData*> playableFiles;
+
+				for (auto grandchild : folderChildren) {
+					if (grandchild->getType() != GAME) continue;
+
+					std::string extension = Utils::FileSystem::getExtension(grandchild->getPath());
+					std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+
+					if (extension == ".m3u") {
+						m3uFile = grandchild;
+					} else if (extension == ".cue" || extension == ".chd" ||
+					           extension == ".iso" || extension == ".pbp") {
+						playableFiles.push_back(grandchild);
 					}
 				}
+
+				// If .m3u exists, show only .m3u
+				if (m3uFile != nullptr) {
+					if (!idx->isFiltered() || idx->showFile(m3uFile)) {
+						mFilteredChildren.push_back(m3uFile);
+					}
+					continue;
+				}
+
+				// No .m3u - if 1 playable file, show it; otherwise show folder
+				if (playableFiles.size() == 1) {
+					if (!idx->isFiltered() || idx->showFile(playableFiles[0])) {
+						mFilteredChildren.push_back(playableFiles[0]);
+					}
+					continue;
+				}
+
+				// Multiple files or no playable files - show folder
 			}
 
 			// If we reach here, add the item normally
@@ -173,6 +204,7 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 	}
 	else
 	{
+		// ALL mode or no filtering needed
 		return mChildren;
 	}
 }

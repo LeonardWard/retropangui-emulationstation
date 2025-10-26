@@ -395,15 +395,12 @@ void GuiMenu::openUISettings()
 			ViewController::get()->reloadAll();
 	});
 
-	// RetroPangui: Show folders
-	auto show_folders = std::make_shared< OptionListComponent<std::string> >(mWindow, _("SHOW FOLDERS"), false);
-	std::vector<std::string> folderOptions;
-	folderOptions.push_back("always");
-	folderOptions.push_back("never");
-	folderOptions.push_back("having multiple games");
-	for(auto it = folderOptions.cbegin(); it != folderOptions.cend(); it++)
-		show_folders->add(*it, *it, Settings::getInstance()->getString("ShowFolders") == *it);
-	s->addWithLabel(_("SHOW FOLDERS"), show_folders);
+	// RetroPangui: Show folders (gamelist.xml-based)
+	auto show_folders = std::make_shared< OptionListComponent<std::string> >(mWindow, _("폴더 표시"), false);
+	show_folders->add(_("전체"), "ALL", Settings::getInstance()->getString("ShowFolders") == "ALL");
+	show_folders->add(_("스크래핑된 것만"), "SCRAPED", Settings::getInstance()->getString("ShowFolders") == "SCRAPED");
+	show_folders->add(_("자동"), "AUTO", Settings::getInstance()->getString("ShowFolders") == "AUTO");
+	s->addWithLabel(_("폴더 표시"), show_folders);
 	s->addSaveFunc([show_folders] {
 		Settings::getInstance()->setString("ShowFolders", show_folders->getSelected());
 		// Reload to apply folder visibility changes
