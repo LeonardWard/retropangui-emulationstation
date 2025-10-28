@@ -132,6 +132,23 @@ if(PROFILING)
     add_definitions(-DUSE_PROFILING)
 endif()
 
+# RetroPangui: Build-time path configuration
+# These can be overridden via environment variables at runtime
+set(RETROPANGUI_INSTALL_PREFIX "/opt/retropangui" CACHE STRING "RetroPangui installation prefix")
+set(RETROPANGUI_RETROARCH_PATH "${RETROPANGUI_INSTALL_PREFIX}/bin/retroarch" CACHE STRING "RetroArch binary path")
+set(RETROPANGUI_CORES_PATH "${RETROPANGUI_INSTALL_PREFIX}/libretrocores" CACHE STRING "Libretro cores path")
+set(RETROPANGUI_LOCALE_PATH "${RETROPANGUI_INSTALL_PREFIX}/share/locale" CACHE STRING "Locale files path")
+
+add_definitions(
+    -DRETROPANGUI_RETROARCH_PATH="${RETROPANGUI_RETROARCH_PATH}"
+    -DRETROPANGUI_CORES_PATH="${RETROPANGUI_CORES_PATH}"
+    -DRETROPANGUI_LOCALE_PATH="${RETROPANGUI_LOCALE_PATH}"
+)
+
+message(STATUS "RetroPangui: RetroArch path = ${RETROPANGUI_RETROARCH_PATH}")
+message(STATUS "RetroPangui: Cores path = ${RETROPANGUI_CORES_PATH}")
+message(STATUS "RetroPangui: Locale path = ${RETROPANGUI_LOCALE_PATH}")
+
 #-------------------------------------------------------------------------------
 
 if(MSVC)

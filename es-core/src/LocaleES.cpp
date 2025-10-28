@@ -41,7 +41,19 @@ bool LocaleES::init(const std::string& language)
 
     // Set up gettext
     // RetroPangui: Use RetroPangui locale directory
-    std::string localeDir = "/opt/retropangui/share/locale";
+    // Priority: 1. Environment variable, 2. Build-time default, 3. Hardcoded fallback
+    std::string localeDir;
+    const char* localeDirEnv = std::getenv("RETROPANGUI_LOCALE_PATH");
+    if (localeDirEnv && localeDirEnv[0] != '\0') {
+        localeDir = localeDirEnv;
+    } else {
+#ifdef RETROPANGUI_LOCALE_PATH
+        localeDir = RETROPANGUI_LOCALE_PATH;
+#else
+        localeDir = "/opt/retropangui/share/locale";  // Final fallback
+#endif
+    }
+
     bindtextdomain("emulationstation", localeDir.c_str());
     bind_textdomain_codeset("emulationstation", "UTF-8");
     textdomain("emulationstation");

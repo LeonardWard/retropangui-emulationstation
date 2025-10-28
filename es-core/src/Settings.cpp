@@ -104,10 +104,37 @@ void Settings::setDefaults()
 	mStringMap["GamelistViewStyle"] = "automatic";
 	mStringMap["SaveGamelistsMode"] = "on exit";
 
-	// RetroPangui: Paths for multi-core support (set by installer, not hardcoded)
-	mStringMap["RetroArchPath"] = "";
-	mStringMap["LibretroCoresPath"] = "";
-	mStringMap["CoreConfigPath"] = "";
+	// RetroPangui: Paths for multi-core support
+	// Priority: 1. Environment variable, 2. Build-time default, 3. Empty string
+	// This ensures ES works even without es_settings.cfg
+
+	// RetroArch binary path
+	const char* retroarchEnv = std::getenv("RETROARCH_PATH");
+	if (retroarchEnv && retroarchEnv[0] != '\0') {
+		mStringMap["RetroArchPath"] = retroarchEnv;
+	} else {
+#ifdef RETROPANGUI_RETROARCH_PATH
+		mStringMap["RetroArchPath"] = RETROPANGUI_RETROARCH_PATH;
+#else
+		mStringMap["RetroArchPath"] = "";
+#endif
+	}
+
+	// Libretro cores directory
+	const char* coresEnv = std::getenv("LIBRETRO_CORES_PATH");
+	if (coresEnv && coresEnv[0] != '\0') {
+		mStringMap["LibretroCoresPath"] = coresEnv;
+	} else {
+#ifdef RETROPANGUI_CORES_PATH
+		mStringMap["LibretroCoresPath"] = RETROPANGUI_CORES_PATH;
+#else
+		mStringMap["LibretroCoresPath"] = "";
+#endif
+	}
+
+	// Core-specific config directory (user-specific, environment variable only)
+	const char* coreConfigEnv = std::getenv("CORE_CONFIG_PATH");
+	mStringMap["CoreConfigPath"] = (coreConfigEnv && coreConfigEnv[0] != '\0') ? coreConfigEnv : "";
 
 	// RetroPangui: Language support
 	mStringMap["Language"] = "en_US";
