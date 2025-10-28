@@ -495,7 +495,7 @@ void FileData::launchGame(Window* window)
 		std::string gameExt = Utils::FileSystem::getExtension(getPath());
 
 		// Find the best matching core for this extension
-		std::string selectedCore;
+		const CoreInfo* selectedCoreInfo = nullptr;
 		for (const auto& core : mEnvData->mCores)
 		{
 			// Check if this core supports the game's extension
@@ -503,34 +503,46 @@ void FileData::launchGame(Window* window)
 			{
 				if (ext == gameExt)
 				{
-					selectedCore = core.name;
-					LOG(LogInfo) << "Using core: " << selectedCore << " (priority: " << core.priority << ")";
+					selectedCoreInfo = &core;
+					LOG(LogInfo) << "Using core: " << core.name << " (priority: " << core.priority << ")";
 					break;
 				}
 			}
-			if (!selectedCore.empty()) break;
+			if (selectedCoreInfo != nullptr) break;
 		}
 
 		// If no matching core found, use the first (highest priority) core
-		if (selectedCore.empty() && !mEnvData->mCores.empty())
+		if (selectedCoreInfo == nullptr && !mEnvData->mCores.empty())
 		{
-			selectedCore = mEnvData->mCores[0].name;
-			LOG(LogInfo) << "Using default core: " << selectedCore;
+			selectedCoreInfo = &mEnvData->mCores[0];
+			LOG(LogInfo) << "Using default core: " << selectedCoreInfo->name;
 		}
 
 		// Replace %CORE% with full core path
-		if (!selectedCore.empty())
+		if (selectedCoreInfo != nullptr)
 		{
 			std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
-			// Core directory: lr-{core_name} with underscores replaced by hyphens
-			// (e.g., pcsx_rearmed -> lr-pcsx-rearmed)
-			std::string coreName = selectedCore;
-			std::replace(coreName.begin(), coreName.end(), '_', '-');
-			std::string coreDir = coresPath + "/lr-" + coreName;
+
+			// Use module_id if available, otherwise fall back to old behavior
+			std::string coreDir;
+			if (!selectedCoreInfo->module_id.empty())
+			{
+				// Use module_id directly (e.g., "lr-pcsx-rearmed")
+				coreDir = coresPath + "/" + selectedCoreInfo->module_id;
+				LOG(LogInfo) << "Using module_id for core directory: " << selectedCoreInfo->module_id;
+			}
+			else
+			{
+				// Fallback: old hardcoded conversion (for backward compatibility)
+				std::string coreName = selectedCoreInfo->name;
+				std::replace(coreName.begin(), coreName.end(), '_', '-');
+				coreDir = coresPath + "/lr-" + coreName;
+				LOG(LogWarning) << "module_id not found, using fallback conversion: " << coreDir;
+			}
 
 			// Read actual .so filename from .installed_so_name
 			std::string installedSoPath = coreDir + "/.installed_so_name";
-			std::string soName = selectedCore + "_libretro.so"; // fallback
+			std::string soName = selectedCoreInfo->name + "_libretro.so"; // fallback
 
 			std::ifstream soFile(installedSoPath);
 			if (soFile.is_open())
