@@ -203,6 +203,7 @@ SystemData* SystemData::loadSystem(pugi::xml_node system)
 		{
 			CoreInfo coreInfo;
 			coreInfo.name = coreNode.attribute("name").as_string();
+			coreInfo.module_id = coreNode.attribute("module_id").as_string();
 			coreInfo.priority = coreNode.attribute("priority").as_int(999);
 
 			// Parse core-specific extensions

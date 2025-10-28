@@ -20,6 +20,7 @@ class Window;
 struct CoreInfo
 {
 	std::string name;
+	std::string module_id;  // e.g., "lr-pcsx-rearmed"
 	int priority;
 	std::vector<std::string> extensions;
 };
