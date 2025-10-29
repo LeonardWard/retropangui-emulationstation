@@ -147,12 +147,17 @@ void parseGamelist(SystemData* system)
 				continue;
 			}
 
-			// Check whether the file's extension is allowed in the system
-			if (i == 0 /*game*/ && std::find(allowedExtensions.cbegin(), allowedExtensions.cend(), Utils::FileSystem::getExtension(path)) == allowedExtensions.cend())
-			{
-				LOG(LogDebug) << "file " << path << " found in gamelist, but has unregistered extension";
-				continue;
-			}
+			// RetroPangui: Allow all extensions in gamelist.xml
+			// Games explicitly listed in gamelist.xml should always be displayed,
+			// regardless of their extension. This enables support for various disc
+			// image formats (.ccd, .mds, etc.) that may not be in es_systems.xml.
+			//
+			// Original code (removed):
+			// if (i == 0 /*game*/ && std::find(allowedExtensions.cbegin(), allowedExtensions.cend(), Utils::FileSystem::getExtension(path)) == allowedExtensions.cend())
+			// {
+			//     LOG(LogDebug) << "file " << path << " found in gamelist, but has unregistered extension";
+			//     continue;
+			// }
 
 			FileData* file = findOrCreateFile(system, path, type);
 			if(!file)
