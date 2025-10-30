@@ -102,7 +102,7 @@ void Settings::setDefaults()
 	mStringMap["ScreenSaverBehavior"] = "dim";
 	mStringMap["Scraper"] = "TheGamesDB";
 	mStringMap["GamelistViewStyle"] = "automatic";
-	mStringMap["SaveGamelistsMode"] = "on exit";
+	mStringMap["SaveGamelistsMode"] = "never";
 
 	// RetroPangui: Paths for multi-core support
 	// Priority: 1. Environment variable, 2. Build-time default, 3. Empty string
