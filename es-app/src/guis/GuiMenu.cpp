@@ -33,6 +33,7 @@ GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN M
 		addEntry(_("SCRAPER"), 0x777777FF, true, [this] { openScraperSettings(); });
 		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
 		addEntry(_("UI SETTINGS"), 0x777777FF, true, [this] { openUISettings(); });
+		addEntry(_("EMULATOR SETTINGS"), 0x777777FF, true, [this] { openEmulatorSettings(); });
 		addEntry(_("GAME COLLECTION SETTINGS"), 0x777777FF, true, [this] { openCollectionSystemSettings(); });
 		addEntry(_("OTHER SETTINGS"), 0x777777FF, true, [this] { openOtherSettings(); });
 		addEntry(_("CONFIGURE INPUT"), 0x777777FF, true, [this] { openConfigInput(); });
@@ -738,6 +739,63 @@ bool GuiMenu::input(InputConfig* config, Input input)
 	}
 
 	return false;
+}
+
+void GuiMenu::openEmulatorSettings()
+{
+	auto s = new GuiSettings(mWindow, _("EMULATOR SETTINGS"));
+
+	// Iterate through all game systems (not collections)
+	for (auto system : SystemData::sSystemVector)
+	{
+		if (system->isCollection() || !system->isGameSystem())
+			continue;
+
+		std::vector<CoreInfo> cores = system->getCores();
+		if (cores.empty())
+			continue;
+
+		// Create emulator selection list for this system
+		auto emulatorList = std::make_shared<OptionListComponent<std::string>>(mWindow,
+			system->getFullName() + " DEFAULT EMULATOR", false);
+
+		// Add all available emulators sorted by priority
+		std::string currentDefault = "";
+		for (const auto& core : cores)
+		{
+			if (core.priority == 1)
+				currentDefault = core.name;
+
+			std::string label = core.fullname;
+			if (core.priority == 1)
+				label += " (Current Default)";
+
+			emulatorList->add(label, core.name, core.priority == 1);
+		}
+
+		s->addWithLabel(system->getFullName(), emulatorList);
+		s->addSaveFunc([system, emulatorList] {
+			std::string selectedCore = emulatorList->getSelected();
+
+			// Call shell script to reorder priorities in es_systems.xml
+			std::string cmd = "bash -c 'source /home/pangui/scripts/retropangui/scriptmodules/es_systems_updater.sh && "
+				"set_default_core \"" + system->getName() + "\" \"" + selectedCore + "\"'";
+
+			int result = system(cmd.c_str());
+			if (result != 0)
+			{
+				LOG(LogError) << "Failed to update default emulator for " << system->getName();
+			}
+			else
+			{
+				LOG(LogInfo) << "Updated default emulator for " << system->getName() << " to " << selectedCore;
+				// Reload system configuration to reflect changes
+				// Note: May require ES restart to fully take effect
+			}
+		});
+	}
+
+	mWindow->pushGui(s);
 }
 
 HelpStyle GuiMenu::getHelpStyle()
