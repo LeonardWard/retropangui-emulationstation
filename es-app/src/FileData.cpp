@@ -183,14 +183,14 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 		};
 
 		// === SCRAPED MODE: Use gamelist.xml directly ===
+		// RetroPangui: Show ALL games from gamelist.xml without any filtering
 		if (showFoldersSetting == "SCRAPED") {
 			// Iterate through gamelist paths and find corresponding FileData
 			for (const std::string& path : gamelistPaths) {
 				FileData* file = findFileByPath(path);
 				if (file != nullptr) {
-					if (!idx->isFiltered() || idx->showFile(file)) {
-						mFilteredChildren.push_back(file);
-					}
+					// No filtering - show everything from gamelist.xml
+					mFilteredChildren.push_back(file);
 				}
 			}
 			return mFilteredChildren;
