@@ -776,19 +776,20 @@ void GuiMenu::openEmulatorSettings()
 		s->addWithLabel(system->getFullName(), emulatorList);
 		s->addSaveFunc([system, emulatorList] {
 			std::string selectedCore = emulatorList->getSelected();
+			std::string systemName = system->getName();
 
 			// Call shell script to reorder priorities in es_systems.xml
 			std::string cmd = "bash -c 'source /home/pangui/scripts/retropangui/scriptmodules/es_systems_updater.sh && "
-				"set_default_core \"" + system->getName() + "\" \"" + selectedCore + "\"'";
+				"set_default_core \"" + systemName + "\" \"" + selectedCore + "\"'";
 
-			int result = system(cmd.c_str());
+			int result = ::system(cmd.c_str());  // Use global ::system() function
 			if (result != 0)
 			{
-				LOG(LogError) << "Failed to update default emulator for " << system->getName();
+				LOG(LogError) << "Failed to update default emulator for " << systemName;
 			}
 			else
 			{
-				LOG(LogInfo) << "Updated default emulator for " << system->getName() << " to " << selectedCore;
+				LOG(LogInfo) << "Updated default emulator for " << systemName << " to " << selectedCore;
 				// Reload system configuration to reflect changes
 				// Note: May require ES restart to fully take effect
 			}
