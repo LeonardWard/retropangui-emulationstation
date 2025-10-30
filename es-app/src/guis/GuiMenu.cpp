@@ -774,9 +774,16 @@ void GuiMenu::openEmulatorSettings()
 		}
 
 		s->addWithLabel(system->getFullName(), emulatorList);
-		s->addSaveFunc([system, emulatorList] {
+		s->addSaveFunc([system, emulatorList, currentDefault] {
 			std::string selectedCore = emulatorList->getSelected();
 			std::string systemName = system->getName();
+
+			// Only update if selection changed
+			if (selectedCore == currentDefault)
+			{
+				LOG(LogDebug) << "No change in default emulator for " << systemName << ", skipping update";
+				return;
+			}
 
 			// Call shell script to reorder priorities in es_systems.xml
 			std::string cmd = "bash -c 'source /home/pangui/scripts/retropangui/scriptmodules/es_systems_updater.sh && "
