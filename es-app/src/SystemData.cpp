@@ -22,6 +22,38 @@ std::vector<SystemData*> SystemData::sSystemVector;
 std::vector<SystemData*> SystemData::sSystemVectorShuffled;
 std::ranlux48 SystemData::sURNG = std::ranlux48(std::random_device()());
 
+// RetroPangui: Disc image priority helper functions
+// When multiple disc formats exist for the same game, only add the highest priority one
+static int getDiscImagePriority(const std::string& extension)
+{
+	// Priority: 1 (highest) -> 3 (lowest)
+	if (extension == ".cue" || extension == ".m3u") return 1;  // Cue sheets and playlists
+	if (extension == ".ccd" || extension == ".mds") return 2;  // CloneCD and Media Descriptor
+	if (extension == ".img" || extension == ".iso" || extension == ".bin") return 3;  // Raw images
+	return 0;  // Not a disc image
+}
+
+static bool hasHigherPriorityDiscImage(const std::string& filePath, const std::string& extension, const std::string& dirPath)
+{
+	int currentPriority = getDiscImagePriority(extension);
+	if (currentPriority == 0 || currentPriority == 1) return false;  // Not a disc image or already highest priority
+
+	std::string stem = FileSystem::getStem(filePath);
+	std::string basePath = dirPath + "/" + stem;
+
+	// Check for higher priority extensions
+	if (currentPriority > 1) {
+		if (FileSystem::exists(basePath + ".cue") || FileSystem::exists(basePath + ".CUE")) return true;
+		if (FileSystem::exists(basePath + ".m3u") || FileSystem::exists(basePath + ".M3U")) return true;
+	}
+	if (currentPriority > 2) {
+		if (FileSystem::exists(basePath + ".ccd") || FileSystem::exists(basePath + ".CCD")) return true;
+		if (FileSystem::exists(basePath + ".mds") || FileSystem::exists(basePath + ".MDS")) return true;
+	}
+
+	return false;
+}
+
 
 SystemData::SystemData(const std::string& name, const std::string& fullName, SystemEnvironmentData* envData, const std::string& themeFolder, bool CollectionSystem) :
 	mName(name), mFullName(fullName), mEnvData(envData), mThemeFolder(themeFolder), mIsCollectionSystem(CollectionSystem), mIsGameSystem(true)
@@ -113,13 +145,22 @@ void SystemData::populateFolder(FileData* folder)
 		isGame = false;
 		if(std::find(mEnvData->mSearchExtensions.cbegin(), mEnvData->mSearchExtensions.cend(), extension) != mEnvData->mSearchExtensions.cend())
 		{
-			FileData* newGame = new FileData(GAME, filePath, mEnvData, this);
-
-			// preventing new arcade assets to be added
-			if(!newGame->isArcadeAsset())
+			// RetroPangui: Skip if a higher priority disc image exists for the same game
+			// e.g., if both .ccd and .img exist, only add .ccd
+			if (hasHigherPriorityDiscImage(filePath, extension, folderPath))
 			{
-				folder->addChild(newGame);
-				isGame = true;
+				LOG(LogDebug) << "Skipping " << filePath << " - higher priority disc image exists";
+			}
+			else
+			{
+				FileData* newGame = new FileData(GAME, filePath, mEnvData, this);
+
+				// preventing new arcade assets to be added
+				if(!newGame->isArcadeAsset())
+				{
+					folder->addChild(newGame);
+					isGame = true;
+				}
 			}
 		}
 
