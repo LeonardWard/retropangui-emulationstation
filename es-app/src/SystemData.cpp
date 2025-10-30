@@ -244,6 +244,10 @@ SystemData* SystemData::loadSystem(pugi::xml_node system)
 		{
 			CoreInfo coreInfo;
 			coreInfo.name = coreNode.attribute("name").as_string();
+			coreInfo.fullname = coreNode.attribute("fullname").as_string();
+			// If fullname is not specified, use name
+			if (coreInfo.fullname.empty())
+				coreInfo.fullname = coreInfo.name;
 			coreInfo.module_id = coreNode.attribute("module_id").as_string();
 			coreInfo.priority = coreNode.attribute("priority").as_int(999);
 
@@ -698,4 +702,22 @@ void SystemData::onMetaDataSavePoint() {
 		return;
 
 	writeMetaData();
+}
+
+// RetroPangui: Get available emulator cores sorted by priority
+std::vector<CoreInfo> SystemData::getCores() const
+{
+	if (!mEnvData || mEnvData->mCores.empty())
+		return std::vector<CoreInfo>();
+
+	// Copy cores vector
+	std::vector<CoreInfo> sortedCores = mEnvData->mCores;
+
+	// Sort by priority (lower number = higher priority)
+	std::sort(sortedCores.begin(), sortedCores.end(),
+		[](const CoreInfo& a, const CoreInfo& b) {
+			return a.priority < b.priority;
+		});
+
+	return sortedCores;
 }

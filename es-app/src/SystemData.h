@@ -19,9 +19,10 @@ class Window;
 // RetroPangui: Multi-core support
 struct CoreInfo
 {
-	std::string name;
-	std::string module_id;  // e.g., "lr-pcsx-rearmed"
-	int priority;
+	std::string name;        // e.g., "pcsx_rearmed"
+	std::string fullname;    // e.g., "PCSX ReARMed"
+	std::string module_id;   // e.g., "lr-pcsx-rearmed"
+	int priority;            // 1 = highest priority, lower number = higher priority
 	std::vector<std::string> extensions;
 };
 
@@ -56,6 +57,9 @@ public:
 	std::string getGamelistPath(bool forWrite) const;
 	bool hasGamelist() const;
 	std::string getThemePath() const;
+
+	// RetroPangui: Get available emulator cores for this system (sorted by priority)
+	std::vector<CoreInfo> getCores() const;
 
 	unsigned int getGameCount() const;
 	unsigned int getDisplayedGameCount() const;

@@ -140,6 +140,52 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 		mMenu.addRow(row);
 	}
 
+	// RetroPangui: Add emulator selection menu (only for games with multiple emulators available)
+	if (UIModeController::getInstance()->isUIModeFull() && !mFromPlaceholder && file->getType() == GAME)
+	{
+		std::vector<CoreInfo> availableCores = mSystem->getCores();
+		if (availableCores.size() > 1)
+		{
+			row.elements.clear();
+			auto emulatorList = std::make_shared<OptionListComponent<std::string>>(mWindow, "SELECT EMULATOR", false);
+
+			std::string currentEmulator = file->metadata.get("system");
+
+			// Add "Auto" option (empty string = auto select)
+			emulatorList->add("Auto (Default)", "", currentEmulator.empty());
+
+			// Add all available emulators
+			for (const auto& core : availableCores)
+			{
+				std::string label = core.fullname;
+				if (core.priority == 1)
+					label += " (Default)";
+
+				bool selected = (!currentEmulator.empty() && currentEmulator == core.name);
+				emulatorList->add(label, core.name, selected);
+			}
+
+			row.addElement(std::make_shared<TextComponent>(mWindow, "SELECT EMULATOR", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+			row.addElement(emulatorList, false);
+			row.input_handler = [this, file, emulatorList](InputConfig* config, Input input) {
+				if(config->isMappedToAction("accept", input) && input.value)
+				{
+					// Save selection to metadata
+					std::string selected = emulatorList->getSelected();
+					file->metadata.set("system", selected);
+					mMetadataChanged = true;
+					return true;
+				}
+				else if(emulatorList->input(config, input))
+				{
+					return true;
+				}
+				return false;
+			};
+			mMenu.addRow(row);
+		}
+	}
+
 	if (UIModeController::getInstance()->isUIModeFull() && !mFromPlaceholder && !(mSystem->isCollection() && file->getType() == FOLDER))
 	{
 		row.elements.clear();

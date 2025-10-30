@@ -491,31 +491,57 @@ void FileData::launchGame(Window* window)
 	// RetroPangui: Handle %CORE% and %CONFIG% variables
 	if (command.find("%CORE%") != std::string::npos || command.find("%CONFIG%") != std::string::npos)
 	{
-		// Get the file extension
-		std::string gameExt = Utils::FileSystem::getExtension(getPath());
-
-		// Find the best matching core for this extension
 		const CoreInfo* selectedCoreInfo = nullptr;
-		for (const auto& core : mEnvData->mCores)
+
+		// Check if user has selected a specific emulator in metadata
+		std::string userSelectedEmulator = metadata.get("system");
+		if (!userSelectedEmulator.empty())
 		{
-			// Check if this core supports the game's extension
-			for (const auto& ext : core.extensions)
+			// Find the core with matching name
+			for (const auto& core : mEnvData->mCores)
 			{
-				if (ext == gameExt)
+				if (core.name == userSelectedEmulator)
 				{
 					selectedCoreInfo = &core;
-					LOG(LogInfo) << "Using core: " << core.name << " (priority: " << core.priority << ")";
+					LOG(LogInfo) << "Using user-selected emulator: " << core.fullname << " (" << core.name << ")";
 					break;
 				}
 			}
-			if (selectedCoreInfo != nullptr) break;
+
+			if (selectedCoreInfo == nullptr)
+			{
+				LOG(LogWarning) << "User-selected emulator '" << userSelectedEmulator << "' not found, falling back to auto selection";
+			}
 		}
 
-		// If no matching core found, use the first (highest priority) core
-		if (selectedCoreInfo == nullptr && !mEnvData->mCores.empty())
+		// If no user selection or not found, auto-select based on extension
+		if (selectedCoreInfo == nullptr)
 		{
-			selectedCoreInfo = &mEnvData->mCores[0];
-			LOG(LogInfo) << "Using default core: " << selectedCoreInfo->name;
+			// Get the file extension
+			std::string gameExt = Utils::FileSystem::getExtension(getPath());
+
+			// Find the best matching core for this extension
+			for (const auto& core : mEnvData->mCores)
+			{
+				// Check if this core supports the game's extension
+				for (const auto& ext : core.extensions)
+				{
+					if (ext == gameExt)
+					{
+						selectedCoreInfo = &core;
+						LOG(LogInfo) << "Auto-selected core: " << core.fullname << " (" << core.name << ", priority: " << core.priority << ")";
+						break;
+					}
+				}
+				if (selectedCoreInfo != nullptr) break;
+			}
+
+			// If no matching core found, use the first (highest priority) core
+			if (selectedCoreInfo == nullptr && !mEnvData->mCores.empty())
+			{
+				selectedCoreInfo = &mEnvData->mCores[0];
+				LOG(LogInfo) << "Using default core: " << selectedCoreInfo->fullname << " (" << selectedCoreInfo->name << ")";
+			}
 		}
 
 		// Replace %CORE% with full core path
