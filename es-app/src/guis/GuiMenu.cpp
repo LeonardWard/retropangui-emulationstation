@@ -785,20 +785,39 @@ void GuiMenu::openEmulatorSettings()
 				return;
 			}
 
-			// Call shell script to reorder priorities in es_systems.xml
+			// Step 1: Update memory (immediate effect)
+			int oldPriority = -1;
+			for (auto& core : system->getSystemEnvData()->mCores)
+			{
+				if (core.name == selectedCore)
+				{
+					oldPriority = core.priority;
+					core.priority = 1;
+				}
+			}
+
+			// Shift other cores' priorities
+			if (oldPriority != -1)
+			{
+				for (auto& core : system->getSystemEnvData()->mCores)
+				{
+					if (core.name != selectedCore && core.priority < oldPriority)
+					{
+						core.priority++;
+					}
+				}
+			}
+
+			LOG(LogInfo) << "Updated in-memory default emulator for " << systemName << " to " << selectedCore;
+
+			// Step 2: Update XML file (persist for next launch)
 			std::string cmd = "bash -c 'source /home/pangui/scripts/retropangui/scriptmodules/es_systems_updater.sh && "
 				"set_default_core \"" + systemName + "\" \"" + selectedCore + "\"'";
 
-			int result = ::system(cmd.c_str());  // Use global ::system() function
+			int result = ::system(cmd.c_str());
 			if (result != 0)
 			{
-				LOG(LogError) << "Failed to update default emulator for " << systemName;
-			}
-			else
-			{
-				LOG(LogInfo) << "Updated default emulator for " << systemName << " to " << selectedCore;
-				// Reload system configuration to reflect changes
-				// Note: May require ES restart to fully take effect
+				LOG(LogError) << "Failed to update XML for " << systemName;
 			}
 		});
 	}
