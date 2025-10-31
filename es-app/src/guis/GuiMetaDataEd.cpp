@@ -257,7 +257,9 @@ void GuiMetaDataEd::save()
 	// update respective Collection Entries
 	CollectionSystemManager::get()->refreshCollectionSystems(mScraperParams.game);
 
-	mScraperParams.system->onMetaDataSavePoint();
+	// RetroPangui: Always save metadata immediately when editing
+	// Don't rely on SaveGamelistsMode setting for manual edits
+	mScraperParams.system->writeMetaData();
 }
 
 void GuiMetaDataEd::fetch()
