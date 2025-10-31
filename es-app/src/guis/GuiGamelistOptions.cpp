@@ -11,6 +11,7 @@
 #include "GuiMetaDataEd.h"
 #include "SystemData.h"
 #include "components/TextListComponent.h"
+#include "Gamelist.h"
 
 GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : GuiComponent(window),
 	mSystem(system), mMenu(window, "OPTIONS"), mFromPlaceholder(false), mFiltersChanged(false),
@@ -225,6 +226,10 @@ GuiGamelistOptions::~GuiGamelistOptions()
 		if (mFiltersChanged) {
 			// trigger repaint of cursor and list detail
 			getGamelist()->onFileChanged(root, FILE_SORTED);
+		}
+		// RetroPangui: Save metadata changes to gamelist.xml
+		if (mMetadataChanged) {
+			updateGamelist(mSystem);
 		}
 	}
 }
