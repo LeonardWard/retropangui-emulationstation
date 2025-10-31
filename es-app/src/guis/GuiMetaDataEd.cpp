@@ -346,7 +346,20 @@ bool GuiMetaDataEd::hasChanges()
 		if(!mdd.isStatistic)
 		{
 			std::string gamelistVal = mMetaData->get(mdd.key);
-			std::string editorVal = mEditors.at(edIdx++)->getValue();
+			std::string editorVal;
+
+			// RetroPangui: Special handling for core field - cast to OptionListComponent
+			if (mdd.key == "core") {
+				auto coreList = std::dynamic_pointer_cast<OptionListComponent<std::string>>(mEditors.at(edIdx));
+				if (coreList) {
+					editorVal = coreList->getSelected();
+				} else {
+					editorVal = "";
+				}
+			} else {
+				editorVal = mEditors.at(edIdx)->getValue();
+			}
+			edIdx++;
 			if (mdd.key == "rating")
 			{
 				// needed to catch "0", "0.0" or ".<d>" (and "1.0") from gamelist string rating
