@@ -257,8 +257,12 @@ public:
 		for (const auto& entry : mEntries)
 		{
 			if (entry.selected)
+			{
+				LOG(LogWarning) << "DEBUG: OptionListComponent::getValue() returning: '" << entry.object << "'";
 				return entry.object;
+			}
 		}
+		LOG(LogWarning) << "DEBUG: OptionListComponent::getValue() no selection, returning empty";
 		return ""; // No selection
 	}
 
