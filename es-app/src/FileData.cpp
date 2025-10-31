@@ -378,11 +378,30 @@ std::vector<FileData*> FileData::getFilesRecursive(unsigned int typeMask, bool d
 	std::vector<FileData*> out;
 	FileFilterIndex* idx = mSystem->getIndex();
 
+	// RetroPangui: Check ShowFolders setting when displayedOnly is true
+	std::string showFoldersSetting = "";
+	bool checkScraped = false;
+	if (displayedOnly)
+	{
+		showFoldersSetting = Settings::getInstance()->getString("ShowFolders");
+		checkScraped = (showFoldersSetting == "SCRAPED");
+	}
+
 	for(auto it = mChildren.cbegin(); it != mChildren.cend(); it++)
 	{
 		if((*it)->getType() & typeMask)
 		{
-			if (!displayedOnly || !idx->isFiltered() || idx->showFile(*it))
+			bool shouldInclude = !displayedOnly || !idx->isFiltered() || idx->showFile(*it);
+
+			// RetroPangui: Additional check for SCRAPED mode
+			if (shouldInclude && checkScraped && (*it)->getType() == GAME)
+			{
+				// In SCRAPED mode, only include games with non-default metadata
+				// (Games scraped or manually edited will have changed metadata)
+				shouldInclude = !(*it)->metadata.get("name").empty();
+			}
+
+			if (shouldInclude)
 				out.push_back(*it);
 		}
 
