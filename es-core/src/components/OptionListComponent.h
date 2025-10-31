@@ -240,10 +240,12 @@ public:
 	}
 
 	// RetroPangui: Add getValue() for compatibility with GuiMetaDataEd
-	std::string getValue() const override
+	// Only works when T is std::string
+	template<typename U = T>
+	typename std::enable_if<std::is_same<U, std::string>::value, std::string>::type
+	getValue() const
 	{
 		// For single-select mode, return the selected object as string
-		// This assumes T is std::string or convertible to string
 		if (mMultiSelect)
 		{
 			// For multi-select, return empty (not used in metadata editing)
@@ -257,6 +259,14 @@ public:
 				return entry.object;
 		}
 		return ""; // No selection
+	}
+
+	// For non-string types, return empty string (not used in metadata editing)
+	template<typename U = T>
+	typename std::enable_if<!std::is_same<U, std::string>::value, std::string>::type
+	getValue() const
+	{
+		return "";
 	}
 
 	void add(const std::string& name, const T& obj, bool selected)
