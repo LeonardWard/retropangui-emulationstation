@@ -5,6 +5,7 @@
 #include "GuiComponent.h"
 #include "Log.h"
 #include "Window.h"
+#include <type_traits>
 
 //Used to display a list of options.
 //Can select one or multiple options.
