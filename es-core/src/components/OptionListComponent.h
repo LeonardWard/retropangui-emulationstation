@@ -239,6 +239,26 @@ public:
 		return selected.at(0);
 	}
 
+	// RetroPangui: Add getValue() for compatibility with GuiMetaDataEd
+	std::string getValue() const override
+	{
+		// For single-select mode, return the selected object as string
+		// This assumes T is std::string or convertible to string
+		if (mMultiSelect)
+		{
+			// For multi-select, return empty (not used in metadata editing)
+			return "";
+		}
+
+		// Find selected entry
+		for (const auto& entry : mEntries)
+		{
+			if (entry.selected)
+				return entry.object;
+		}
+		return ""; // No selection
+	}
+
 	void add(const std::string& name, const T& obj, bool selected)
 	{
 		OptionListData e;
