@@ -127,7 +127,6 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 
 					if (availableCores.size() > 1)
 					{
-						LOG(LogWarning) << "DEBUG: Creating OptionListComponent for core field with " << availableCores.size() << " cores";
 						auto coreList = std::make_shared<OptionListComponent<std::string>>(mWindow, "EMULATOR", false);
 
 						// Add "Auto" option
@@ -153,10 +152,7 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 						row.addElement(spacer, false);
 
 						// Input handler - pass all input to the OptionListComponent
-						row.input_handler = [ed](InputConfig* config, Input input) -> bool {
-							LOG(LogWarning) << "DEBUG: Core field input_handler called";
-							return ed->input(config, input);
-						};
+						row.input_handler = std::bind(&GuiComponent::input, ed.get(), std::placeholders::_1, std::placeholders::_2);
 					}
 					else
 					{
@@ -265,9 +261,7 @@ void GuiMetaDataEd::save()
 				auto coreList = std::dynamic_pointer_cast<OptionListComponent<std::string>>(mEditors.at(edIdx));
 				if (coreList) {
 					value = coreList->getSelected();
-					LOG(LogWarning) << "DEBUG: Saving core field with value: '" << value << "'";
 				} else {
-					LOG(LogWarning) << "DEBUG: Failed to cast core field to OptionListComponent!";
 					value = "";
 				}
 			} else {
