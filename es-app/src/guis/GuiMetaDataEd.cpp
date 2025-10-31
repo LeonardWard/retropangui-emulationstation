@@ -145,7 +145,7 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 						}
 
 						ed = coreList;
-						row.addElement(ed, false, true);
+						row.addElement(ed, false);
 
 						auto spacer = std::make_shared<GuiComponent>(mWindow);
 						spacer->setSize(Renderer::getScreenWidth() * 0.0025f, 0);
