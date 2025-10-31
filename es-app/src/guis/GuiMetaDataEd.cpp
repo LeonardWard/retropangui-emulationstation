@@ -117,27 +117,66 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 		case MD_MULTILINE_STRING:
 		default:
 			{
-				// MD_STRING
-				ed = std::make_shared<TextComponent>(window, "", Font::get(FONT_SIZE_SMALL, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
-				const float height = lbl->getSize().y() * 0.71f;
-				ed->setSize(0, height);
-				row.addElement(ed, true);
+				// RetroPangui: Special handling for "core" field - use OptionList
+				if (iter->key == "core" && md->getType() == GAME_METADATA)
+				{
+					auto system = scraperParams.system;
+					std::vector<CoreInfo> availableCores = system->getCores();
 
-				auto spacer = std::make_shared<GuiComponent>(mWindow);
-				spacer->setSize(Renderer::getScreenWidth() * 0.005f, 0);
-				row.addElement(spacer, false);
+					if (availableCores.size() > 1)
+					{
+						auto coreList = std::make_shared<OptionListComponent<std::string>>(mWindow, "EMULATOR", false);
 
-				auto bracket = std::make_shared<ImageComponent>(mWindow);
-				bracket->setImage(":/arrow.svg");
-				bracket->setResize(Vector2f(0, lbl->getFont()->getLetterHeight()));
-				row.addElement(bracket, false);
+						// Add "Auto" option
+						std::string currentCore = mMetaData->get("core");
+						coreList->add("Auto (Default)", "", currentCore.empty());
 
-				bool multiLine = iter->type == MD_MULTILINE_STRING;
-				const std::string title = iter->displayPrompt;
-				auto updateVal = [ed](const std::string& newVal) { ed->setValue(newVal); }; // ok callback (apply new value to ed)
-				row.makeAcceptInputHandler([this, title, ed, updateVal, multiLine] {
-					mWindow->pushGui(new GuiTextEditPopup(mWindow, title, ed->getValue(), updateVal, multiLine));
-				});
+						// Add all available cores
+						for (const auto& core : availableCores)
+						{
+							std::string label = core.fullname;
+							if (core.priority == 1)
+								label += " (Default)";
+
+							bool selected = (!currentCore.empty() && currentCore == core.name);
+							coreList->add(label, core.name, selected);
+						}
+
+						ed = coreList;
+						row.addElement(ed, true);
+					}
+					else
+					{
+						// If only one core, show as text
+						ed = std::make_shared<TextComponent>(window, availableCores.empty() ? "N/A" : availableCores[0].fullname,
+							Font::get(FONT_SIZE_SMALL, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
+						row.addElement(ed, true);
+					}
+				}
+				else
+				{
+					// MD_STRING (default handling)
+					ed = std::make_shared<TextComponent>(window, "", Font::get(FONT_SIZE_SMALL, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
+					const float height = lbl->getSize().y() * 0.71f;
+					ed->setSize(0, height);
+					row.addElement(ed, true);
+
+					auto spacer = std::make_shared<GuiComponent>(mWindow);
+					spacer->setSize(Renderer::getScreenWidth() * 0.005f, 0);
+					row.addElement(spacer, false);
+
+					auto bracket = std::make_shared<ImageComponent>(mWindow);
+					bracket->setImage(":/arrow.svg");
+					bracket->setResize(Vector2f(0, lbl->getFont()->getLetterHeight()));
+					row.addElement(bracket, false);
+
+					bool multiLine = iter->type == MD_MULTILINE_STRING;
+					const std::string title = iter->displayPrompt;
+					auto updateVal = [ed](const std::string& newVal) { ed->setValue(newVal); }; // ok callback (apply new value to ed)
+					row.makeAcceptInputHandler([this, title, ed, updateVal, multiLine] {
+						mWindow->pushGui(new GuiTextEditPopup(mWindow, title, ed->getValue(), updateVal, multiLine));
+					});
+				}
 				break;
 			}
 		}
