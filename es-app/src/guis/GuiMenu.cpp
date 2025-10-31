@@ -786,25 +786,19 @@ void GuiMenu::openEmulatorSettings()
 			}
 
 			// Step 1: Update memory (immediate effect)
-			int oldPriority = -1;
+			// First, increment all cores' priority by 1
+			for (auto& core : system->getSystemEnvData()->mCores)
+			{
+				core.priority++;
+			}
+
+			// Then, set selected core to priority 1
 			for (auto& core : system->getSystemEnvData()->mCores)
 			{
 				if (core.name == selectedCore)
 				{
-					oldPriority = core.priority;
 					core.priority = 1;
-				}
-			}
-
-			// Shift other cores' priorities
-			if (oldPriority != -1)
-			{
-				for (auto& core : system->getSystemEnvData()->mCores)
-				{
-					if (core.name != selectedCore && core.priority < oldPriority)
-					{
-						core.priority++;
-					}
+					break;
 				}
 			}
 
