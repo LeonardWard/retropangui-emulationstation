@@ -42,7 +42,6 @@ private:
 	bool mFromPlaceholder;
 	bool mFiltersChanged;
 	bool mJumpToSelected;
-	bool mMetadataChanged;
 };
 
 #endif // ES_APP_GUIS_GUI_GAME_LIST_OPTIONS_H

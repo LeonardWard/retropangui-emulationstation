@@ -15,7 +15,7 @@
 
 GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : GuiComponent(window),
 	mSystem(system), mMenu(window, "OPTIONS"), mFromPlaceholder(false), mFiltersChanged(false),
-	mJumpToSelected(false), mMetadataChanged(false)
+	mJumpToSelected(false)
 {
 	addChild(&mMenu);
 
@@ -141,52 +141,6 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 		mMenu.addRow(row);
 	}
 
-	// RetroPangui: Add emulator selection menu (only for games with multiple emulators available)
-	if (UIModeController::getInstance()->isUIModeFull() && !mFromPlaceholder && file->getType() == GAME)
-	{
-		std::vector<CoreInfo> availableCores = mSystem->getCores();
-		if (availableCores.size() > 1)
-		{
-			row.elements.clear();
-			auto emulatorList = std::make_shared<OptionListComponent<std::string>>(mWindow, "SELECT EMULATOR", false);
-
-			std::string currentEmulator = file->metadata.get("core");
-
-			// Add "Auto" option (empty string = auto select)
-			emulatorList->add("Auto (Default)", "", currentEmulator.empty());
-
-			// Add all available emulators
-			for (const auto& core : availableCores)
-			{
-				std::string label = core.fullname;
-				if (core.priority == 1)
-					label += " (Default)";
-
-				bool selected = (!currentEmulator.empty() && currentEmulator == core.name);
-				emulatorList->add(label, core.name, selected);
-			}
-
-			row.addElement(std::make_shared<TextComponent>(mWindow, "SELECT EMULATOR", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
-			row.addElement(emulatorList, false);
-			row.input_handler = [this, file, emulatorList](InputConfig* config, Input input) {
-				if(config->isMappedToAction("accept", input) && input.value)
-				{
-					// Save selection to metadata
-					std::string selected = emulatorList->getSelected();
-					file->metadata.set("core", selected);
-					mMetadataChanged = true;
-					return true;
-				}
-				else if(emulatorList->input(config, input))
-				{
-					return true;
-				}
-				return false;
-			};
-			mMenu.addRow(row);
-		}
-	}
-
 	if (UIModeController::getInstance()->isUIModeFull() && !mFromPlaceholder && !(mSystem->isCollection() && file->getType() == FOLDER))
 	{
 		row.elements.clear();
@@ -217,20 +171,14 @@ GuiGamelistOptions::~GuiGamelistOptions()
 		}
 	}
 
-	if (mFiltersChanged || mMetadataChanged)
+	if (mFiltersChanged)
 	{
 		// force refresh of cursor list position
 		ViewController::get()->getGameListView(mSystem)->setViewportTop(TextListComponent<FileData>::REFRESH_LIST_CURSOR_POS);
 		// re-display the elements for whatever new or renamed game is selected
 		ViewController::get()->reloadGameListView(mSystem);
-		if (mFiltersChanged) {
-			// trigger repaint of cursor and list detail
-			getGamelist()->onFileChanged(root, FILE_SORTED);
-		}
-		// RetroPangui: Save metadata changes to gamelist.xml
-		if (mMetadataChanged) {
-			updateGamelist(mSystem);
-		}
+		// trigger repaint of cursor and list detail
+		getGamelist()->onFileChanged(root, FILE_SORTED);
 	}
 }
 
@@ -305,7 +253,6 @@ void GuiGamelistOptions::openMetaDataEd()
 	std::function<void()> saveBtnFunc;
 	saveBtnFunc = [this, file] {
 		ViewController::get()->getGameListView(mSystem)->setCursor(file, true);
-		mMetadataChanged = true;
 		ViewController::get()->getGameListView(file->getSystem())->onFileChanged(file, FILE_METADATA_CHANGED);
 	};
 

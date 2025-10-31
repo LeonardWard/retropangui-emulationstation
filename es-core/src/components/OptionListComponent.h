@@ -290,7 +290,13 @@ public:
 				return;
 			}
 		}
-		// If not found, keep nothing selected (or could select first as default)
+
+		// If not found, select first entry as default
+		if (!mEntries.empty())
+		{
+			mEntries[0].selected = true;
+			onSelectedChanged();
+		}
 	}
 
 	// For non-string types, do nothing
