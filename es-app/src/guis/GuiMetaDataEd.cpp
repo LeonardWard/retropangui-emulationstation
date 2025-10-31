@@ -145,7 +145,13 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 						}
 
 						ed = coreList;
-						row.addElement(ed, true);
+						row.addElement(ed, false, true);
+
+						auto spacer = std::make_shared<GuiComponent>(mWindow);
+						spacer->setSize(Renderer::getScreenWidth() * 0.0025f, 0);
+						row.addElement(spacer, false);
+
+						row.input_handler = std::bind(&GuiComponent::input, ed.get(), std::placeholders::_1, std::placeholders::_2);
 					}
 					else
 					{
@@ -185,7 +191,10 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 
 		assert(ed);
 		mList->addRow(row);
-		ed->setValue(mMetaData->get(iter->key));
+		// RetroPangui: Skip setValue for core field (already set during creation)
+		if (iter->key != "core") {
+			ed->setValue(mMetaData->get(iter->key));
+		}
 		mEditors.push_back(ed);
 	}
 
@@ -244,7 +253,12 @@ void GuiMetaDataEd::save()
 	for(auto &mdd : mMetaDataDecl)
 	{
 		if(!mdd.isStatistic) {
-			mMetaData->set(mdd.key, mEditors.at(edIdx)->getValue());
+			std::string value = mEditors.at(edIdx)->getValue();
+			// RetroPangui: Debug logging for core field
+			if (mdd.key == "core") {
+				LOG(LogWarning) << "DEBUG: Saving core field with value: '" << value << "'";
+			}
+			mMetaData->set(mdd.key, value);
 			edIdx++;
 		}
 	}
