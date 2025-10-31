@@ -19,6 +19,7 @@
 #include "CollectionSystemManager.h"
 #include "FileData.h"
 #include "FileFilterIndex.h"
+#include "Gamelist.h"
 #include "SystemData.h"
 #include "Window.h"
 #include "Log.h"
@@ -259,7 +260,7 @@ void GuiMetaDataEd::save()
 
 	// RetroPangui: Always save metadata immediately when editing
 	// Don't rely on SaveGamelistsMode setting for manual edits
-	mScraperParams.system->writeMetaData();
+	updateGamelist(mScraperParams.system);
 }
 
 void GuiMetaDataEd::fetch()
