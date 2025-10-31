@@ -127,6 +127,7 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 
 					if (availableCores.size() > 1)
 					{
+						LOG(LogWarning) << "DEBUG: Creating OptionListComponent for core field with " << availableCores.size() << " cores";
 						auto coreList = std::make_shared<OptionListComponent<std::string>>(mWindow, "EMULATOR", false);
 
 						// Add "Auto" option
@@ -145,7 +146,7 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 						}
 
 						ed = coreList;
-						row.addElement(ed, false);
+						row.addElement(ed, false, true);
 
 						auto spacer = std::make_shared<GuiComponent>(mWindow);
 						spacer->setSize(Renderer::getScreenWidth() * 0.0025f, 0);
