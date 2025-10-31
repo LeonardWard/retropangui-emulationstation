@@ -152,7 +152,11 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 						spacer->setSize(Renderer::getScreenWidth() * 0.0025f, 0);
 						row.addElement(spacer, false);
 
-						row.input_handler = std::bind(&GuiComponent::input, ed.get(), std::placeholders::_1, std::placeholders::_2);
+						// Input handler - pass all input to the OptionListComponent
+						row.input_handler = [ed](InputConfig* config, Input input) -> bool {
+							LOG(LogWarning) << "DEBUG: Core field input_handler called";
+							return ed->input(config, input);
+						};
 					}
 					else
 					{
