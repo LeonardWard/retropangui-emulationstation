@@ -802,6 +802,13 @@ void GuiMenu::openEmulatorSettings()
 				}
 			}
 
+			// Re-sort cores by priority to ensure correct order
+			std::sort(system->getSystemEnvData()->mCores.begin(),
+			          system->getSystemEnvData()->mCores.end(),
+			          [](const CoreInfo& a, const CoreInfo& b) {
+			              return a.priority < b.priority;
+			          });
+
 			LOG(LogInfo) << "Updated in-memory default emulator for " << systemName << " to " << selectedCore;
 
 			// Step 2: Update XML file (persist for next launch)
