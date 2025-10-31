@@ -258,11 +258,22 @@ void GuiMetaDataEd::save()
 	for(auto &mdd : mMetaDataDecl)
 	{
 		if(!mdd.isStatistic) {
-			std::string value = mEditors.at(edIdx)->getValue();
-			// RetroPangui: Debug logging for core field
+			std::string value;
+
+			// RetroPangui: Special handling for core field - cast to OptionListComponent
 			if (mdd.key == "core") {
-				LOG(LogWarning) << "DEBUG: Saving core field with value: '" << value << "'";
+				auto coreList = std::dynamic_pointer_cast<OptionListComponent<std::string>>(mEditors.at(edIdx));
+				if (coreList) {
+					value = coreList->getSelected();
+					LOG(LogWarning) << "DEBUG: Saving core field with value: '" << value << "'";
+				} else {
+					LOG(LogWarning) << "DEBUG: Failed to cast core field to OptionListComponent!";
+					value = "";
+				}
+			} else {
+				value = mEditors.at(edIdx)->getValue();
 			}
+
 			mMetaData->set(mdd.key, value);
 			edIdx++;
 		}
