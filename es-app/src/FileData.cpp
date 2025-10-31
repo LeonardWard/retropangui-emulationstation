@@ -494,23 +494,23 @@ void FileData::launchGame(Window* window)
 		const CoreInfo* selectedCoreInfo = nullptr;
 
 		// Check if user has selected a specific emulator in metadata
-		std::string userSelectedEmulator = metadata.get("system");
-		if (!userSelectedEmulator.empty())
+		std::string userSelectedCore = metadata.get("core");
+		if (!userSelectedCore.empty())
 		{
 			// Find the core with matching name
 			for (const auto& core : mEnvData->mCores)
 			{
-				if (core.name == userSelectedEmulator)
+				if (core.name == userSelectedCore)
 				{
 					selectedCoreInfo = &core;
-					LOG(LogInfo) << "Using user-selected emulator: " << core.fullname << " (" << core.name << ")";
+					LOG(LogInfo) << "Using user-selected core: " << core.fullname << " (" << core.name << ")";
 					break;
 				}
 			}
 
 			if (selectedCoreInfo == nullptr)
 			{
-				LOG(LogWarning) << "User-selected emulator '" << userSelectedEmulator << "' not found, falling back to auto selection";
+				LOG(LogWarning) << "User-selected core '" << userSelectedCore << "' not found, falling back to auto selection";
 			}
 		}
 

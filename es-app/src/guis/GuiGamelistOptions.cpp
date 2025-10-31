@@ -150,7 +150,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 			row.elements.clear();
 			auto emulatorList = std::make_shared<OptionListComponent<std::string>>(mWindow, "SELECT EMULATOR", false);
 
-			std::string currentEmulator = file->metadata.get("system");
+			std::string currentEmulator = file->metadata.get("core");
 
 			// Add "Auto" option (empty string = auto select)
 			emulatorList->add("Auto (Default)", "", currentEmulator.empty());
@@ -173,7 +173,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 				{
 					// Save selection to metadata
 					std::string selected = emulatorList->getSelected();
-					file->metadata.set("system", selected);
+					file->metadata.set("core", selected);
 					mMetadataChanged = true;
 					return true;
 				}
