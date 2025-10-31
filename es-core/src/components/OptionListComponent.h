@@ -270,6 +270,37 @@ public:
 		return "";
 	}
 
+	// RetroPangui: Add setValue() for compatibility with GuiMetaDataEd
+	// Only works when T is std::string
+	template<typename U = T>
+	typename std::enable_if<std::is_same<U, std::string>::value, void>::type
+	setValue(const std::string& val)
+	{
+		// Deselect all
+		for (auto& entry : mEntries)
+			entry.selected = false;
+
+		// Select the matching entry
+		for (auto& entry : mEntries)
+		{
+			if (entry.object == val)
+			{
+				entry.selected = true;
+				onSelectedChanged();
+				return;
+			}
+		}
+		// If not found, keep nothing selected (or could select first as default)
+	}
+
+	// For non-string types, do nothing
+	template<typename U = T>
+	typename std::enable_if<!std::is_same<U, std::string>::value, void>::type
+	setValue(const std::string& val)
+	{
+		// Do nothing for non-string types
+	}
+
 	void add(const std::string& name, const T& obj, bool selected)
 	{
 		OptionListData e;
