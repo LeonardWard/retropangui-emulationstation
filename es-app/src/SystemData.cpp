@@ -661,7 +661,37 @@ FileData* SystemData::getRandomGame()
 
 unsigned int SystemData::getDisplayedGameCount() const
 {
-	return (unsigned int)mRootFolder->getFilesRecursive(GAME, true).size();
+	// RetroPangui: Use getChildrenListToDisplay which properly handles ShowFolders setting
+	const std::vector<FileData*>& displayedChildren = mRootFolder->getChildrenListToDisplay();
+
+	// Count only GAME type (not folders)
+	unsigned int count = 0;
+	for (FileData* child : displayedChildren)
+	{
+		if (child->getType() == GAME)
+			count++;
+	}
+
+	// Also recursively count games in folders
+	std::function<void(FileData*)> countRecursive = [&](FileData* folder) {
+		const std::vector<FileData*>& children = folder->getChildrenListToDisplay();
+		for (FileData* child : children)
+		{
+			if (child->getType() == GAME)
+				count++;
+			else if (child->getType() == FOLDER)
+				countRecursive(child);
+		}
+	};
+
+	// Count games in subfolders
+	for (FileData* child : displayedChildren)
+	{
+		if (child->getType() == FOLDER)
+			countRecursive(child);
+	}
+
+	return count;
 }
 
 void SystemData::loadTheme()
