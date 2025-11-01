@@ -125,13 +125,13 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 					auto system = scraperParams.system;
 					std::vector<CoreInfo> availableCores = system->getCores();
 
-					if (availableCores.size() > 1)
+					if (!availableCores.empty())
 					{
 						auto coreList = std::make_shared<OptionListComponent<std::string>>(mWindow, "EMULATOR", false);
 
-						// Add "Auto" option
+						// Add "SYSTEM DEFAULT" option
 						std::string currentCore = mMetaData->get("core");
-						coreList->add("Auto (Default)", "", currentCore.empty());
+						coreList->add(_("SYSTEM DEFAULT"), "", currentCore.empty());
 
 						// Add all available cores
 						for (const auto& core : availableCores)
@@ -156,8 +156,8 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 					}
 					else
 					{
-						// If only one core, show as text
-						ed = std::make_shared<TextComponent>(window, availableCores.empty() ? "N/A" : availableCores[0].fullname,
+						// If no cores available, show N/A as text
+						ed = std::make_shared<TextComponent>(window, "N/A",
 							Font::get(FONT_SIZE_SMALL, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
 						row.addElement(ed, true);
 					}

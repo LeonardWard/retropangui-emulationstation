@@ -322,3 +322,7 @@ msgstr "스크랩된 것만"
 
 msgid "SCRAPED FIRST"
 msgstr "스크랩된 것 우선"
+
+# Emulator Core Selection
+msgid "SYSTEM DEFAULT"
+msgstr "시스템 기본값"
