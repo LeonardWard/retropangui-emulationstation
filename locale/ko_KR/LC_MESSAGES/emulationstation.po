@@ -249,3 +249,19 @@ msgstr "사용 안 함"
 
 msgid "HAVING MULTIPLE GAMES"
 msgstr "여러 게임이 있을 때"
+
+# Help Prompts
+msgid "launch"
+msgstr "실행"
+
+msgid "choose"
+msgstr "선택"
+
+msgid "options"
+msgstr "옵션"
+
+msgid "random"
+msgstr "랜덤"
+
+msgid "system"
+msgstr "시스템"
