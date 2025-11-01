@@ -265,3 +265,27 @@ msgstr "랜덤"
 
 msgid "system"
 msgstr "시스템"
+
+msgid "menu"
+msgstr "메뉴"
+
+msgid "select"
+msgstr "선택"
+
+msgid "launch screensaver"
+msgstr "화면보호기"
+
+msgid "Favorites"
+msgstr "즐겨찾기"
+
+msgid "close"
+msgstr "닫기"
+
+msgid "cancel"
+msgstr "취소"
+
+msgid "add star"
+msgstr "별 추가"
+
+msgid "accept result"
+msgstr "결과 승인"
