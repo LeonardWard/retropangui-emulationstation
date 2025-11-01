@@ -837,7 +837,10 @@ std::vector<HelpPrompt> GuiMenu::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
 	prompts.push_back(HelpPrompt("up/down", "choose"));
-	prompts.push_back(HelpPrompt("a", "select"));
+
+	// RetroPangui: Use logical button names based on ButtonLayout
+	std::string acceptButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "b" : "a";
+	prompts.push_back(HelpPrompt(acceptButton, "select"));
 	prompts.push_back(HelpPrompt("start", "close"));
 	return prompts;
 }
