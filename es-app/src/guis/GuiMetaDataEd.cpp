@@ -23,6 +23,7 @@
 #include "SystemData.h"
 #include "Window.h"
 #include "Log.h"
+#include "LocaleES.h"
 
 GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector<MetaDataDecl>& mdd, ScraperSearchParams scraperParams,
 	const std::string& /*header*/, std::function<void()> saveCallback, std::function<void()> deleteFunc) : GuiComponent(window),
