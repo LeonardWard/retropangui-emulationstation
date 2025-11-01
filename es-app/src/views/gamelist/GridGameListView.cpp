@@ -4,6 +4,7 @@
 #include "views/UIModeController.h"
 #include "views/ViewController.h"
 #include "CollectionSystemManager.h"
+#include "LocaleES.h"
 #include "Settings.h"
 #include "SystemData.h"
 #ifdef _OMX_
@@ -490,7 +491,8 @@ std::vector<HelpPrompt> GridGameListView::getHelpPrompts()
 		prompts.push_back(HelpPrompt("x", "random"));
 	if(mRoot->getSystem()->isGameSystem() && !UIModeController::getInstance()->isUIModeKid())
 	{
-		std::string prompt = CollectionSystemManager::get()->getEditingCollection();
+		// RetroPangui: Translate collection name for help prompt
+		std::string prompt = _S(CollectionSystemManager::get()->getEditingCollection().c_str());
 		prompts.push_back(HelpPrompt("y", prompt));
 	}
 	return prompts;
