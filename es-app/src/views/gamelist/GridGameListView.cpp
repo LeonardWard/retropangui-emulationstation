@@ -477,8 +477,13 @@ std::vector<HelpPrompt> GridGameListView::getHelpPrompts()
 	if(Settings::getInstance()->getBool("QuickSystemSelect"))
 		prompts.push_back(HelpPrompt("lr", "system"));
 	prompts.push_back(HelpPrompt("up/down/left/right", "choose"));
-	prompts.push_back(HelpPrompt("a", "launch"));
-	prompts.push_back(HelpPrompt("b", "back"));
+
+	// RetroPangui: Use logical button names based on ButtonLayout
+	std::string acceptButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "b" : "a";
+	std::string backButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "a" : "b";
+
+	prompts.push_back(HelpPrompt(acceptButton, "launch"));
+	prompts.push_back(HelpPrompt(backButton, "back"));
 	if(!UIModeController::getInstance()->isUIModeKid())
 		prompts.push_back(HelpPrompt("select", "options"));
 	if(mRoot->getSystem()->isGameSystem())
