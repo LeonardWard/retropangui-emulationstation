@@ -9,6 +9,7 @@
 #include "views/ViewController.h"
 #include "FileData.h"
 #include "FileFilterIndex.h"
+#include "Gamelist.h"
 #include "Log.h"
 #include "Settings.h"
 #include "SystemData.h"
@@ -570,7 +571,9 @@ bool CollectionSystemManager::toggleGameInCollection(FileData* file)
 			}
 			file->getSourceFileData()->getSystem()->getIndex()->addToIndex(file);
 
-			file->getSourceFileData()->getSystem()->onMetaDataSavePoint();
+			// RetroPangui: Always save favorite changes to gamelist.xml immediately
+			// Don't rely on SaveGamelistsMode setting for user-initiated favorite toggles
+			updateGamelist(file->getSourceFileData()->getSystem());
 
 			refreshCollectionSystems(file->getSourceFileData());
 		}
