@@ -390,7 +390,9 @@ private:
 		if(!mMultiSelect)
 			prompts.push_back(HelpPrompt("left/right", "change"));
 
-		prompts.push_back(HelpPrompt("a", "select"));
+		// RetroPangui: Use logical button names based on ButtonLayout
+		std::string acceptButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "b" : "a";
+		prompts.push_back(HelpPrompt(acceptButton, "select"));
 		return prompts;
 	}
 

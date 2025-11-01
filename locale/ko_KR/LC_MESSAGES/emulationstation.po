@@ -289,3 +289,36 @@ msgstr "별 추가"
 
 msgid "accept result"
 msgstr "결과 승인"
+
+msgid "change"
+msgstr "변경"
+
+msgid "back"
+msgstr "뒤로"
+
+# System View
+msgid "CONFIGURATION"
+msgstr "설정"
+
+msgid "GAME AVAILABLE"
+msgstr "게임"
+
+msgid "GAMES AVAILABLE"
+msgstr "게임"
+
+# Emulator Settings
+msgid "EMULATOR SETTINGS"
+msgstr "에뮬레이터 설정"
+
+# Gamelist Mode
+msgid "GAMELIST MODE"
+msgstr "게임 목록 모드"
+
+msgid "ALL FILES"
+msgstr "모든 파일"
+
+msgid "SCRAPED ONLY"
+msgstr "스크랩된 것만"
+
+msgid "SCRAPED FIRST"
+msgstr "스크랩된 것 우선"

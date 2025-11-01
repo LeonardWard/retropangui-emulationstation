@@ -4,6 +4,7 @@
 #include "guis/GuiMsgBox.h"
 #include "views/UIModeController.h"
 #include "views/ViewController.h"
+#include "LocaleES.h"
 #include "Log.h"
 #include "Scripting.h"
 #include "Settings.h"
@@ -258,9 +259,14 @@ void SystemView::onCursorChanged(const CursorState& /*state*/)
 		std::stringstream ss;
 
 		if (!getSelected()->isGameSystem())
-			ss << "CONFIGURATION";
-		else
-			ss << gameCount << " GAME" << (gameCount == 1 ? "" : "S") << " AVAILABLE";
+			ss << _("CONFIGURATION");
+		else {
+			// RetroPangui: Translate game count text
+			if (gameCount == 1)
+				ss << gameCount << " " << _("GAME AVAILABLE");
+			else
+				ss << gameCount << " " << _("GAMES AVAILABLE");
+		}
 
 		mSystemInfo.setText(ss.str());
 	}, false, 1);
@@ -380,7 +386,10 @@ std::vector<HelpPrompt> SystemView::getHelpPrompts()
 		prompts.push_back(HelpPrompt("up/down", "choose"));
 	else
 		prompts.push_back(HelpPrompt("left/right", "choose"));
-	prompts.push_back(HelpPrompt("a", "select"));
+
+	// RetroPangui: Use logical button names based on ButtonLayout
+	std::string acceptButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "b" : "a";
+	prompts.push_back(HelpPrompt(acceptButton, "select"));
 	prompts.push_back(HelpPrompt("x", "random"));
 
 	if (!UIModeController::getInstance()->isUIModeKid() && Settings::getInstance()->getBool("ScreenSaverControls"))
