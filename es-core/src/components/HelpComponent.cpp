@@ -5,6 +5,7 @@
 #include "components/TextComponent.h"
 #include "resources/TextureResource.h"
 #include "utils/StringUtil.h"
+#include "LocaleES.h"
 #include "Log.h"
 #include "Settings.h"
 
@@ -77,7 +78,8 @@ void HelpComponent::updateGrid()
 		icon->setResize(0, height);
 		icons.push_back(icon);
 
-		auto lbl = std::make_shared<TextComponent>(mWindow, Utils::String::toUpper(it->second), font, mStyle.textColor);
+		// RetroPangui: Translate help prompt text
+		auto lbl = std::make_shared<TextComponent>(mWindow, Utils::String::toUpper(_S(it->second.c_str())), font, mStyle.textColor);
 		labels.push_back(lbl);
 
 		width += icon->getSize().x() + lbl->getSize().x() + ICON_TEXT_SPACING + ENTRY_SPACING;
