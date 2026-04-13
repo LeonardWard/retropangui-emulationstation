@@ -101,6 +101,40 @@ FileData* findOrCreateFile(SystemData* system, const std::string& path, FileType
 	return NULL;
 }
 
+void generateGamelist(SystemData* system)
+{
+	std::string xmlWritePath = system->getGamelistPath(true);
+
+	// 이미 존재하면 생성하지 않음
+	if(Utils::FileSystem::exists(xmlWritePath))
+		return;
+
+	std::vector<FileData*> files = system->getRootFolder()->getFilesRecursive(GAME);
+	if(files.empty())
+		return;
+
+	std::string startPath = system->getStartPath();
+
+	pugi::xml_document doc;
+	pugi::xml_node root = doc.append_child("gameList");
+
+	for(auto file : files)
+	{
+		pugi::xml_node gameNode = root.append_child("game");
+		std::string relPath = Utils::FileSystem::createRelativePath(
+			file->getPath(), startPath, false, true);
+		gameNode.append_child("path").text().set(relPath.c_str());
+		gameNode.append_child("name").text().set(file->getDisplayName().c_str());
+	}
+
+	Utils::FileSystem::createDirectory(Utils::FileSystem::getParent(xmlWritePath));
+	if(doc.save_file(xmlWritePath.c_str()))
+		LOG(LogInfo) << "Auto-generated gamelist.xml for \"" << system->getName()
+		             << "\" with " << files.size() << " entries at \"" << xmlWritePath << "\"";
+	else
+		LOG(LogError) << "Failed to auto-generate gamelist.xml for \"" << system->getName() << "\"";
+}
+
 void parseGamelist(SystemData* system)
 {
 	bool trustGamelist = Settings::getInstance()->getBool("ParseGamelistOnly");
