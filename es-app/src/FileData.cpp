@@ -112,14 +112,19 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 	FileFilterIndex* idx = CollectionSystemManager::get()->getSystemToView(mSystem)->getIndex();
 	std::string showFoldersSetting = Settings::getInstance()->getString("ShowFolders");
 
-	// Return cached result if nothing changed and no active filter
-	if (!mFilteredChildrenDirty && !idx->isFiltered()) {
+	// RetroPangui: gamelist.xml-based filtering
+	bool needsFolderFiltering = (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
+
+	// ALL mode with no active filter: return mChildren directly (never stored in mFilteredChildren)
+	if (!idx->isFiltered() && !needsFolderFiltering) {
+		return mChildren;
+	}
+
+	// Filtered/SCRAPED/AUTO mode: use dirty flag cache for mFilteredChildren
+	if (!mFilteredChildrenDirty) {
 		return mFilteredChildren;
 	}
 	mFilteredChildrenDirty = false;
-
-	// RetroPangui: gamelist.xml-based filtering
-	bool needsFolderFiltering = (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
 
 	if (idx->isFiltered() || needsFolderFiltering) {
 		mFilteredChildren.clear();
