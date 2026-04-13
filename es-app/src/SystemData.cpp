@@ -70,7 +70,12 @@ SystemData::SystemData(const std::string& name, const std::string& fullName, Sys
 			populateFolder(mRootFolder);
 
 		if(!Settings::getInstance()->getBool("IgnoreGamelist"))
+		{
+			// gamelist.xml 없으면 현재 파일 목록으로 자동 생성
+			if(!Utils::FileSystem::exists(mRootFolder->getPath() + "/gamelist.xml"))
+				generateGamelist(this);
 			parseGamelist(this);
+		}
 
 		mRootFolder->sort(FileSorts::SortTypes.at(0));
 
@@ -577,14 +582,14 @@ std::string SystemData::getGamelistPath(bool forWrite) const
 {
 	std::string filePath;
 
+	// ROM 폴더 gamelist.xml 우선: 있으면 읽기/쓰기 모두, forWrite면 없어도 여기에 생성
 	filePath = mRootFolder->getPath() + "/gamelist.xml";
-	if(Utils::FileSystem::exists(filePath))
+	if(Utils::FileSystem::exists(filePath) || forWrite)
 		return filePath;
 
+	// 읽기 전용 fallback: 홈 디렉토리
 	filePath = Utils::FileSystem::getHomePath() + "/.emulationstation/gamelists/" + mName + "/gamelist.xml";
-	if(forWrite) // make sure the directory exists if we're going to write to it, or crashes will happen
-		Utils::FileSystem::createDirectory(Utils::FileSystem::getParent(filePath));
-	if(forWrite || Utils::FileSystem::exists(filePath))
+	if(Utils::FileSystem::exists(filePath))
 		return filePath;
 
 	return "/etc/emulationstation/gamelists/" + mName + "/gamelist.xml";

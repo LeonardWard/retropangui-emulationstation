@@ -47,7 +47,7 @@ FileData::~FileData()
 std::string FileData::getDisplayName() const
 {
 	std::string stem = Utils::FileSystem::getStem(mPath);
-	if(mSystem && mSystem->hasPlatformId(PlatformIds::ARCADE) || mSystem->hasPlatformId(PlatformIds::NEOGEO))
+	if(mSystem && (mSystem->hasPlatformId(PlatformIds::ARCADE) || mSystem->hasPlatformId(PlatformIds::NEOGEO)))
 		stem = MameNames::getInstance()->getRealName(stem);
 
 	return stem;
@@ -111,6 +111,12 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 
 	FileFilterIndex* idx = CollectionSystemManager::get()->getSystemToView(mSystem)->getIndex();
 	std::string showFoldersSetting = Settings::getInstance()->getString("ShowFolders");
+
+	// Return cached result if nothing changed and no active filter
+	if (!mFilteredChildrenDirty && !idx->isFiltered()) {
+		return mFilteredChildren;
+	}
+	mFilteredChildrenDirty = false;
 
 	// RetroPangui: gamelist.xml-based filtering
 	bool needsFolderFiltering = (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
@@ -426,6 +432,7 @@ void FileData::addChild(FileData* file)
 		mChildrenByFilename[key] = file;
 		mChildren.push_back(file);
 		file->mParent = this;
+		mFilteredChildrenDirty = true;
 	}
 }
 
@@ -440,6 +447,7 @@ void FileData::removeChild(FileData* file)
 		{
 			file->mParent = NULL;
 			mChildren.erase(it);
+			mFilteredChildrenDirty = true;
 			return;
 		}
 	}

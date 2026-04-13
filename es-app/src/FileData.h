@@ -104,6 +104,7 @@ private:
 	std::unordered_map<std::string,FileData*> mChildrenByFilename;
 	std::vector<FileData*> mChildren;
 	std::vector<FileData*> mFilteredChildren;
+	bool mFilteredChildrenDirty = true;
 	std::string mSortDesc;
 };
 
