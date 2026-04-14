@@ -232,9 +232,10 @@ void GridGameListView::onThemeChanged(const std::shared_ptr<ThemeData>& theme)
 	mDescription.applyTheme(theme, getName(), "md_description", ALL ^ (POSITION | ThemeFlags::SIZE | ThemeFlags::ORIGIN | TEXT | ROTATION));
 
 	// Repopulate list in case new theme is displaying a different image.  Preserve selection.
-	FileData* file = mGrid.getSelected();
+	FileData* file = (mGrid.size() > 0) ? mGrid.getSelected() : nullptr;
 	populateList(mRoot->getChildrenListToDisplay());
-	mGrid.setCursor(file);
+	if (file != nullptr)
+		mGrid.setCursor(file);
 
 	sortChildren();
 }

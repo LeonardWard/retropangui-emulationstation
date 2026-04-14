@@ -59,6 +59,8 @@ void BasicGameListView::populateList(const std::vector<FileData*>& files)
 
 FileData* BasicGameListView::getCursor()
 {
+	if (mList.size() == 0)
+		populateList(mRoot->getChildrenListToDisplay());
 	return mList.getSelected();
 }
 
