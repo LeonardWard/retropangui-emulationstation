@@ -74,13 +74,34 @@ cmake -DCMAKE_BUILD_TYPE=Debug .
 
  시스템에 작동하는 GLESv2 구현이 없는 경우, 빌드 옵션에 `-DUSE_GLES1=On`을 추가하여 GLESv1 레거시 렌더러를 컴파일할 수 있습니다.
 
-Odroid C5 / RetroPangui에서 빌드하기
--------------------------------------
+Odroid C5에서 빌드하기
+----------------------
 
-RetroPangui ES는 Odroid C5 타겟을 위해 Buildroot 기반 크로스 컴파일로 빌드됩니다.
-빌드 환경 및 OS 이미지 생성 방법은 별도 프로젝트인
+Odroid C5는 Mali-G310 GPU를 탑재하고 있으며, 임베디드 OpenGL ES(GLES)를 사용합니다.
+
+* **GLES 활성화**: `-DGLES=ON`을 cmake 옵션에 추가하세요. 이 옵션은 C5에서 빌드할 때 _필수_입니다.
+
+  ```
+  cmake -DGLES=ON ..
+  make -j$(nproc)
+  ```
+
+* **Mali 드라이버 자동 감지**: CMakeLists.txt가 `/usr/lib/libMali.so`(또는 `CMAKE_FIND_ROOT_PATH` 기준 동일 경로)의 존재를 자동으로 확인하여 Mali-G310 드라이버를 선택합니다. 별도의 옵션 없이 자동으로 처리됩니다.
+
+* **크로스 컴파일 시**: sysroot 경로를 `-DCMAKE_FIND_ROOT_PATH=<sysroot>`로 지정하면 위 자동 감지도 sysroot 기준으로 동작합니다.
+
+**C5 빌드 시 사용하지 않는 옵션**
+
+* `-DRPI=On` — Raspberry Pi 전용 오디오/메모리 설정이므로 C5에서는 사용하지 마세요.
+* `-DOMX=On` — Raspberry Pi의 omxplayer 전용 옵션입니다.
+* `-DUSE_MESA_GLES=On` — Mesa VC4/V3D(Raspberry Pi) 드라이버용 옵션입니다. Mali에는 해당되지 않습니다.
+
+**GLES 빌드 참고사항**
+
+ 시스템에 작동하는 GLESv2 구현이 없는 경우, 빌드 옵션에 `-DUSE_GLES1=On`을 추가하여 GLESv1 레거시 렌더러를 컴파일할 수 있습니다.
+
+RetroPangui OS 이미지(Buildroot 기반 크로스 컴파일 환경) 빌드는 별도 프로젝트인
 [c5-pangui](https://github.com/LeonardWard/c5-pangui)를 참고하세요.
-
 이 저장소의 `main` 브랜치가 c5-pangui Buildroot 패키지의 소스로 사용됩니다.
 
 Windows에서 빌드하기
