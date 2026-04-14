@@ -105,6 +105,7 @@ private:
 	std::vector<FileData*> mChildren;
 	std::vector<FileData*> mFilteredChildren;
 	bool mFilteredChildrenDirty = true;
+	std::string mLastShowFoldersSetting;
 	std::string mSortDesc;
 };
 

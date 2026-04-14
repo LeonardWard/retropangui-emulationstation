@@ -120,11 +120,17 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 		return mChildren;
 	}
 
+	// Invalidate cache if ShowFolders setting changed since last cache build
+	if (showFoldersSetting != mLastShowFoldersSetting) {
+		mFilteredChildrenDirty = true;
+	}
+
 	// Filtered/SCRAPED/AUTO mode: use dirty flag cache for mFilteredChildren
 	if (!mFilteredChildrenDirty) {
 		return mFilteredChildren;
 	}
 	mFilteredChildrenDirty = false;
+	mLastShowFoldersSetting = showFoldersSetting;
 
 	if (idx->isFiltered() || needsFolderFiltering) {
 		mFilteredChildren.clear();
