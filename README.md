@@ -74,6 +74,88 @@ cmake -DCMAKE_BUILD_TYPE=Debug .
 
  시스템에 작동하는 GLESv2 구현이 없는 경우, 빌드 옵션에 `-DUSE_GLES1=On`을 추가하여 GLESv1 레거시 렌더러를 컴파일할 수 있습니다.
 
+Odroid C5 / RetroPangui에서 빌드하기
+-------------------------------------
+
+RetroPangui ES는 [c5-pangui](https://github.com/LeonardWard/c5-pangui) Buildroot 프로젝트를 통해 크로스 컴파일됩니다.
+빌드 환경은 Docker 컨테이너 안에서 동작하므로, 호스트에 별도의 크로스 컴파일러나 의존성을 설치할 필요가 없습니다.
+
+**사전 준비:**
+- Docker
+- c5-pangui 저장소 클론: `git clone --recursive https://github.com/LeonardWard/c5-pangui.git`
+
+### 전체 OS 이미지 빌드
+
+전체 이미지(SD카드 플래시용)를 처음부터 빌드합니다. 최초 빌드 시 수 시간이 소요됩니다.
+
+```bash
+cd c5-pangui
+./build.sh
+```
+
+완료 후 `output/c5-pangui-1.0.0.img` 파일을 SD카드에 플래싱합니다:
+
+```bash
+sudo dd if=output/c5-pangui-1.0.0.img of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+### ES만 증분 빌드 (개발용)
+
+ES 소스만 수정한 경우, 전체 빌드 없이 ES 바이너리만 재빌드하여 장치에 직접 배포할 수 있습니다.
+
+**1. 변경 사항 GitHub에 푸시**
+
+Buildroot가 `main` 브랜치에서 소스를 가져오므로, 변경된 파일을 먼저 커밋·푸시합니다:
+
+```bash
+cd retropangui-emulationstation
+git add -p
+git commit -m "Fix: ..."
+git push origin main
+```
+
+**2. Buildroot ES 스탬프 파일 삭제**
+
+Buildroot에 ES를 강제로 재빌드하도록 지시합니다:
+
+```bash
+cd c5-pangui
+rm -f buildroot/output/build/emulationstation-main/.stamp_built \
+      buildroot/output/build/emulationstation-main/.stamp_configured \
+      buildroot/output/build/emulationstation-main/.stamp_target_installed \
+      buildroot/output/build/emulationstation-main/.stamp_staging_installed
+```
+
+빌드 디렉터리가 아직 없는 경우(최초 또는 clean 이후)에는 전체 빌드를 먼저 한 번 실행해야 합니다.
+
+**3. Docker에서 ES만 빌드**
+
+```bash
+docker run --rm \
+    -v "$(pwd)/buildroot:/home/builder/buildroot" \
+    -v "$(pwd)/dl:/home/builder/dl" \
+    -v "$(pwd)/br2-external:/home/builder/br2-external" \
+    c5-pangui-builder \
+    bash -c "cd /home/builder/buildroot && \
+             make BR2_EXTERNAL=/home/builder/br2-external emulationstation"
+```
+
+빌드된 바이너리 위치: `buildroot/output/build/emulationstation-main/emulationstation`
+
+**4. 장치에 배포 (scp)**
+
+```bash
+scp buildroot/output/build/emulationstation-main/emulationstation \
+    root@c5-pangui:/opt/retropangui/bin/emulationstation
+```
+
+배포 후 장치에서 ES를 재시작합니다:
+
+```bash
+ssh root@c5-pangui "systemctl restart emulationstation || \
+                    killall emulationstation; emulationstation &"
+```
+
 Windows에서 빌드하기
 -------------------
 
