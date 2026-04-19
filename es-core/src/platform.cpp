@@ -85,6 +85,10 @@ void processQuitMode()
 		touch("/tmp/es-shutdown");
 		runShutdownCommand();
 		break;
+	case QuitMode::KODI:
+		LOG(LogInfo) << "Launching Kodi";
+		touch("/tmp/es-kodi");
+		break;
 	default:
 		// No-op to prevent compiler warnings
 		// If we reach here, it is not a RESTART, REBOOT,

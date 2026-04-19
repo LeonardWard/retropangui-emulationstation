@@ -7,6 +7,8 @@
 #include <pugixml.hpp>
 #include <algorithm>
 #include <vector>
+#include <fstream>
+#include <sys/stat.h>
 
 Settings* Settings::sInstance = NULL;
 
@@ -329,6 +331,80 @@ void Settings::loadFile()
 	}
 
 	processBackwardCompatibility();
+
+	// RetroPangui: retropangui.conf 의 emulationstation.* 키를 덮어쓰기
+	loadRetropanguiConf();
+}
+
+void Settings::loadRetropanguiConf()
+{
+	// /share 가 마운트되면 c5, 없으면 데스크탑(~/share)
+	struct stat st;
+	std::string sharePath;
+	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+		sharePath = "/share";
+	else
+	{
+		const char* home = getenv("HOME");
+		sharePath = home ? std::string(home) + "/share" : "/share";
+	}
+
+	std::string confPath = sharePath + "/system/retropangui.conf";
+	std::ifstream f(confPath);
+	if (!f.is_open())
+	{
+		LOG(LogInfo) << "retropangui.conf not found at " << confPath << " — skipping";
+		return;
+	}
+
+	LOG(LogInfo) << "Loading emulationstation settings from " << confPath;
+
+	static const std::string PREFIX = "emulationstation.";
+	std::string line;
+	while (std::getline(f, line))
+	{
+		if (line.empty() || line[0] == '#') continue;
+		if (line.substr(0, PREFIX.size()) != PREFIX) continue;
+
+		auto eq = line.find('=');
+		if (eq == std::string::npos) continue;
+
+		std::string key = line.substr(PREFIX.size(), eq - PREFIX.size());
+		// trim key
+		while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
+
+		std::string val = line.substr(eq + 1);
+		// trim value
+		while (!val.empty() && (val.front() == ' ' || val.front() == '\t')) val.erase(val.begin());
+		while (!val.empty() && (val.back()  == ' ' || val.back()  == '\t')) val.pop_back();
+
+		if (val.empty()) continue;
+
+		// 타입 판별: 기존 맵에 있는 키를 기준으로 적용
+		if (mBoolMap.count(key))
+		{
+			setBool(key, val == "1" || val == "true" || val == "yes");
+		}
+		else if (mIntMap.count(key))
+		{
+			int intVal = std::stoi(val);
+			// ScreenSaverTime: retropangui.conf 는 초 단위, Settings 는 ms 단위
+			if (key == "ScreenSaverTime")
+				intVal *= 1000;
+			setInt(key, intVal);
+		}
+		else if (mFloatMap.count(key))
+		{
+			setFloat(key, std::stof(val));
+		}
+		else
+		{
+			// 키가 없거나 string 으로 처리
+			setString(key, val);
+		}
+
+		LOG(LogDebug) << "retropangui.conf → " << key << " = " << val;
+	}
 }
 
 

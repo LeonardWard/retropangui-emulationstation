@@ -14,7 +14,8 @@ enum QuitMode
 	QUIT = 0,
 	RESTART = 1,
 	SHUTDOWN = 2,
-	REBOOT = 3
+	REBOOT = 3,
+	KODI = 4
 };
 
 int runSystemCommand(const std::string& cmd_utf8); // run a utf-8 encoded in the shell (requires wstring conversion on Windows)

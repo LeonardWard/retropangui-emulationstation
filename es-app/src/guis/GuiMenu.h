@@ -23,12 +23,16 @@ private:
 	void openCollectionSystemSettings();
 	void openConfigInput();
 	void openEmulatorSettings();
+	void openKodiMediaCenter();
+	void openNetworkSettings();
 	void openOtherSettings();
 	void openQuitMenu();
+	void openRetroAchievements();
 	void openScraperSettings();
 	void openScreensaverOptions();
 	void openSoundSettings();
 	void openUISettings();
+	void openUpdatesAndDownloads();
 
 	MenuComponent mMenu;
 	TextComponent mVersion;

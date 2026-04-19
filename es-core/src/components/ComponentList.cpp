@@ -2,7 +2,8 @@
 
 #define TOTAL_HORIZONTAL_PADDING_PX 20
 
-ComponentList::ComponentList(Window* window) : IList<ComponentListRow, void*>(window, LIST_SCROLL_STYLE_SLOW, LIST_NEVER_LOOP)
+// RetroPangui: LIST_PAUSE_AT_END로 변경 - 단일 키 누름 시 최상단/최하단에서 wrap-around
+ComponentList::ComponentList(Window* window) : IList<ComponentListRow, void*>(window, LIST_SCROLL_STYLE_SLOW, LIST_PAUSE_AT_END)
 {
 	mSelectorBarOffset = 0;
 	mCameraOffset = 0;

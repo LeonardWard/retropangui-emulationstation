@@ -24,19 +24,30 @@
 #include "FileSorts.h"
 #include "views/gamelist/IGameListView.h"
 #include "guis/GuiInfoPopup.h"
+#include "guis/GuiTextEditPopup.h"
+#include "guis/GuiArcadeVirtualKeyboard.h"
+#include <fstream>
+#include <sstream>
+#include <sys/stat.h>
+#include "utils/FileSystemUtil.h"
 
 GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 
 	if (isFullUI) {
-		addEntry(_("SCRAPER"), 0x777777FF, true, [this] { openScraperSettings(); });
-		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
-		addEntry(_("UI SETTINGS"), 0x777777FF, true, [this] { openUISettings(); });
-		addEntry(_("EMULATOR SETTINGS"), 0x777777FF, true, [this] { openEmulatorSettings(); });
+		// RetroPangui: 메뉴 순서 재정렬 및 항목 추가
+		addEntry(_("KODI MEDIA CENTER"),      0x777777FF, true, [this] { openKodiMediaCenter(); });
+		addEntry(_("RETROACHIEVEMENTS"),      0x777777FF, true, [this] { openRetroAchievements(); });
+		addEntry(_("GAME SETTINGS"),          0x777777FF, true, [this] { openEmulatorSettings(); });
+		addEntry(_("CONFIGURE INPUT"),        0x777777FF, true, [this] { openConfigInput(); });
+		addEntry(_("UI SETTINGS"),            0x777777FF, true, [this] { openUISettings(); });
 		addEntry(_("GAME COLLECTION SETTINGS"), 0x777777FF, true, [this] { openCollectionSystemSettings(); });
-		addEntry(_("OTHER SETTINGS"), 0x777777FF, true, [this] { openOtherSettings(); });
-		addEntry(_("CONFIGURE INPUT"), 0x777777FF, true, [this] { openConfigInput(); });
+		addEntry(_("SOUND SETTINGS"),         0x777777FF, true, [this] { openSoundSettings(); });
+		addEntry(_("NETWORK SETTINGS"),       0x777777FF, true, [this] { openNetworkSettings(); });
+		addEntry(_("SCRAPER"),                0x777777FF, true, [this] { openScraperSettings(); });
+		addEntry(_("UPDATES & DOWNLOADS"),    0x777777FF, true, [this] { openUpdatesAndDownloads(); });
+		addEntry(_("OTHER SETTINGS"),         0x777777FF, true, [this] { openOtherSettings(); });
 	} else {
 		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
 	}
@@ -687,11 +698,12 @@ void GuiMenu::addVersionInfo()
 {
 	std::string  buildDate = (Settings::getInstance()->getBool("Debug") ? std::string( "   (" + Utils::String::toUpper(PROGRAM_BUILT_STRING) + ")") : (""));
 
-	mVersion.setFont(Font::get(FONT_SIZE_SMALL));
-	mVersion.setColor(0x5E5E5EFF);
-	mVersion.setText("EMULATIONSTATION V" + Utils::String::toUpper(PROGRAM_VERSION_STRING) + buildDate);
-	mVersion.setHorizontalAlignment(ALIGN_CENTER);
-	addChild(&mVersion);
+	// RetroPangui: 하단 버전 표시 임시 숨김 - 추후 다른 정보로 대체 예정
+	// mVersion.setFont(Font::get(FONT_SIZE_SMALL));
+	// mVersion.setColor(0x5E5E5EFF);
+	// mVersion.setText("EMULATIONSTATION V" + Utils::String::toUpper(PROGRAM_VERSION_STRING) + buildDate);
+	// mVersion.setHorizontalAlignment(ALIGN_CENTER);
+	// addChild(&mVersion);
 }
 
 void GuiMenu::openScreensaverOptions() {
@@ -700,6 +712,230 @@ void GuiMenu::openScreensaverOptions() {
 
 void GuiMenu::openCollectionSystemSettings() {
 	mWindow->pushGui(new GuiCollectionSystemsOptions(mWindow));
+}
+
+void GuiMenu::openKodiMediaCenter()
+{
+	// RetroPangui: ES 종료 후 Kodi 실행, Kodi 종료 시 ES 재시작
+	Scripting::fireEvent("quit");
+	quitES(QuitMode::KODI);
+}
+
+// ---------------------------------------------------------------------------
+// RetroAchievements - retropangui.conf / retroarch.cfg 읽기·쓰기 헬퍼
+// ---------------------------------------------------------------------------
+
+// /share 가 마운트되어 있으면 c5, 없으면 데스크탑(~/share)
+static std::string getSharePath()
+{
+	struct stat st;
+	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+		return "/share";
+	const char* home = getenv("HOME");
+	return home ? std::string(home) + "/share" : "/share";
+}
+
+static std::string getShareSystemPath() { return getSharePath() + "/system"; }
+static std::string rpConfPath()         { return getShareSystemPath() + "/retropangui.conf"; }
+static std::string raCfgPath()          { return getShareSystemPath() + "/retroarch/retroarch.cfg"; }
+
+// key=value 행 파서 (공백·따옴표 제거)
+static std::string cfgReadKey(const std::string& filePath, const std::string& fullKey,
+                               const std::string& def = "")
+{
+	std::ifstream f(filePath);
+	if (!f.is_open()) return def;
+	std::string line;
+	while (std::getline(f, line))
+	{
+		if (line.empty() || line[0] == '#') continue;
+		auto eq = line.find('=');
+		if (eq == std::string::npos) continue;
+		std::string k = line.substr(0, eq);
+		while (!k.empty() && (k.back() == ' ' || k.back() == '\t')) k.pop_back();
+		if (k != fullKey) continue;
+		std::string v = line.substr(eq + 1);
+		while (!v.empty() && (v.front() == ' ' || v.front() == '\t' || v.front() == '"')) v.erase(v.begin());
+		while (!v.empty() && (v.back()  == ' ' || v.back()  == '\t' || v.back()  == '"')) v.pop_back();
+		return v;
+	}
+	return def;
+}
+
+static void cfgWriteKey(const std::string& filePath, const std::string& fullKey,
+                         const std::string& value, bool quotedValue)
+{
+	Utils::FileSystem::createDirectory(filePath.substr(0, filePath.rfind('/')));
+	std::ifstream fin(filePath);
+	std::vector<std::string> lines;
+	bool found = false;
+	if (fin.is_open())
+	{
+		std::string line;
+		while (std::getline(fin, line))
+		{
+			if (!line.empty() && line[0] != '#')
+			{
+				auto eq = line.find('=');
+				if (eq != std::string::npos)
+				{
+					std::string k = line.substr(0, eq);
+					while (!k.empty() && (k.back() == ' ' || k.back() == '\t')) k.pop_back();
+					if (k == fullKey)
+					{
+						line = quotedValue ? (fullKey + " = \"" + value + "\"")
+						                   : (fullKey + " = " + value);
+						found = true;
+					}
+				}
+			}
+			lines.push_back(line);
+		}
+		fin.close();
+	}
+	if (!found)
+		lines.push_back(quotedValue ? (fullKey + " = \"" + value + "\"")
+		                            : (fullKey + " = " + value));
+	std::ofstream fout(filePath);
+	for (auto& l : lines) fout << l << "\n";
+}
+
+// ── 공개 헬퍼 ────────────────────────────────────────────────────────────────
+
+// retropangui.conf 에서 읽기 (global.KEY 형식, 따옴표 없음)
+static std::string raCfgGet(const std::string& key, const std::string& def = "")
+{
+	return cfgReadKey(rpConfPath(), "global." + key, def);
+}
+
+// retropangui.conf 에 쓰고, retroarch.cfg 에도 즉시 반영 (부팅 대기 없이 효과)
+static void raCfgSet(const std::string& key, const std::string& value)
+{
+	cfgWriteKey(rpConfPath(), "global." + key, value, false); // retropangui.conf: 따옴표 없음
+	cfgWriteKey(raCfgPath(),  key,             value, true);  // retroarch.cfg:    따옴표 있음
+}
+
+void GuiMenu::openRetroAchievements()
+{
+	auto s = new GuiSettings(mWindow, _("RETROACHIEVEMENTS"));
+
+	// --- 활성화 ---
+	auto cheevos_enable = std::make_shared<SwitchComponent>(mWindow);
+	cheevos_enable->setState(raCfgGet("cheevos_enable", "false") == "true");
+	s->addWithLabel(_("활성화"), cheevos_enable);
+
+	// --- 사용자 이름 ---
+	// 고정 너비 필요: TextComponent는 초기 크기로 레이아웃이 결정되므로
+	// setValue() 이후 크기 변화가 레이아웃에 반영되지 않음 → 충분한 너비 고정
+	float valW = (float)Renderer::getScreenWidth() * 0.22f;
+	auto username_text = std::make_shared<TextComponent>(mWindow,
+		raCfgGet("cheevos_username"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_RIGHT);
+	username_text->setSize(valW, Font::get(FONT_SIZE_MEDIUM)->getHeight());
+	ComponentListRow username_row;
+	username_row.addElement(std::make_shared<TextComponent>(mWindow,
+		_("사용자 이름"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+	username_row.addElement(username_text, false);
+	username_row.makeAcceptInputHandler([this, username_text] {
+		mWindow->pushGui(new GuiArcadeVirtualKeyboard(mWindow, _("사용자 이름"),
+			username_text->getValue(),
+			[username_text](const std::string& val) { username_text->setValue(val); }));
+	});
+	s->addRow(username_row);
+
+	// --- 비밀번호 ---
+	auto password_text = std::make_shared<TextComponent>(mWindow,
+		raCfgGet("cheevos_password").empty() ? "" : "••••••••",
+		Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_RIGHT);
+	password_text->setSize(valW, Font::get(FONT_SIZE_MEDIUM)->getHeight());
+	auto password_val = std::make_shared<std::string>(raCfgGet("cheevos_password"));
+	ComponentListRow password_row;
+	password_row.addElement(std::make_shared<TextComponent>(mWindow,
+		_("비밀번호"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+	password_row.addElement(password_text, false);
+	password_row.makeAcceptInputHandler([this, password_text, password_val] {
+		mWindow->pushGui(new GuiArcadeVirtualKeyboard(mWindow, _("비밀번호"),
+			*password_val,
+			[password_text, password_val](const std::string& val) {
+				*password_val = val;
+				password_text->setValue(val.empty() ? "" : "••••••••");
+			}));
+	});
+	s->addRow(password_row);
+
+	// --- 하드코어 모드 ---
+	auto hardcore = std::make_shared<SwitchComponent>(mWindow);
+	hardcore->setState(raCfgGet("cheevos_hardcore_mode_enable", "false") == "true");
+	s->addWithLabel(_("하드코어 모드"), hardcore);
+
+	// 하드코어 모드 안내 텍스트
+	ComponentListRow hardcore_note_row;
+	auto hardcore_note = std::make_shared<TextComponent>(mWindow,
+		_("* 활성화 시 세이브 스테이트, 되감기, 치트 사용 불가"),
+		Font::get(FONT_SIZE_SMALL), 0x999999FF);
+	hardcore_note_row.addElement(hardcore_note, true);
+	s->addRow(hardcore_note_row);
+
+	// --- 리더보드 ---
+	auto leaderboards = std::make_shared<OptionListComponent<std::string>>(mWindow, _("리더보드"), false);
+	std::string lb_val = raCfgGet("cheevos_leaderboards_enable", "false");
+	leaderboards->add(_("비활성"), "false",  lb_val == "false");
+	leaderboards->add(_("활성"),   "true",   lb_val == "true");
+	leaderboards->add(_("트래커만"), "trackers only", lb_val == "trackers only");
+	s->addWithLabel(_("리더보드"), leaderboards);
+
+	// --- 상세 알림 ---
+	auto verbose = std::make_shared<SwitchComponent>(mWindow);
+	verbose->setState(raCfgGet("cheevos_verbose_enable", "false") == "true");
+	s->addWithLabel(_("상세 알림"), verbose);
+
+	// --- 자동 스크린샷 ---
+	auto screenshot = std::make_shared<SwitchComponent>(mWindow);
+	screenshot->setState(raCfgGet("cheevos_auto_screenshot", "false") == "true");
+	s->addWithLabel(_("자동 스크린샷"), screenshot);
+
+	// --- 리치 프레즌스 ---
+	auto richpresence = std::make_shared<SwitchComponent>(mWindow);
+	richpresence->setState(raCfgGet("cheevos_rich_presence_enable", "true") == "true");
+	s->addWithLabel(_("리치 프레즌스"), richpresence);
+
+	// --- 배지 표시 ---
+	auto badges = std::make_shared<SwitchComponent>(mWindow);
+	badges->setState(raCfgGet("cheevos_badges_enable", "false") == "true");
+	s->addWithLabel(_("배지 표시"), badges);
+
+	// --- 앙코르 모드 ---
+	auto encore = std::make_shared<SwitchComponent>(mWindow);
+	encore->setState(raCfgGet("cheevos_encore_mode_enable", "false") == "true");
+	s->addWithLabel(_("앙코르 모드"), encore);
+
+	// --- 저장 ---
+	s->addSaveFunc([cheevos_enable, username_text, password_val,
+	                hardcore, leaderboards, verbose, screenshot, richpresence, badges, encore] {
+		raCfgSet("cheevos_enable",                cheevos_enable->getState() ? "true" : "false");
+		raCfgSet("cheevos_username",              username_text->getValue());
+		raCfgSet("cheevos_password",              *password_val);
+		raCfgSet("cheevos_hardcore_mode_enable",  hardcore->getState() ? "true" : "false");
+		raCfgSet("cheevos_leaderboards_enable",   leaderboards->getSelected());
+		raCfgSet("cheevos_verbose_enable",        verbose->getState() ? "true" : "false");
+		raCfgSet("cheevos_auto_screenshot",       screenshot->getState() ? "true" : "false");
+		raCfgSet("cheevos_rich_presence_enable",  richpresence->getState() ? "true" : "false");
+		raCfgSet("cheevos_badges_enable",         badges->getState() ? "true" : "false");
+		raCfgSet("cheevos_encore_mode_enable",    encore->getState() ? "true" : "false");
+	});
+
+	mWindow->pushGui(s);
+}
+
+void GuiMenu::openNetworkSettings()
+{
+	// RetroPangui: 미구현 - 향후 네트워크 설정 구현 예정
+	mWindow->pushGui(new GuiMsgBox(mWindow, _("NETWORK SETTINGS ARE NOT YET IMPLEMENTED."), _("OK"), nullptr));
+}
+
+void GuiMenu::openUpdatesAndDownloads()
+{
+	// RetroPangui: 미구현 - 향후 업데이트 및 다운로드 기능 구현 예정
+	mWindow->pushGui(new GuiMsgBox(mWindow, _("UPDATES & DOWNLOADS ARE NOT YET IMPLEMENTED."), _("OK"), nullptr));
 }
 
 void GuiMenu::onSizeChanged()
