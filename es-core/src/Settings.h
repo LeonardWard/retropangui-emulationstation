@@ -35,6 +35,7 @@ private:
 
 	void setDefaults();		//Clear everything and load default values.
 	void processBackwardCompatibility();
+	void loadRetropanguiConf();	// retropangui.conf 의 emulationstation.* 키 적용
 	template<typename Map>
 	void renameSetting(Map& map, std::string&& oldName, std::string&& newName);
 

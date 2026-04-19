@@ -20,14 +20,78 @@ msgstr ""
 msgid "MAIN MENU"
 msgstr "메인 메뉴"
 
+msgid "KODI MEDIA CENTER"
+msgstr "코디 미디어 센터"
+
+msgid "RETROACHIEVEMENTS"
+msgstr "레트로어치브먼트"
+
 msgid "GAME SETTINGS"
 msgstr "게임 설정"
 
 msgid "UI SETTINGS"
-msgstr "화면 설정"
+msgstr "UI 설정"
 
 msgid "SOUND SETTINGS"
 msgstr "사운드 설정"
+
+msgid "NETWORK SETTINGS"
+msgstr "네트워크 설정"
+
+msgid "UPDATES & DOWNLOADS"
+msgstr "업데이트 & 다운로드"
+
+msgid "LAUNCHING KODI MEDIA CENTER.\nEMULATIONSTATION WILL RESTART WHEN KODI EXITS."
+msgstr "코디 미디어 센터를 실행합니다.\nKodi 종료 시 EmulationStation이 자동으로 재시작됩니다."
+
+# RetroAchievements
+msgid "활성화"
+msgstr "활성화"
+
+msgid "사용자 이름"
+msgstr "사용자 이름"
+
+msgid "비밀번호"
+msgstr "비밀번호"
+
+msgid "하드코어 모드"
+msgstr "하드코어 모드"
+
+msgid "* 활성화 시 세이브 스테이트, 되감기, 치트 사용 불가"
+msgstr "* 활성화 시 세이브 스테이트, 되감기, 치트 사용 불가"
+
+msgid "리더보드"
+msgstr "리더보드"
+
+msgid "비활성"
+msgstr "비활성"
+
+msgid "활성"
+msgstr "활성"
+
+msgid "트래커만"
+msgstr "트래커만"
+
+msgid "상세 알림"
+msgstr "상세 알림"
+
+msgid "자동 스크린샷"
+msgstr "자동 스크린샷"
+
+msgid "리치 프레즌스"
+msgstr "리치 프레즌스"
+
+msgid "배지 표시"
+msgstr "배지 표시"
+
+msgid "앙코르 모드"
+msgstr "앙코르 모드"
+
+msgid "NETWORK SETTINGS ARE NOT YET IMPLEMENTED."
+msgstr "네트워크 설정은 아직 구현되지 않았습니다."
+
+msgid "UPDATES & DOWNLOADS ARE NOT YET IMPLEMENTED."
+msgstr "업데이트 & 다운로드는 아직 구현되지 않았습니다."
 
 msgid "SYSTEM SETTINGS"
 msgstr "시스템 설정"
@@ -36,7 +100,7 @@ msgid "OTHER SETTINGS"
 msgstr "기타 설정"
 
 msgid "CONFIGURE INPUT"
-msgstr "입력 설정"
+msgstr "컨트롤러 설정"
 
 msgid "QUIT"
 msgstr "종료"
