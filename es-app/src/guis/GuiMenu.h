@@ -27,7 +27,6 @@ private:
 	void openConfigInput();
 	void openEmulatorSettings();
 	void openKodiMediaCenter();
-	void openNetworkSettings();
 	void openOtherSettings();
 	void openQuitMenu();
 	void openRetroAchievements();

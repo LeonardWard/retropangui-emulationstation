@@ -31,6 +31,13 @@
 #include <sys/stat.h>
 #include "utils/FileSystemUtil.h"
 
+// forward declarations — 정의는 YAML 엔진 블록에 있음
+static std::string rpConfPath();
+static std::string cfgReadKey(const std::string& filePath, const std::string& fullKey,
+                              const std::string& def);
+static void cfgWriteKey(const std::string& filePath, const std::string& fullKey,
+                        const std::string& value, bool quote);
+
 GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
@@ -42,7 +49,7 @@ GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN M
 		// RetroPangui: 메뉴 순서 재정렬 및 항목 추가
 		addEntry(_("KODI MEDIA CENTER"),      0x777777FF, true, [this] { openKodiMediaCenter(); });
 		addEntry(_("RETROACHIEVEMENTS"),      0x777777FF, true, [this] { openRetroAchievements(); });
-		addEntry(_("GAME SETTINGS"),          0x777777FF, true, [this] { openEmulatorSettings(); });
+		addEntry(_("EMULATOR SETTINGS"),       0x777777FF, true, [this] { openEmulatorSettings(); });
 		addEntry(_("CONFIGURE INPUT"),        0x777777FF, true, [this] { openConfigInput(); });
 		addEntry(_("UI SETTINGS"),            0x777777FF, true, [this] { openUISettings(); });
 		addEntry(_("GAME COLLECTION SETTINGS"), 0x777777FF, true, [this] { openCollectionSystemSettings(); });
@@ -186,6 +193,18 @@ void GuiMenu::openSoundSettings()
 		video_audio->setState(Settings::getInstance()->getBool("VideoAudio"));
 		s->addWithLabel(_("ENABLE VIDEO AUDIO"), video_audio);
 		s->addSaveFunc([video_audio] { Settings::getInstance()->setBool("VideoAudio", video_audio->getState()); });
+
+		// RA audio latency (retropangui.conf: global.audio_latency)
+		auto audio_lat = std::make_shared<SliderComponent>(mWindow, 16.f, 256.f, 8.f, "ms");
+		float latVal = 64.f;
+		std::string latStr = cfgReadKey(rpConfPath(), "global.audio_latency", "64");
+		if (!latStr.empty()) latVal = std::stof(latStr);
+		audio_lat->setValue(latVal);
+		s->addWithLabel(_("RA AUDIO LATENCY"), audio_lat);
+		s->addSaveFunc([audio_lat] {
+			cfgWriteKey(rpConfPath(), "global.audio_latency",
+			            std::to_string((int)Math::round(audio_lat->getValue())), false);
+		});
 
 #ifdef _OMX_
 		// OMX player Audio Device
@@ -1045,12 +1064,6 @@ void GuiMenu::openRetroAchievements()
 	});
 
 	mWindow->pushGui(s);
-}
-
-void GuiMenu::openNetworkSettings()
-{
-	// RetroPangui: 미구현 - 향후 네트워크 설정 구현 예정
-	mWindow->pushGui(new GuiMsgBox(mWindow, _("NETWORK SETTINGS ARE NOT YET IMPLEMENTED."), _("OK"), nullptr));
 }
 
 void GuiMenu::openUpdatesAndDownloads()
