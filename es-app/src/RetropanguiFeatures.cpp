@@ -18,6 +18,7 @@
 static std::string getYmlPath()
 {
 	struct stat st;
+	// 사용자 정의 경로 결정 (/share 마운트 여부로 C5 vs 데스크탑 분기)
 	std::string share;
 	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
 		share = "/share";
@@ -25,7 +26,11 @@ static std::string getYmlPath()
 		const char* home = getenv("HOME");
 		share = home ? std::string(home) + "/share" : "/share";
 	}
-	return share + "/system/retropangui_features.yml";
+	std::string userPath = share + "/system/retropangui_features.yml";
+	if (stat(userPath.c_str(), &st) == 0)
+		return userPath;
+	// 시스템 기본 경로 (C5 rootfs: /opt/retropangui/)
+	return "/opt/retropangui/retropangui_features.yml";
 }
 
 static int indentOf(const std::string& line)
