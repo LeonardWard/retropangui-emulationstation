@@ -18,9 +18,12 @@
 static std::string getYmlPath()
 {
 	struct stat st;
-	// 사용자 정의 경로 결정 (/share 마운트 여부로 C5 vs 데스크탑 분기)
+	// RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
 	std::string share;
-	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+	const char* env = getenv("RETROPANGUI_SHARE");
+	if (env && env[0] != '\0')
+		share = env;
+	else if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
 		share = "/share";
 	else {
 		const char* home = getenv("HOME");

@@ -753,9 +753,12 @@ void GuiMenu::openKodiMediaCenter()
 // RetroAchievements - retropangui.conf / retroarch.cfg 읽기·쓰기 헬퍼
 // ---------------------------------------------------------------------------
 
-// /share 가 마운트되어 있으면 c5, 없으면 데스크탑(~/share)
+// RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
 static std::string getSharePath()
 {
+	const char* env = getenv("RETROPANGUI_SHARE");
+	if (env && env[0] != '\0')
+		return env;
 	struct stat st;
 	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
 		return "/share";
