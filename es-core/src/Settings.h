@@ -14,6 +14,7 @@ public:
 
 	void loadFile();
 	void saveFile();
+	void loadRetropanguiConf();	// retropangui.conf 의 emulationstation.* 키 적용 (Log::open() 이후 main에서 호출)
 
 	//You will get a warning if you try a get on a key that is not already present.
 	bool getBool(const std::string& name);
@@ -35,7 +36,6 @@ private:
 
 	void setDefaults();		//Clear everything and load default values.
 	void processBackwardCompatibility();
-	void loadRetropanguiConf();	// retropangui.conf 의 emulationstation.* 키 적용
 	template<typename Map>
 	void renameSetting(Map& map, std::string&& oldName, std::string&& newName);
 

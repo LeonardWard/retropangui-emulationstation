@@ -35,6 +35,9 @@ GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN M
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 
+	// YAML 메뉴 로드
+	mFeatureMenus = RetropanguiFeatures::load();
+
 	if (isFullUI) {
 		// RetroPangui: 메뉴 순서 재정렬 및 항목 추가
 		addEntry(_("KODI MEDIA CENTER"),      0x777777FF, true, [this] { openKodiMediaCenter(); });
@@ -44,7 +47,13 @@ GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN M
 		addEntry(_("UI SETTINGS"),            0x777777FF, true, [this] { openUISettings(); });
 		addEntry(_("GAME COLLECTION SETTINGS"), 0x777777FF, true, [this] { openCollectionSystemSettings(); });
 		addEntry(_("SOUND SETTINGS"),         0x777777FF, true, [this] { openSoundSettings(); });
-		addEntry(_("NETWORK SETTINGS"),       0x777777FF, true, [this] { openNetworkSettings(); });
+		// YAML parent=main 메뉴 삽입
+		for (auto& fm : mFeatureMenus) {
+			if (fm.parent == "main") {
+				std::string id = fm.id;
+				addEntry(_(fm.label.c_str()), 0x777777FF, true, [this, id] { openFeatureMenu(id); });
+			}
+		}
 		addEntry(_("SCRAPER"),                0x777777FF, true, [this] { openScraperSettings(); });
 		addEntry(_("UPDATES & DOWNLOADS"),    0x777777FF, true, [this] { openUpdatesAndDownloads(); });
 		addEntry(_("OTHER SETTINGS"),         0x777777FF, true, [this] { openOtherSettings(); });
@@ -813,6 +822,118 @@ static void raCfgSet(const std::string& key, const std::string& value)
 {
 	cfgWriteKey(rpConfPath(), "global." + key, value, false); // retropangui.conf: 따옴표 없음
 	cfgWriteKey(raCfgPath(),  key,             value, true);  // retroarch.cfg:    따옴표 있음
+}
+
+// ---------------------------------------------------------------------------
+// YAML 메뉴 엔진 — addFeatureItem / openFeatureMenu
+// ---------------------------------------------------------------------------
+
+static std::string strongerRestart(const std::string& a, const std::string& b)
+{
+	if (a == "system" || b == "system") return "system";
+	if (a == "es"     || b == "es")     return "es";
+	return "none";
+}
+
+void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
+                              std::vector<RestartCheck>& checks)
+{
+	if (item.type == "toggle")
+	{
+		std::string orig = cfgReadKey(rpConfPath(), item.conf_key, "false");
+		bool state = (orig == "true");
+		auto sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_(item.label.c_str()), sw);
+		s->addSaveFunc([item, sw] {
+			cfgWriteKey(rpConfPath(), item.conf_key, sw->getState() ? "true" : "false", false);
+		});
+		if (item.restart != "none")
+			checks.push_back({ [sw, orig]{ return (sw->getState() ? "true" : "false") != orig; },
+			                   item.restart });
+	}
+	else if (item.type == "list")
+	{
+		std::string confVal = cfgReadKey(rpConfPath(), item.conf_key);
+		auto list = std::make_shared<OptionListComponent<std::string>>(
+			mWindow, _(item.label.c_str()), false);
+		bool anySelected = false;
+		bool isFirst = true;
+		for (auto& opt : item.options) {
+			// conf 값이 없으면 첫 번째 옵션을 기본 선택
+			bool sel = (opt.value == confVal) || (isFirst && confVal.empty());
+			isFirst = false;
+			if (sel) anySelected = true;
+			list->add(opt.label, opt.value, sel);
+		}
+		if (!anySelected && !item.options.empty())
+			list->add(item.options[0].label, item.options[0].value, true);
+		// 화면에 실제 표시된 초기값 기준으로 비교 (conf 없을 때도 정확히 동작)
+		std::string effectiveOrig = list->getSelected();
+		s->addWithLabel(_(item.label.c_str()), list);
+		s->addSaveFunc([item, list] {
+			cfgWriteKey(rpConfPath(), item.conf_key, list->getSelected(), false);
+		});
+		if (item.restart != "none")
+			checks.push_back({ [list, effectiveOrig]{ return list->getSelected() != effectiveOrig; },
+			                   item.restart });
+	}
+	else if (item.type == "slider")
+	{
+		std::string raw = cfgReadKey(rpConfPath(), item.conf_key);
+		float orig = item.min;
+		if (!raw.empty()) { try { orig = std::stof(raw); } catch (...) {} }
+		auto sl = std::make_shared<SliderComponent>(mWindow, item.min, item.max, item.step, item.unit);
+		sl->setValue(orig);
+		s->addWithLabel(_(item.label.c_str()), sl);
+		s->addSaveFunc([item, sl] {
+			cfgWriteKey(rpConfPath(), item.conf_key, std::to_string((int)sl->getValue()), false);
+		});
+		if (item.restart != "none")
+			checks.push_back({ [sl, orig]{ return (int)sl->getValue() != (int)orig; },
+			                   item.restart });
+	}
+}
+
+void GuiMenu::openFeatureMenu(const std::string& menuId)
+{
+	auto it = std::find_if(mFeatureMenus.begin(), mFeatureMenus.end(),
+		[&menuId](const FeatureMenu& m){ return m.id == menuId; });
+	if (it == mFeatureMenus.end()) return;
+
+	auto s = new GuiSettings(mWindow, _(it->label.c_str()));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+
+	for (auto& item : it->items)
+		addFeatureItem(s, item, *checks);
+
+	s->setOnSave([this, checks, s] {
+		// 실제로 값이 변경된 항목 중 가장 강한 restart 레벨 계산
+		std::string actualRestart = "none";
+		for (auto& [changed, level] : *checks)
+			if (changed())
+				actualRestart = strongerRestart(actualRestart, level);
+
+		if (actualRestart == "none") {
+			s->executeSaveFuncs();
+			return;
+		}
+
+		std::string msg = (actualRestart == "system")
+			? _("재부팅이 필요합니다.\n지금 재부팅하시겠습니까?")
+			: _("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?");
+		mWindow->pushGui(new GuiMsgBox(mWindow, msg,
+			_("OK"), [this, actualRestart, s] {
+				s->executeSaveFuncs();
+				if (actualRestart == "system")
+					quitES(QuitMode::REBOOT);
+				else
+					quitES(QuitMode::RESTART);
+			},
+			_("CANCEL"), nullptr
+		));
+	});
+
+	mWindow->pushGui(s);
 }
 
 void GuiMenu::openRetroAchievements()

@@ -73,6 +73,7 @@ set(ES_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/FileFilterIndex.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/SystemScreenSaver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/CollectionSystemManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/RetropanguiFeatures.cpp
 
     # GuiComponents
     ${CMAKE_CURRENT_SOURCE_DIR}/src/components/AsyncReqComponent.cpp

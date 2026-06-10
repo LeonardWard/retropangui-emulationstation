@@ -16,6 +16,9 @@ public:
 	inline void addWithLabel(const std::string& label, const std::shared_ptr<GuiComponent>& comp) { mMenu.addWithLabel(label, comp); };
 	inline void addSaveFunc(const std::function<void()>& func) { mSaveFuncs.push_back(func); };
 
+	void setOnSave(const std::function<void()>& func) { mOnSaveFunc = func; };
+	void executeSaveFuncs();
+
 	bool input(InputConfig* config, Input input) override;
 	std::vector<HelpPrompt> getHelpPrompts() override;
 	HelpStyle getHelpStyle() override;
@@ -23,6 +26,7 @@ public:
 private:
 	MenuComponent mMenu;
 	std::vector< std::function<void()> > mSaveFuncs;
+	std::function<void()> mOnSaveFunc;
 };
 
 #endif // ES_APP_GUIS_GUI_SETTINGS_H

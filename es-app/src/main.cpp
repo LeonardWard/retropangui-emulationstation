@@ -343,9 +343,13 @@ int main(int argc, char* argv[])
 	Log::init();
 	Log::open();
 	LOG(LogInfo) << "EmulationStation - v" << PROGRAM_VERSION_STRING << ", built " << PROGRAM_BUILT_STRING;
+	Log::flush(); // ensure version line is on disk even if we crash during early init
 
 	//always close the log on exit
 	atexit(&onExit);
+
+	// RetroPangui: Log::open() 이후에 retropangui.conf 적용 (LOG 메시지가 정상적으로 기록되도록)
+	Settings::getInstance()->loadRetropanguiConf();
 
 	// RetroPangui: Initialize locale
 	std::string language = Settings::getInstance()->getString("Language");
@@ -376,6 +380,8 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	Log::flush(); // before loading system config
+
 	const char* errorMsg = NULL;
 	if(!loadSystemConfigFile(splashScreen ? &window : nullptr, &errorMsg))
 	{
@@ -404,9 +410,12 @@ int main(int argc, char* argv[])
 		return run_scraper_cmdline();
 	}
 
+	Log::flush(); // system config loaded OK — about to preload game lists
+
 	// preload what we can right away instead of waiting for the user to select it
 	// this makes for no delays when accessing content, but a longer startup time
 	ViewController::get()->preload();
+	Log::flush(); // preload complete
 
 	if(splashScreen)
 		window.renderLoadingScreen("Done.");

@@ -22,10 +22,17 @@ GuiSettings::~GuiSettings()
 
 void GuiSettings::save()
 {
-	if(!mSaveFuncs.size())
+	if (mOnSaveFunc)
+	{
+		mOnSaveFunc();
 		return;
+	}
+	executeSaveFuncs();
+}
 
-	for(auto it = mSaveFuncs.cbegin(); it != mSaveFuncs.cend(); it++)
+void GuiSettings::executeSaveFuncs()
+{
+	for (auto it = mSaveFuncs.cbegin(); it != mSaveFuncs.cend(); it++)
 		(*it)();
 
 	Settings::getInstance()->saveFile();

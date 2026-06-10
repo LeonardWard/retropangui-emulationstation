@@ -44,3 +44,9 @@ CPackSourceConfig.cmake
 # VSCode
 .vscode/
 build_info.txt
+
+
+TODO.md
+
+# 개발 문서 (배포 대상 아님)
+docs/
