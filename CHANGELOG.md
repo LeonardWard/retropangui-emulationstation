@@ -2,6 +2,32 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
+## [2026-06-11] - retropangui.conf 연동 안정화 (실기기 검증 완료)
+
+### Added
+- **emulationstation.\* 키 역기록** (`5977fbc`)
+  - 부팅 시 `loadRetropanguiConf()`가 conf 값을 ES에 주입하고, `saveFile()` 시
+    conf에 존재하던 키를 현재 설정값으로 conf에 갱신
+  - 이전에는 conf에 있는 키(ThemeSet, ScreenSaverTime/Behavior, AudioDevice)를
+    메뉴에서 바꿔도 재부팅마다 conf 값으로 되돌아갔음 → 이제 conf가 단일 마스터로 동작
+  - `ScreenSaverTime`은 conf(초) ↔ Settings(ms) 단위 변환 양방향 처리
+  - conf의 주석·다른 섹션은 보존, 값이 실제로 바뀐 경우에만 파일 기록
+
+### Fixed
+- **share 경로를 RETROPANGUI_SHARE 환경 변수로 결정** (`e04dfb7`, `b6b0a8e`)
+  - `getSharePath()`/`getYmlPath()`/`retropanguiConfPath()` 모두
+    `$RETROPANGUI_SHARE` → `/share` → `~/share` 순서로 통일
+  - 이전에는 C5에서 `/root/share` 폴백으로 잘못된 경로를 읽고 씀
+- **YAML 메뉴 저장이 restart 팝업 경로에서 유실되는 버그** (`50e89ba`)
+  - `setOnSave`는 GuiSettings 소멸자에서 호출되는데 저장을 팝업 OK 콜백으로
+    미루면 use-after-free로 저장 실패/크래시
+  - 저장은 메뉴 닫을 때 항상 즉시 실행, 팝업은 재시작 여부만 질문
+    (Cancel 시에도 값은 저장되며 다음 재시작 때 적용)
+
+### Verified
+- C5 실기기에서 메뉴 변경 → `/retropangui/share/system/retropangui.conf` 기록,
+  재부팅 후 값 유지까지 확인 완료 (2026-06-11)
+
 ## [2025-10-26] - 목록 표시 방법 기능 추가
 
 ### Added

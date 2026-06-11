@@ -22,7 +22,10 @@ retropangui.conf
 ================
 
 ES 설정 메뉴에서 저장되는 값은 `~/.emulationstation/es_settings.cfg` 대신
-`/share/system/retropangui.conf` (데스크탑: `~/share/system/retropangui.conf`)에 기록됩니다.
+`{share}/system/retropangui.conf`에 기록됩니다.
+
+**share 경로 결정** (우선순위 순): `$RETROPANGUI_SHARE` 환경 변수 → `/share` → `~/share`.
+C5에서는 init 스크립트가 `RETROPANGUI_SHARE=/retropangui/share`를 export합니다.
 
 **키 네임스페이스:**
 
@@ -30,8 +33,13 @@ ES 설정 메뉴에서 저장되는 값은 `~/.emulationstation/es_settings.cfg`
 |--------|------|------|
 | `global.*` | RetroArch 전역 설정 | `global.rewind_enable=true` |
 | `system.*` | OS 수준 설정 | `system.language=ko_KR` |
+| `emulationstation.*` | ES 자체 설정 (es_settings.cfg 키) | `emulationstation.ScreenSaverBehavior=dim` |
 
-`global.*` 키는 RetroArch가 읽는 `/share/system/retroarch/retroarch.cfg`에도 동시 기록됩니다.
+`global.*` 키는 RetroArch가 읽는 `{share}/system/retroarch/retroarch.cfg`에도 동시 기록됩니다.
+
+`emulationstation.*` 키는 **양방향 동기화**됩니다: 부팅 시 conf 값이 ES 설정에 주입되고,
+메뉴에서 설정을 저장하면 conf에 존재하던 키가 현재 값으로 역기록됩니다.
+conf에 없는 ES 설정은 conf를 건드리지 않고 es_settings.cfg에만 저장됩니다.
 
 
 YAML 메뉴 엔진
