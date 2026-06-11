@@ -285,6 +285,9 @@ void Settings::saveFile()
 
 	doc.save_file(path.c_str());
 
+	// retropangui.conf 에 있던 emulationstation.* 키도 현재 값으로 동기화
+	saveRetropanguiConf();
+
 	Scripting::fireEvent("config-changed");
 	Scripting::fireEvent("settings-changed");
 }
@@ -333,10 +336,10 @@ void Settings::loadFile()
 	processBackwardCompatibility();
 }
 
-void Settings::loadRetropanguiConf()
+// RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
+// (C5에서는 S99emulationstation이 RETROPANGUI_SHARE=/retropangui/share 를 export)
+static std::string retropanguiConfPath()
 {
-	// RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
-	// (C5에서는 S99emulationstation이 RETROPANGUI_SHARE=/retropangui/share 를 export)
 	struct stat st;
 	std::string sharePath;
 	const char* env = getenv("RETROPANGUI_SHARE");
@@ -349,8 +352,12 @@ void Settings::loadRetropanguiConf()
 		const char* home = getenv("HOME");
 		sharePath = home ? std::string(home) + "/share" : "/share";
 	}
+	return sharePath + "/system/retropangui.conf";
+}
 
-	std::string confPath = sharePath + "/system/retropangui.conf";
+void Settings::loadRetropanguiConf()
+{
+	std::string confPath = retropanguiConfPath();
 	std::ifstream f(confPath);
 	if (!f.is_open())
 	{
@@ -404,8 +411,91 @@ void Settings::loadRetropanguiConf()
 			setString(key, val);
 		}
 
+		// conf 에 존재한 키는 saveFile() 시 현재 값으로 역기록 (메뉴 변경 유지)
+		mRetropanguiKeys.insert(key);
+
 		LOG(LogDebug) << "retropangui.conf → " << key << " = " << val;
 	}
+}
+
+// retropangui.conf 에 존재하는 emulationstation.* 키를 현재 설정값으로 갱신.
+// 부팅 시 conf 가 es_settings.cfg 를 덮어쓰므로, 역기록이 없으면 메뉴에서
+// 바꾼 값이 재부팅마다 conf 값으로 되돌아감 (conf 가 마스터 설정).
+void Settings::saveRetropanguiConf()
+{
+	if (mRetropanguiKeys.empty())
+		return;
+
+	std::string confPath = retropanguiConfPath();
+	std::ifstream fin(confPath);
+	if (!fin.is_open())
+		return;
+
+	static const std::string PREFIX = "emulationstation.";
+	std::vector<std::string> lines;
+	std::string line;
+	bool changed = false;
+
+	while (std::getline(fin, line))
+	{
+		if (!line.empty() && line[0] != '#' && line.substr(0, PREFIX.size()) == PREFIX)
+		{
+			auto eq = line.find('=');
+			if (eq != std::string::npos)
+			{
+				std::string key = line.substr(PREFIX.size(), eq - PREFIX.size());
+				while (!key.empty() && (key.back() == ' ' || key.back() == '\t')) key.pop_back();
+
+				if (mRetropanguiKeys.count(key))
+				{
+					std::string val;
+					bool known = true;
+					if (mBoolMap.count(key))
+						val = mBoolMap[key] ? "true" : "false";
+					else if (mIntMap.count(key))
+					{
+						int v = mIntMap[key];
+						// ScreenSaverTime: Settings 는 ms 단위, conf 는 초 단위
+						if (key == "ScreenSaverTime")
+							v /= 1000;
+						val = std::to_string(v);
+					}
+					else if (mFloatMap.count(key))
+						val = std::to_string(mFloatMap[key]);
+					else if (mStringMap.count(key))
+						val = mStringMap[key];
+					else
+						known = false;
+
+					if (known)
+					{
+						std::string newLine = PREFIX + key + "=" + val;
+						if (newLine != line)
+						{
+							line = newLine;
+							changed = true;
+						}
+					}
+				}
+			}
+		}
+		lines.push_back(line);
+	}
+	fin.close();
+
+	if (!changed)
+		return;
+
+	std::ofstream fout(confPath);
+	if (!fout.is_open())
+	{
+		LOG(LogError) << "saveRetropanguiConf: cannot write " << confPath;
+		return;
+	}
+	for (auto& l : lines)
+		fout << l << "\n";
+
+	LOG(LogDebug) << "saveRetropanguiConf: updated " << confPath;
 }
 
 

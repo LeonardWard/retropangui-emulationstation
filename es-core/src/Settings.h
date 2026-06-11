@@ -3,6 +3,7 @@
 #define ES_CORE_SETTINGS_H
 
 #include <map>
+#include <set>
 #include <string>
 
 //This is a singleton for storing settings.
@@ -35,6 +36,7 @@ private:
 	Settings();
 
 	void setDefaults();		//Clear everything and load default values.
+	void saveRetropanguiConf();	// conf 에 존재하는 emulationstation.* 키를 현재 값으로 역기록 (saveFile 에서 호출)
 	void processBackwardCompatibility();
 	template<typename Map>
 	void renameSetting(Map& map, std::string&& oldName, std::string&& newName);
@@ -44,6 +46,9 @@ private:
 	std::map<std::string, float> mFloatMap;
 	std::map<std::string, std::string> mStringMap;
 	std::map<std::string, std::map<std::string, int>> mMapIntMap;
+
+	// retropangui.conf 에서 로드된 emulationstation.* 키 목록 (역기록 대상)
+	std::set<std::string> mRetropanguiKeys;
 };
 
 #endif // ES_CORE_SETTINGS_H
