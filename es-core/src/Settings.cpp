@@ -335,16 +335,14 @@ void Settings::loadFile()
 
 void Settings::loadRetropanguiConf()
 {
-	// /share 가 마운트되면 c5, 없으면 데스크탑(~/share)
-	// TODO(fix): C5 실기에서 /share 심볼릭 링크가 없어 HOME+"/share" 경로를 사용하는데,
-	//            이 함수는 Log::open() 이전(Settings 생성자)에 호출되므로
-	//            LOG 메시지가 "ERROR - tried to write to log file before it was open!" 으로 stderr에 출력됨.
-	//            해결 방법: (1) Log::open() 이후로 loadRetropanguiConf() 호출 시점을 옮기거나
-	//                      (2) /retropangui/share 직접 경로 또는 환경변수로 지정.
-	//            또한 stat("/share") 조건이 C5에서 실제 /share 마운트포인트 존재 여부를 올바르게 감지하는지 확인 필요.
+	// RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
+	// (C5에서는 S99emulationstation이 RETROPANGUI_SHARE=/retropangui/share 를 export)
 	struct stat st;
 	std::string sharePath;
-	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+	const char* env = getenv("RETROPANGUI_SHARE");
+	if (env && env[0] != '\0')
+		sharePath = env;
+	else if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
 		sharePath = "/share";
 	else
 	{
