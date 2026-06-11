@@ -935,17 +935,18 @@ void GuiMenu::openFeatureMenu(const std::string& menuId)
 			if (changed())
 				actualRestart = strongerRestart(actualRestart, level);
 
-		if (actualRestart == "none") {
-			s->executeSaveFuncs();
+		// 이 함수는 GuiSettings 소멸자에서 호출되므로 저장을 팝업 콜백으로
+		// 미루면 s가 이미 파괴된 뒤에 실행됨 (use-after-free) → 항상 즉시 저장
+		s->executeSaveFuncs();
+
+		if (actualRestart == "none")
 			return;
-		}
 
 		std::string msg = (actualRestart == "system")
 			? _("재부팅이 필요합니다.\n지금 재부팅하시겠습니까?")
 			: _("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?");
 		mWindow->pushGui(new GuiMsgBox(mWindow, msg,
-			_("OK"), [this, actualRestart, s] {
-				s->executeSaveFuncs();
+			_("OK"), [actualRestart] {
 				if (actualRestart == "system")
 					quitES(QuitMode::REBOOT);
 				else
