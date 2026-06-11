@@ -271,6 +271,7 @@ std::vector<std::string> getFallbackFontPaths()
 	}
 
 	const char* paths[] = {
+		"/usr/bin/resources/NanumBarunGothic.ttf",                   // Korean (RetroPangui C5 기본 탑재)
 		"/usr/share/fonts/truetype/nanum/NanumGothic.ttf",           // Korean
 		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",    // CJK unified
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",

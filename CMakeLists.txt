@@ -315,8 +315,10 @@ if(GETTEXT_FOUND)
             COMMENT "Compiling ${LANG} locale"
         )
 
+        # RETROPANGUI_LOCALE_PATH(런타임 탐색 경로)와 반드시 일치해야 함.
+        # /usr/share/locale 은 buildroot locale purge 대상이라 사용하지 않음.
         install(FILES ${MO_FILE}
-            DESTINATION share/locale/${LANG}/LC_MESSAGES
+            DESTINATION ${RETROPANGUI_LOCALE_PATH}/${LANG}/LC_MESSAGES
         )
 
         list(APPEND MO_FILES ${MO_FILE})
