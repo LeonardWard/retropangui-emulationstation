@@ -2,6 +2,16 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
+## [2026-06-13] - YAML 토글 conf 0/1 값 인식 (실기기 피드백)
+
+### Fixed
+- **YAML 메뉴 toggle이 conf의 `1`/`yes`/`on` 값을 켜짐으로 인식하지 못하던 문제**
+  - conf.default는 0/1 컨벤션(`system.ssh=1`)인데 토글은 `"true"`만 켜짐으로 판정
+  - 증상: SSH 토글이 꺼짐으로 표시되고, NETWORK SETTINGS를 건드리지 않고
+    들어갔다 나오기만 해도 "값 변경"으로 오판 → 재부팅 팝업 + conf에
+    `system.ssh=false` 역기록(다음 부팅에서 SSH 비활성화)
+  - restart 비교를 원본 문자열이 아닌 정규화된 불리언 기준으로 변경
+
 ## [2026-06-12] - 기본값 개선 / 비디오 페이드 테마 제어
 
 ### Changed

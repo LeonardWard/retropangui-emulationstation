@@ -864,15 +864,16 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 {
 	if (item.type == "toggle")
 	{
+		// conf.default는 0/1 컨벤션, ES는 true/false로 기록 — 양쪽 모두 인식
 		std::string orig = cfgReadKey(rpConfPath(), item.conf_key, "false");
-		bool state = (orig == "true");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
 		auto sw = std::make_shared<SwitchComponent>(mWindow, state);
 		s->addWithLabel(_(item.label.c_str()), sw);
 		s->addSaveFunc([item, sw] {
 			cfgWriteKey(rpConfPath(), item.conf_key, sw->getState() ? "true" : "false", false);
 		});
 		if (item.restart != "none")
-			checks.push_back({ [sw, orig]{ return (sw->getState() ? "true" : "false") != orig; },
+			checks.push_back({ [sw, state]{ return sw->getState() != state; },
 			                   item.restart });
 	}
 	else if (item.type == "list")
