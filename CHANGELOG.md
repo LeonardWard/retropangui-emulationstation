@@ -4,6 +4,8 @@ All notable changes to RetroPangui EmulationStation will be documented in this f
 
 ## [2026-06-13] - 배경 음악(BGM) / YAML 토글 conf 0/1 값 인식
 
+> BGM(일반 음악 + sf2 기반 MIDI, 게임 중 정지/재개)은 실기기 검증 완료 (2026-06-13)
+
 ### Added
 - **배경 음악(BGM) 재생 — `MusicManager` (libVLC 기반)**
   - `<share>/music`의 mp3/ogg/flac/wav/m4a를 셔플 재생, 트랙 종료 시 다음 곡
