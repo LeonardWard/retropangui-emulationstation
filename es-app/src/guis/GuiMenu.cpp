@@ -145,6 +145,8 @@ void GuiMenu::openSoundSettings()
 		s->addWithLabel(_("AUDIO CARD"), audio_card);
 		s->addSaveFunc([audio_card] {
 			Settings::getInstance()->setString("AudioCard", audio_card->getSelected());
+			// RA 출력 디바이스도 동일 값으로 (retropangui.conf: global.audio_device, 부팅 시 retroarch.cfg 반영)
+			cfgWriteKey(rpConfPath(), "global.audio_device", audio_card->getSelected(), false);
 			VolumeControl::getInstance()->deinit();
 			VolumeControl::getInstance()->init();
 		});

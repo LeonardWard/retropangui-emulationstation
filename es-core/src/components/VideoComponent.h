@@ -18,6 +18,7 @@ class VideoComponent : public GuiComponent
 	struct Configuration
 	{
 		unsigned						startDelay;
+		unsigned						fadeTime;		// 스냅샷↔비디오 페이드 시간(ms), 테마 fadeTime 속성으로 조정
 		bool							showSnapshotNoVideo;
 		bool							showSnapshotDelay;
 		std::string						defaultVideoPath;

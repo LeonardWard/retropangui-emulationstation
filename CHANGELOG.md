@@ -2,6 +2,37 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
+## [2026-06-12] - 기본값 개선 / 비디오 페이드 테마 제어
+
+### Changed
+- **TransitionStyle 기본값 fade → instant**
+  - fade는 시스템 전환 시 블랙 플래시 발생. conf
+    (`emulationstation.TransitionStyle`)로도 노출됨
+- **ButtonLayout 기본값 nintendo → xbox** (A=확인, B=취소)
+  - 최초 부팅 시 A/B가 반전(닌텐도 방식)되어 있던 문제. conf
+    (`emulationstation.ButtonLayout`)로도 노출됨
+
+### Added
+- **video 테마 요소에 `fadeTime` 속성(초, FLOAT) 추가**
+  - 스냅샷↔비디오 페이드 시간이 200ms로 하드코딩되어 테마에서 제어 불가했음
+  - `fadeTime=0`이면 컷 전환. 미지정 시 기존과 동일(0.2초)
+- **SOUND SETTINGS의 AUDIO CARD 저장 시 `global.audio_device` conf 기록**
+  - RA 출력 디바이스가 ES 메뉴와 연동됨 (부팅 시 retroarch.cfg 반영)
+  - `emulationstation.AudioDevice`는 기존 역기록 메커니즘으로 이미 conf에 기록되고 있음
+
+## [2026-06-11] - 한글 표시 / 번역 수정 (실기기 검증 완료)
+
+### Fixed
+- **ko_KR 로케일에서 한국어 번역·한글 글리프가 표시되지 않던 문제** (`eba8ef7`)
+  - .mo 설치 경로를 `RETROPANGUI_LOCALE_PATH`(`/opt/retropangui/share/locale`)와
+    일치하도록 변경 (이전에는 설치/탐색 경로 불일치로 번역 로드 실패)
+  - 폰트 폴백 목록 맨 앞에 C5 기본 탑재 한글 폰트
+    (`/usr/bin/resources/NanumBarunGothic.ttf`) 추가
+  - ES 내장 LANGUAGE 메뉴(en_US/ko_KR) 정리: Settings `Language` +
+    `LocaleES::init`로 즉시 반영, conf `emulationstation.Language`와 동기화
+  - 나머지 원인(BR2_GENERATE_LOCALE, locale purge 화이트리스트)은
+    retropangui-c5 레포에서 수정
+
 ## [2026-06-11] - retropangui.conf 연동 안정화 (실기기 검증 완료)
 
 ### Added

@@ -68,6 +68,7 @@ VideoComponent::VideoComponent(Window* window) :
 	mConfig.showSnapshotDelay 		= false;
 	mConfig.showSnapshotNoVideo		= false;
 	mConfig.startDelay				= 0;
+	mConfig.fadeTime				= FADE_TIME_MS;
 	if (mWindow->getGuiStackSize() > 1) {
 		topWindow(false);
 	}
@@ -207,6 +208,10 @@ void VideoComponent::applyTheme(const std::shared_ptr<ThemeData>& theme, const s
 
 	if (elem->has("showSnapshotDelay"))
 		mConfig.showSnapshotDelay = elem->get<bool>("showSnapshotDelay");
+
+	// 스냅샷↔비디오 페이드 시간(초). 0이면 컷 전환
+	if (elem->has("fadeTime"))
+		mConfig.fadeTime = (unsigned)(elem->get<float>("fadeTime") * 1000.0f);
 }
 
 std::vector<HelpPrompt> VideoComponent::getHelpPrompts()
@@ -269,15 +274,17 @@ void VideoComponent::update(int deltaTime)
 
 	// If the video start is delayed and there is less than the fade time then set the image fade
 	// accordingly
-	if (mStartDelayed)
+	// fadeTime=0이면 페이드 없이 즉시 전환
+	const float fadeTime = (mConfig.fadeTime > 0) ? (float)mConfig.fadeTime : 0.0f;
+	if (mStartDelayed && fadeTime > 0.0f)
 	{
 		Uint32 ticks = SDL_GetTicks();
 		if (mStartTime > ticks)
 		{
 			Uint32 diff = mStartTime - ticks;
-			if (diff < FADE_TIME_MS)
+			if (diff < mConfig.fadeTime)
 			{
-				mFadeIn = (float)diff / (float)FADE_TIME_MS;
+				mFadeIn = (float)diff / fadeTime;
 				return;
 			}
 		}
@@ -285,7 +292,7 @@ void VideoComponent::update(int deltaTime)
 	// If the fade in is less than 1 then increment it
 	if (mFadeIn < 1.0f)
 	{
-		mFadeIn += deltaTime / (float)FADE_TIME_MS;
+		mFadeIn = (fadeTime > 0.0f) ? (mFadeIn + deltaTime / fadeTime) : 1.0f;
 		if (mFadeIn > 1.0f)
 			mFadeIn = 1.0f;
 	}

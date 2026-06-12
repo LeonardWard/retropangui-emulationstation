@@ -698,6 +698,8 @@ Can be created as an extra.
 	- If true, image will be shown when selected game does not have a video and no `default` video is configured.
 * `showSnapshotDelay` - type: BOOLEAN
 	- If true, playing of video will be delayed for `delayed` seconds, when game is selected.
+* `fadeTime` - type: FLOAT.  Default is 0.2.
+	- Fade duration in seconds for the snapshot↔video transition. `0` means an instant cut. (RetroPangui extension)
 * `visible` - type: BOOLEAN.
     - If true, component will be rendered, otherwise rendering will be skipped.  Can be used to hide elements from a particular view.
 * `zIndex` - type: FLOAT.

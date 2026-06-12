@@ -154,7 +154,8 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 	 	{ "visible", BOOLEAN },
 	 	{ "zIndex", FLOAT },
 		{ "showSnapshotNoVideo", BOOLEAN },
-		{ "showSnapshotDelay", BOOLEAN } } },
+		{ "showSnapshotDelay", BOOLEAN },
+		{ "fadeTime", FLOAT } } },
 	{ "carousel", {
 		{ "type", STRING },
 		{ "size", RESOLUTION_PAIR },

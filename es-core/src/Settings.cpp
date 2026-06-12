@@ -99,7 +99,8 @@ void Settings::setDefaults()
 		mIntMap["MaxVRAM"] = 100;
 	#endif
 
-	mStringMap["TransitionStyle"] = "fade";
+	// RetroPangui: instant 기본 — fade는 시스템 전환 시 블랙 플래시 유발
+	mStringMap["TransitionStyle"] = "instant";
 	mStringMap["ThemeSet"] = "";
 	mStringMap["ScreenSaverBehavior"] = "dim";
 	mStringMap["Scraper"] = "TheGamesDB";
@@ -147,8 +148,8 @@ void Settings::setDefaults()
 	// RetroPangui: List display mode (ALL/SCRAPED/AUTO)
 	mStringMap["ShowFolders"] = "AUTO";
 
-	// RetroPangui: Button Layout (nintendo, sony, xbox)
-	mStringMap["ButtonLayout"] = "nintendo";
+	// RetroPangui: Button Layout (nintendo, sony, xbox) — xbox 기본 (A=확인, B=취소)
+	mStringMap["ButtonLayout"] = "xbox";
 
 	mBoolMap["ScreenSaverControls"] = true;
 	mStringMap["ScreenSaverGameInfo"] = "never";
