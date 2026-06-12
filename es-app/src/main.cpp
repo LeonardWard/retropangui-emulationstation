@@ -12,6 +12,7 @@
 #include "LocaleES.h"
 #include "Log.h"
 #include "MameNames.h"
+#include "MusicManager.h"
 #include "platform.h"
 #include "PowerSaver.h"
 #include "ScraperCmdLine.h"
@@ -433,6 +434,9 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	// RetroPangui: 배경 음악 시작 (BackgroundMusic=false거나 <share>/music 비어 있으면 no-op)
+	MusicManager::getInstance()->start();
+
 	int lastTime = SDL_GetTicks();
 	int ps_time = SDL_GetTicks();
 
@@ -484,6 +488,7 @@ int main(int argc, char* argv[])
 			deltaTime = 1000;
 
 		window.update(deltaTime);
+		MusicManager::getInstance()->update(); // 트랙 종료 감지 → 다음 곡
 		window.render();
 		Renderer::swapBuffers();
 

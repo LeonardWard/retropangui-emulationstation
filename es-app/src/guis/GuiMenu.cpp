@@ -15,6 +15,7 @@
 #include "EmulationStation.h"
 #include "InputConfig.h"
 #include "LocaleES.h"
+#include "MusicManager.h"
 #include "Scripting.h"
 #include "SystemData.h"
 #include "VolumeControl.h"
@@ -195,6 +196,18 @@ void GuiMenu::openSoundSettings()
 		video_audio->setState(Settings::getInstance()->getBool("VideoAudio"));
 		s->addWithLabel(_("ENABLE VIDEO AUDIO"), video_audio);
 		s->addSaveFunc([video_audio] { Settings::getInstance()->setBool("VideoAudio", video_audio->getState()); });
+
+		// 배경 음악 (<share>/music 셔플 재생) — 토글 즉시 시작/정지
+		auto bgm_enabled = std::make_shared<SwitchComponent>(mWindow);
+		bgm_enabled->setState(Settings::getInstance()->getBool("BackgroundMusic"));
+		s->addWithLabel(_("FRONTEND MUSIC"), bgm_enabled);
+		s->addSaveFunc([bgm_enabled] {
+			Settings::getInstance()->setBool("BackgroundMusic", bgm_enabled->getState());
+			if (bgm_enabled->getState())
+				MusicManager::getInstance()->start();
+			else
+				MusicManager::getInstance()->stop();
+		});
 
 		// RA audio latency (retropangui.conf: global.audio_latency)
 		auto audio_lat = std::make_shared<SliderComponent>(mWindow, 16.f, 256.f, 8.f, "ms");

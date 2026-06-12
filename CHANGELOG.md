@@ -2,7 +2,19 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
-## [2026-06-13] - YAML 토글 conf 0/1 값 인식 (실기기 피드백)
+## [2026-06-13] - 배경 음악(BGM) / YAML 토글 conf 0/1 값 인식
+
+### Added
+- **배경 음악(BGM) 재생 — `MusicManager` (libVLC 기반)**
+  - `<share>/music`의 mp3/ogg/flac/wav/m4a를 셔플 재생, 트랙 종료 시 다음 곡
+    (플레이리스트 소진 시 재셔플, 직전 곡 연속 중복 방지)
+  - 게임 실행 중 정지, 게임 종료 후 재개 (FileData::launchGame 훅)
+  - SOUND SETTINGS에 "FRONTEND MUSIC" 토글 추가 (저장 시 즉시 시작/정지,
+    번역은 기존 po의 "프론트엔드 음악" 재사용)
+  - Settings `BackgroundMusic` 기본값 true, conf
+    (`emulationstation.BackgroundMusic`)로도 노출
+  - 추가 의존성 없음 — 이미지에 이미 있는 VLC(+libavcodec 플러그인) 사용.
+    MusicManager 코드 생성은 tunaLlama 위임 후 검수
 
 ### Fixed
 - **YAML 메뉴 toggle이 conf의 `1`/`yes`/`on` 값을 켜짐으로 인식하지 못하던 문제**

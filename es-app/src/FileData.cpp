@@ -4,6 +4,7 @@
 #include "utils/StringUtil.h"
 #include "utils/TimeUtil.h"
 #include "AudioManager.h"
+#include "MusicManager.h"
 #include "CollectionSystemManager.h"
 #include "FileFilterIndex.h"
 #include "FileSorts.h"
@@ -500,6 +501,7 @@ void FileData::launchGame(Window* window)
 {
 	LOG(LogInfo) << "Attempting to launch game...";
 
+	MusicManager::getInstance()->stop(); // 게임 중에는 BGM 정지
 	AudioManager::getInstance()->deinit();
 	VolumeControl::getInstance()->deinit();
 	InputManager::getInstance()->deinit();
@@ -630,6 +632,7 @@ void FileData::launchGame(Window* window)
 	window->init();
 	InputManager::getInstance()->init();
 	VolumeControl::getInstance()->init();
+	MusicManager::getInstance()->start(); // 게임 종료 후 BGM 재개 (새 셔플)
 	window->normalizeNextUpdate();
 
 	//update number of times the game has been launched

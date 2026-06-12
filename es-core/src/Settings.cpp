@@ -73,6 +73,8 @@ void Settings::setDefaults()
 	mBoolMap["VSync"] = true;
 
 	mBoolMap["EnableSounds"] = true;
+	// 배경 음악(BGM): <share>/music 폴더의 음악 파일을 셔플 재생 (MusicManager)
+	mBoolMap["BackgroundMusic"] = true;
 	mBoolMap["ShowHelpPrompts"] = true;
 	mBoolMap["DoublePressRemovesFromFavs"] = false;
 	mBoolMap["ScrapeRatings"] = true;
