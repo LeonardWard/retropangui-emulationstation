@@ -79,12 +79,10 @@ private:
 
 	SystemViewCarousel mCarousel;
 	TextComponent mSystemInfo;
-	// RetroPangui: 게임 수 숫자/레이블 분리 — 테마가 text 요소
-	// gameCountNumber/gameCountLabel을 선언한 경우에만 표시
+	// RetroPangui: 게임 수 숫자만 표시 — 테마가 text 요소
+	// gameCountNumber를 선언한 경우에만 표시 (레이블은 테마에서 직접 그림)
 	TextComponent mGameCountNumber;
-	TextComponent mGameCountLabel;
 	bool mHasGameCountNumber;
-	bool mHasGameCountLabel;
 
 	// unit is list index
 	float mCamOffset;

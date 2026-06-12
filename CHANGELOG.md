@@ -21,10 +21,10 @@ All notable changes to RetroPangui EmulationStation will be documented in this f
 - **video 테마 요소에 `fadeTime` 속성(초, FLOAT) 추가**
   - 스냅샷↔비디오 페이드 시간이 200ms로 하드코딩되어 테마에서 제어 불가했음
   - `fadeTime=0`이면 컷 전환. 미지정 시 기존과 동일(0.2초)
-- **system view에 `gameCountNumber`/`gameCountLabel` 테마 요소 추가**
-  - 게임 수 숫자와 "GAMES AVAILABLE" 레이블을 분리해 테마에서 2행 레이아웃
-    (숫자 크게/레이블 작게) 구성 가능. 테마에 선언된 경우에만 표시되고
-    systemInfo와 동일한 페이드 애니메이션을 따름
+- **system view에 `gameCountNumber` 테마 요소 추가**
+  - 게임 수 숫자만 표시 (레이블은 테마가 일반 text 요소로 직접 그림) —
+    2행 레이아웃(숫자 크게/레이블 작게) 구성용. 테마에 선언된 경우에만
+    표시되고 systemInfo와 동일한 페이드 애니메이션을 따름
 - **text extra에 `scrollable` 속성(BOOLEAN) 추가**
   - 긴 글(longdescription 등)이 size 박스를 넘으면 다른 요소 위로 넘쳐
     그려지던 문제 — ScrollableContainer로 감싸 클리핑 + 자동 스크롤

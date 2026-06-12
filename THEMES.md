@@ -579,9 +579,7 @@ Reference
 * `text name="systemInfo"` - ALL
 	- Displays details of the system currently selected in the carousel.
 * `text name="gameCountNumber"` - ALL  (RetroPangui extension)
-	- Displays only the number of games of the selected system (e.g. `12`).  Hidden unless declared in the theme.  Use together with `gameCountLabel` to build a two-line layout (big number, small label) instead of the single-line `systemInfo` text.
-* `text name="gameCountLabel"` - ALL  (RetroPangui extension)
-	- Displays only the "GAMES AVAILABLE" label (translated; shows "CONFIGURATION" for non-game systems).  Hidden unless declared in the theme.
+	- Displays only the number of games of the selected system (e.g. `12`); empty for non-game systems.  Hidden unless declared in the theme.  Draw your own label with a regular text element to build a two-line layout (big number, small label) instead of the single-line `systemInfo` text.
 * You can use extra elements (elements with `extra="true"`) to add your own backgrounds, etc.  They will be displayed behind the carousel, and scroll relative to the carousel.
 
 
