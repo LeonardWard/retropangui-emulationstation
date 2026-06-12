@@ -33,11 +33,30 @@ static std::string getMusicDirectory()
 	return (home ? std::string(home) + "/share" : "/share") + "/music";
 }
 
+// MIDI 합성용 사운드폰트 탐색: <share>/music 의 .sf2 (사용자 교체용) 우선,
+// 없으면 이미지 번들 MT-32 (bundled-bgmusic 패키지). 둘 다 없으면 빈 문자열.
+static std::string findSoundfont(const std::string& musicDir)
+{
+	Utils::FileSystem::stringList files = Utils::FileSystem::getDirContent(musicDir);
+	for (Utils::FileSystem::stringList::const_iterator it = files.cbegin(); it != files.cend(); ++it)
+	{
+		if (Utils::String::toLower(Utils::FileSystem::getExtension(*it)) == ".sf2")
+			return *it;
+	}
+
+	static const char* BUNDLED_SF2 = "/usr/share/soundfonts/MT32.sf2";
+	if (Utils::FileSystem::exists(BUNDLED_SF2))
+		return BUNDLED_SF2;
+
+	return std::string();
+}
+
 MusicManager::MusicManager() :
 	mVLC(nullptr),
 	mPlayer(nullptr),
 	mCurrentIndex(0),
-	mPlaying(false)
+	mPlaying(false),
+	mSoundfontActive(false)
 {
 }
 
@@ -60,11 +79,36 @@ void MusicManager::start()
 	if (mPlaying)
 		return;
 
+	const std::string musicDir = getMusicDirectory();
+
+	// MIDI는 사운드폰트가 있어야만 재생 가능 (VLC fluidsynth 플러그인)
+	// 사운드폰트는 libvlc 인스턴스 생성 시점에 --soundfont 로 고정됨 —
+	// 이후 sf2를 추가한 경우 ES 재시작 필요
+	const std::string soundfont = findSoundfont(musicDir);
+
 	// libvlc 인스턴스 lazy 생성
 	if (mVLC == nullptr)
 	{
-		const char* args[] = { "--quiet", "--no-video" };
-		mVLC = libvlc_new(sizeof(args) / sizeof(args[0]), args);
+		// --soundfont 는 fluidsynth 플러그인이 없는 VLC에서는 unknown option이라
+		// libvlc_new 자체가 실패함 → 실패 시 사운드폰트 없이 재시도 (MIDI만 비활성)
+		if (!soundfont.empty())
+		{
+			std::string sfArg = "--soundfont=" + soundfont;
+			const char* sfArgs[] = { "--quiet", "--no-video", sfArg.c_str() };
+			mVLC = libvlc_new(sizeof(sfArgs) / sizeof(sfArgs[0]), sfArgs);
+			if (mVLC != nullptr)
+			{
+				mSoundfontActive = true;
+				LOG(LogInfo) << "MusicManager: 사운드폰트 - " << soundfont;
+			}
+			else
+				LOG(LogWarning) << "MusicManager: --soundfont 적용 실패 (VLC fluidsynth 플러그인 없음?) - MIDI 비활성";
+		}
+		if (mVLC == nullptr)
+		{
+			const char* args[] = { "--quiet", "--no-video" };
+			mVLC = libvlc_new(sizeof(args) / sizeof(args[0]), args);
+		}
 		if (mVLC == nullptr)
 		{
 			LOG(LogError) << "MusicManager: libvlc 인스턴스 생성 실패";
@@ -73,15 +117,17 @@ void MusicManager::start()
 	}
 
 	// 음악 폴더 스캔 (getDirContent 는 전체 경로를 반환)
-	const std::string musicDir = getMusicDirectory();
 	mPlaylist.clear();
 	mCurrentIndex = 0;
 
+	const bool midiOk = mSoundfontActive;
 	Utils::FileSystem::stringList files = Utils::FileSystem::getDirContent(musicDir);
 	for (Utils::FileSystem::stringList::const_iterator it = files.cbegin(); it != files.cend(); ++it)
 	{
 		std::string ext = Utils::String::toLower(Utils::FileSystem::getExtension(*it));
 		if (ext == ".mp3" || ext == ".ogg" || ext == ".flac" || ext == ".wav" || ext == ".m4a")
+			mPlaylist.push_back(*it);
+		else if ((ext == ".mid" || ext == ".midi") && midiOk)
 			mPlaylist.push_back(*it);
 	}
 

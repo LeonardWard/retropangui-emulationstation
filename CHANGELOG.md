@@ -15,6 +15,16 @@ All notable changes to RetroPangui EmulationStation will be documented in this f
     (`emulationstation.BackgroundMusic`)로도 노출
   - 추가 의존성 없음 — 이미지에 이미 있는 VLC(+libavcodec 플러그인) 사용.
     MusicManager 코드 생성은 tunaLlama 위임 후 검수
+- **MIDI(BGM) 재생 지원 — 사운드폰트 연동**
+  - MIDI는 합성이 필요해 VLC fluidsynth 플러그인 + 사운드폰트(sf2)가 전제
+    (c5 레포: `BR2_PACKAGE_FLUIDSYNTH` + bundled-bgmusic의 MT32.sf2)
+  - 사운드폰트 우선순위: `<share>/music/*.sf2`(사용자 교체용) →
+    `/usr/share/soundfonts/MT32.sf2`(번들). 있으면 `--soundfont`로 libvlc에
+    전달하고 `.mid`/`.midi`도 플레이리스트에 포함
+  - fluidsynth 플러그인이 없는 VLC에서는 `--soundfont`가 unknown option이라
+    libvlc_new 자체가 실패 → 사운드폰트 없이 재시도(MIDI만 비활성, 일반
+    음악은 정상)하는 폴백 포함
+  - 사운드폰트는 libvlc 인스턴스 생성 시 고정 — sf2를 나중에 넣으면 ES 재시작 필요
 
 ### Fixed
 - **YAML 메뉴 toggle이 conf의 `1`/`yes`/`on` 값을 켜짐으로 인식하지 못하던 문제**
