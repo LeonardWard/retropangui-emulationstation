@@ -1,6 +1,7 @@
 #include "views/SystemView.h"
 
 #include "animations/LambdaAnimation.h"
+#include "components/ScrollableContainer.h"
 #include "guis/GuiMsgBox.h"
 #include "views/UIModeController.h"
 #include "views/ViewController.h"
@@ -17,7 +18,11 @@ const int logoBuffersRight[] = { 1, 2, 5 };
 
 SystemView::SystemView(Window* window) : IList<SystemViewData, SystemData*>(window, LIST_SCROLL_STYLE_SLOW, LIST_ALWAYS_LOOP),
 										 mViewNeedsReload(true),
-										 mSystemInfo(window, "SYSTEM INFO", Font::get(FONT_SIZE_SMALL), 0x33333300, ALIGN_CENTER)
+										 mSystemInfo(window, "SYSTEM INFO", Font::get(FONT_SIZE_SMALL), 0x33333300, ALIGN_CENTER),
+										 mGameCountNumber(window, "", Font::get(FONT_SIZE_LARGE), 0x33333300, ALIGN_CENTER),
+										 mGameCountLabel(window, "", Font::get(FONT_SIZE_SMALL), 0x33333300, ALIGN_CENTER),
+										 mHasGameCountNumber(false),
+										 mHasGameCountLabel(false)
 {
 	mCamOffset = 0;
 	mExtrasCamOffset = 0;
@@ -212,6 +217,13 @@ bool SystemView::input(InputConfig* config, Input input)
 void SystemView::update(int deltaTime)
 {
 	listUpdate(deltaTime);
+	// RetroPangui: extras는 자식 컴포넌트가 아니라 update가 전달되지 않으므로
+	// 현재 시스템의 extras를 직접 갱신 (scrollable text 자동 스크롤 등)
+	if(mCursor >= 0 && mCursor < (int)mEntries.size())
+	{
+		for(auto extra : mEntries.at(mCursor).data.backgroundExtras)
+			extra->update(deltaTime);
+	}
 	GuiComponent::update(deltaTime);
 }
 
@@ -219,6 +231,16 @@ void SystemView::onCursorChanged(const CursorState& /*state*/)
 {
 	// update help style
 	updateHelpPrompts();
+
+	// RetroPangui: 도착한 시스템의 scrollable text extra는 처음부터 다시 스크롤
+	if(mCursor >= 0 && mCursor < (int)mEntries.size())
+	{
+		for(auto extra : mEntries.at(mCursor).data.backgroundExtras)
+		{
+			if(auto sc = dynamic_cast<ScrollableContainer*>(extra))
+				sc->reset();
+		}
+	}
 
 	float startPos = mCamOffset;
 
@@ -249,7 +271,10 @@ void SystemView::onCursorChanged(const CursorState& /*state*/)
 	Animation* infoFadeOut = new LambdaAnimation(
 		[infoStartOpacity, this] (float t)
 	{
-		mSystemInfo.setOpacity((unsigned char)(Math::lerp(infoStartOpacity, 0.f, t) * 255));
+		const unsigned char op = (unsigned char)(Math::lerp(infoStartOpacity, 0.f, t) * 255);
+		mSystemInfo.setOpacity(op);
+		mGameCountNumber.setOpacity(op);
+		mGameCountLabel.setOpacity(op);
 	}, (int)(infoStartOpacity * (goFast ? 10 : 150)));
 
 	unsigned int gameCount = getSelected()->getDisplayedGameCount();
@@ -269,12 +294,24 @@ void SystemView::onCursorChanged(const CursorState& /*state*/)
 		}
 
 		mSystemInfo.setText(ss.str());
+
+		// RetroPangui: 숫자/레이블 분리 요소 갱신 (테마에서 2행 레이아웃 구성용)
+		if (!getSelected()->isGameSystem()) {
+			mGameCountNumber.setText("");
+			mGameCountLabel.setText(_("CONFIGURATION"));
+		} else {
+			mGameCountNumber.setText(std::to_string(gameCount));
+			mGameCountLabel.setText(gameCount == 1 ? _("GAME AVAILABLE") : _("GAMES AVAILABLE"));
+		}
 	}, false, 1);
 
 	Animation* infoFadeIn = new LambdaAnimation(
 		[this](float t)
 	{
-		mSystemInfo.setOpacity((unsigned char)(Math::lerp(0.f, 1.f, t) * 255));
+		const unsigned char op = (unsigned char)(Math::lerp(0.f, 1.f, t) * 255);
+		mSystemInfo.setOpacity(op);
+		mGameCountNumber.setOpacity(op);
+		mGameCountLabel.setOpacity(op);
 	}, goFast ? 10 : 300);
 
 	// wait 600ms to fade in
@@ -430,6 +467,17 @@ void  SystemView::getViewElements(const std::shared_ptr<ThemeData>& theme)
 	if (sysInfoElem)
 		mSystemInfo.applyTheme(theme, "system", "systemInfo", ThemeFlags::ALL);
 
+	// RetroPangui: 게임 수 숫자/레이블 분리 요소 (테마에 선언된 경우에만 표시)
+	const ThemeData::ThemeElement* countNumElem = theme->getElement("system", "gameCountNumber", "text");
+	mHasGameCountNumber = (countNumElem != nullptr);
+	if (countNumElem)
+		mGameCountNumber.applyTheme(theme, "system", "gameCountNumber", ThemeFlags::ALL);
+
+	const ThemeData::ThemeElement* countLabelElem = theme->getElement("system", "gameCountLabel", "text");
+	mHasGameCountLabel = (countLabelElem != nullptr);
+	if (countLabelElem)
+		mGameCountLabel.applyTheme(theme, "system", "gameCountLabel", ThemeFlags::ALL);
+
 	mViewNeedsReload = false;
 }
 
@@ -546,6 +594,10 @@ void SystemView::renderInfoBar(const Transform4x4f& trans)
 {
 	Renderer::setMatrix(trans);
 	mSystemInfo.render(trans);
+	if (mHasGameCountNumber)
+		mGameCountNumber.render(trans);
+	if (mHasGameCountLabel)
+		mGameCountLabel.render(trans);
 }
 
 // Draw background extras

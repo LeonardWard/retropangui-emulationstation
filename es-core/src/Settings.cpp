@@ -105,7 +105,9 @@ void Settings::setDefaults()
 	mStringMap["ScreenSaverBehavior"] = "dim";
 	mStringMap["Scraper"] = "TheGamesDB";
 	mStringMap["GamelistViewStyle"] = "automatic";
-	mStringMap["SaveGamelistsMode"] = "never";
+	// RetroPangui: always 기본 — never면 playcount/lastplayed가 gamelist.xml에 기록되지 않고,
+	// on exit은 전원을 바로 끄는 기기에서 저장 시점이 보장되지 않음
+	mStringMap["SaveGamelistsMode"] = "always";
 
 	// RetroPangui: Paths for multi-core support
 	// Priority: 1. Environment variable, 2. Build-time default, 3. Empty string

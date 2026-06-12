@@ -1,6 +1,7 @@
 #include "ThemeData.h"
 
 #include "components/ImageComponent.h"
+#include "components/ScrollableContainer.h"
 #include "components/TextComponent.h"
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
@@ -68,6 +69,7 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 		{ "forceUppercase", BOOLEAN },
 		{ "lineSpacing", FLOAT },
 		{ "value", STRING },
+		{ "scrollable", BOOLEAN },
 		{ "visible", BOOLEAN },
 		{ "zIndex", FLOAT } } },
 	{ "textlist", {
@@ -603,6 +605,38 @@ const std::shared_ptr<ThemeData>& ThemeData::getDefault()
 	return theme;
 }
 
+namespace
+{
+	// RetroPangui: scrollable="true" text extra 전용 래퍼.
+	// 긴 글이 size 박스를 넘으면 클리핑 없이 다른 요소 위로 넘쳐 그려지는 문제를
+	// ScrollableContainer(자동 스크롤)로 해결한다. 내부 TextComponent를 소유한다.
+	class ScrollableTextExtra : public ScrollableContainer
+	{
+	public:
+		static const int SCROLL_DELAY_MS = 5 * 1000;
+
+		ScrollableTextExtra(Window* window)
+			: ScrollableContainer(window, SCROLL_DELAY_MS), mText(window)
+		{
+			setAutoScroll(true);
+			addChild(&mText);
+		}
+
+		void applyTheme(const std::shared_ptr<ThemeData>& theme, const std::string& view,
+						const std::string& element, unsigned int properties) override
+		{
+			using namespace ThemeFlags;
+			// 컨테이너가 위치/크기를 갖고, 텍스트는 컨테이너 폭에 맞춰 높이 자동
+			ScrollableContainer::applyTheme(theme, view, element, POSITION | ThemeFlags::SIZE | Z_INDEX | VISIBLE);
+			mText.setSize(getSize().x(), 0);
+			mText.applyTheme(theme, view, element, properties ^ (POSITION | ThemeFlags::SIZE | ORIGIN | ROTATION | Z_INDEX | VISIBLE));
+		}
+
+	private:
+		TextComponent mText;
+	};
+}
+
 std::vector<GuiComponent*> ThemeData::makeExtras(const std::shared_ptr<ThemeData>& theme, const std::string& view, Window* window)
 {
 	std::vector<GuiComponent*> comps;
@@ -621,7 +655,12 @@ std::vector<GuiComponent*> ThemeData::makeExtras(const std::shared_ptr<ThemeData
 			if(t == "image")
 				comp = new ImageComponent(window);
 			else if(t == "text")
-				comp = new TextComponent(window);
+			{
+				if(elem.has("scrollable") && elem.get<bool>("scrollable"))
+					comp = new ScrollableTextExtra(window);
+				else
+					comp = new TextComponent(window);
+			}
 
 			comp->setDefaultZIndex(10);
 			comp->applyTheme(theme, view, *it, ThemeFlags::ALL);

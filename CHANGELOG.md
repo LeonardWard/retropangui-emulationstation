@@ -11,11 +11,25 @@ All notable changes to RetroPangui EmulationStation will be documented in this f
 - **ButtonLayout 기본값 nintendo → xbox** (A=확인, B=취소)
   - 최초 부팅 시 A/B가 반전(닌텐도 방식)되어 있던 문제. conf
     (`emulationstation.ButtonLayout`)로도 노출됨
+- **SaveGamelistsMode 기본값 never → always**
+  - never라 playcount/lastplayed가 gamelist.xml에 한 번도 기록되지 않았음
+    ("gamelist.xml 자동 생성이 동작하지 않음" 증상의 원인)
+  - on exit은 전원을 바로 끄는 기기에서 저장 시점이 보장되지 않아 always 채택
+  - conf(`emulationstation.SaveGamelistsMode`)로도 노출됨
 
 ### Added
 - **video 테마 요소에 `fadeTime` 속성(초, FLOAT) 추가**
   - 스냅샷↔비디오 페이드 시간이 200ms로 하드코딩되어 테마에서 제어 불가했음
   - `fadeTime=0`이면 컷 전환. 미지정 시 기존과 동일(0.2초)
+- **system view에 `gameCountNumber`/`gameCountLabel` 테마 요소 추가**
+  - 게임 수 숫자와 "GAMES AVAILABLE" 레이블을 분리해 테마에서 2행 레이아웃
+    (숫자 크게/레이블 작게) 구성 가능. 테마에 선언된 경우에만 표시되고
+    systemInfo와 동일한 페이드 애니메이션을 따름
+- **text extra에 `scrollable` 속성(BOOLEAN) 추가**
+  - 긴 글(longdescription 등)이 size 박스를 넘으면 다른 요소 위로 넘쳐
+    그려지던 문제 — ScrollableContainer로 감싸 클리핑 + 자동 스크롤
+    (5초 후 시작, 시스템 도착 시 처음부터). system view extras에 update
+    전달도 추가
 - **SOUND SETTINGS의 AUDIO CARD 저장 시 `global.audio_device` conf 기록**
   - RA 출력 디바이스가 ES 메뉴와 연동됨 (부팅 시 retroarch.cfg 반영)
   - `emulationstation.AudioDevice`는 기존 역기록 메커니즘으로 이미 conf에 기록되고 있음

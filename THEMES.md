@@ -578,6 +578,10 @@ Reference
 	- A logo text, to be displayed system name in the system logo carousel when no logo is available.
 * `text name="systemInfo"` - ALL
 	- Displays details of the system currently selected in the carousel.
+* `text name="gameCountNumber"` - ALL  (RetroPangui extension)
+	- Displays only the number of games of the selected system (e.g. `12`).  Hidden unless declared in the theme.  Use together with `gameCountLabel` to build a two-line layout (big number, small label) instead of the single-line `systemInfo` text.
+* `text name="gameCountLabel"` - ALL  (RetroPangui extension)
+	- Displays only the "GAMES AVAILABLE" label (translated; shows "CONFIGURATION" for non-game systems).  Hidden unless declared in the theme.
 * You can use extra elements (elements with `extra="true"`) to add your own backgrounds, etc.  They will be displayed behind the carousel, and scroll relative to the carousel.
 
 
@@ -732,6 +736,8 @@ Can be created as an extra.
 	- Valid values are "left", "center", or "right".  Controls alignment on the X axis.  "center" will also align vertically.
 * `forceUppercase` - type: BOOLEAN.  Draw text in uppercase.
 * `lineSpacing` - type: FLOAT.  Controls the space between lines (as a multiple of font height).  Default is 1.5.
+* `scrollable` - type: BOOLEAN.  Default is false.  (RetroPangui extension)
+	- Only for extras (`extra="true"`).  If true, text longer than `size` is clipped to the box and auto-scrolls vertically (5s delay, restarts from the top when the cursor arrives at the system), instead of overflowing over other elements.
 * `visible` - type: BOOLEAN.
     - If true, component will be rendered, otherwise rendering will be skipped.  Can be used to hide elements from a particular view.
 * `zIndex` - type: FLOAT.
