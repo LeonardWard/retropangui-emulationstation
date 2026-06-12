@@ -390,3 +390,52 @@ msgstr "스크랩된 것 우선"
 # Emulator Core Selection
 msgid "SYSTEM DEFAULT"
 msgstr "시스템 기본값"
+
+# Menu restructure (2026-06-13): 카테고리 메뉴 + RetroAchievements 라벨 영문화
+msgid "CONTROLLER SETTINGS"
+msgstr "컨트롤러 설정"
+
+msgid "ADVANCED SETTINGS"
+msgstr "고급 설정"
+
+msgid "ENABLE"
+msgstr "활성화"
+
+msgid "USERNAME"
+msgstr "사용자 이름"
+
+msgid "PASSWORD"
+msgstr "비밀번호"
+
+msgid "HARDCORE MODE"
+msgstr "하드코어 모드"
+
+msgid "* DISABLES SAVE STATES, REWIND AND CHEATS"
+msgstr "* 활성화 시 세이브 스테이트, 되감기, 치트 사용 불가"
+
+msgid "LEADERBOARDS"
+msgstr "리더보드"
+
+msgid "DISABLED"
+msgstr "비활성"
+
+msgid "ENABLED"
+msgstr "활성"
+
+msgid "TRACKERS ONLY"
+msgstr "트래커만"
+
+msgid "VERBOSE MODE"
+msgstr "상세 알림"
+
+msgid "AUTO SCREENSHOT"
+msgstr "자동 스크린샷"
+
+msgid "RICH PRESENCE"
+msgstr "리치 프레즌스"
+
+msgid "SHOW BADGES"
+msgstr "배지 표시"
+
+msgid "ENCORE MODE"
+msgstr "앙코르 모드"

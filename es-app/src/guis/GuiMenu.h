@@ -23,16 +23,19 @@ public:
 private:
 	void addEntry(const char* name, unsigned int color, bool add_arrow, const std::function<void()>& func);
 	void addVersionInfo();
+	void openAdvancedSettings();
 	void openCollectionSystemSettings();
 	void openConfigInput();
+	void openControllerSettings();
 	void openEmulatorSettings();
+	void openGameSettings();
 	void openKodiMediaCenter();
-	void openOtherSettings();
 	void openQuitMenu();
 	void openRetroAchievements();
 	void openScraperSettings();
 	void openScreensaverOptions();
 	void openSoundSettings();
+	void openSystemSettings();
 	void openUISettings();
 	void openUpdatesAndDownloads();
 
@@ -42,6 +45,15 @@ private:
 	using RestartCheck = std::pair<std::function<bool()>, std::string>;
 	void addFeatureItem(GuiSettings* s, const FeatureItem& item,
 	                    std::vector<RestartCheck>& checks);
+	// parent가 일치하는 YAML 메뉴들의 항목을 s에 직접 삽입
+	void addFeatureItemsTo(GuiSettings* s, const std::string& parent,
+	                       std::vector<RestartCheck>& checks);
+	// 서브메뉴로 들어가는 행 (라벨 + 화살표)
+	void addSubmenuEntry(GuiSettings* s, const std::string& label,
+	                     const std::function<void()>& openFunc);
+	// 닫을 때 저장 + 변경 항목의 restart 레벨에 따라 재시작/재부팅 질문
+	void setSaveWithRestartChecks(GuiSettings* s,
+	                              std::shared_ptr<std::vector<RestartCheck>> checks);
 
 	MenuComponent mMenu;
 	TextComponent mVersion;

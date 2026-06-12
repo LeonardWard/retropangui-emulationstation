@@ -2,6 +2,25 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
+## [2026-06-13] - 메뉴 구조 재정비 (메인 16개 → 8개)
+
+### Changed
+- **메인 메뉴를 8개 카테고리 골격으로 재편** (실기기 검증 전)
+  - KODI / GAME / CONTROLLER / UI / SOUND / SYSTEM / SCRAPER / QUIT
+  - GAME SETTINGS(신규) = EMULATOR ▸ + 스무딩·정수 스케일(YAML) +
+    되감기·자동저장(YAML) + RETROACHIEVEMENTS ▸
+  - CONTROLLER SETTINGS(신규) = CONFIGURE INPUT ▸ + BUTTON LAYOUT(UI에서 이동) +
+    조이패드 드라이버·통합(YAML)
+  - SYSTEM SETTINGS(신규) = LANGUAGE(UI에서 이동) + 시간대·SSH(YAML) +
+    UPDATES & DOWNLOADS ▸(스텁 보존) + ADVANCED ▸
+  - UI SETTINGS = 기존 + 게임목록 4개(구 OTHER) + GAME COLLECTION ▸(메인에서 이동)
+  - OTHER SETTINGS → ADVANCED SETTINGS로 개명·축소 (VRAM/절전/FPS/인덱싱)
+- **YAML `parent` 의미 확장**: `main`(독립 서브메뉴) 외에
+  `game`/`controller`/`system`이면 해당 카테고리 메뉴 안에 항목으로 직접 삽입
+  (`addFeatureItemsTo`). restart 팝업 로직은 `setSaveWithRestartChecks`로 공용화
+- **RETROACHIEVEMENTS 라벨 영문화**: 한국어 직접 하드코딩 → 영어 msgid + po 번역
+  (다른 메뉴와 동일 패턴, en_US에서도 올바르게 표시)
+
 ## [2026-06-13] - 배경 음악(BGM) / YAML 토글 conf 0/1 값 인식
 
 > BGM(일반 음악 + sf2 기반 MIDI, 게임 중 정지/재개)은 실기기 검증 완료 (2026-06-13)

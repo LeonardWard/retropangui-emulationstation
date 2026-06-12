@@ -47,24 +47,23 @@ GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN M
 	mFeatureMenus = RetropanguiFeatures::load();
 
 	if (isFullUI) {
-		// RetroPangui: 메뉴 순서 재정렬 및 항목 추가
-		addEntry(_("KODI MEDIA CENTER"),      0x777777FF, true, [this] { openKodiMediaCenter(); });
-		addEntry(_("RETROACHIEVEMENTS"),      0x777777FF, true, [this] { openRetroAchievements(); });
-		addEntry(_("EMULATOR SETTINGS"),       0x777777FF, true, [this] { openEmulatorSettings(); });
-		addEntry(_("CONFIGURE INPUT"),        0x777777FF, true, [this] { openConfigInput(); });
-		addEntry(_("UI SETTINGS"),            0x777777FF, true, [this] { openUISettings(); });
-		addEntry(_("GAME COLLECTION SETTINGS"), 0x777777FF, true, [this] { openCollectionSystemSettings(); });
-		addEntry(_("SOUND SETTINGS"),         0x777777FF, true, [this] { openSoundSettings(); });
-		// YAML parent=main 메뉴 삽입
+		// RetroPangui: 메인 8개 골격 — 세부 항목은 각 카테고리 서브메뉴로 통합
+		// (RETROACHIEVEMENTS/EMULATOR→GAME, CONFIGURE INPUT→CONTROLLER,
+		//  COLLECTION→UI, UPDATES/OTHER→SYSTEM. YAML 메뉴는 parent로 흡수)
+		addEntry(_("KODI MEDIA CENTER"),    0x777777FF, true, [this] { openKodiMediaCenter(); });
+		addEntry(_("GAME SETTINGS"),        0x777777FF, true, [this] { openGameSettings(); });
+		addEntry(_("CONTROLLER SETTINGS"),  0x777777FF, true, [this] { openControllerSettings(); });
+		addEntry(_("UI SETTINGS"),          0x777777FF, true, [this] { openUISettings(); });
+		addEntry(_("SOUND SETTINGS"),       0x777777FF, true, [this] { openSoundSettings(); });
+		addEntry(_("SYSTEM SETTINGS"),      0x777777FF, true, [this] { openSystemSettings(); });
+		// YAML parent=main 메뉴 삽입 (현재 기본 yml에는 없음 — 확장용)
 		for (auto& fm : mFeatureMenus) {
 			if (fm.parent == "main") {
 				std::string id = fm.id;
 				addEntry(_(fm.label.c_str()), 0x777777FF, true, [this, id] { openFeatureMenu(id); });
 			}
 		}
-		addEntry(_("SCRAPER"),                0x777777FF, true, [this] { openScraperSettings(); });
-		addEntry(_("UPDATES & DOWNLOADS"),    0x777777FF, true, [this] { openUpdatesAndDownloads(); });
-		addEntry(_("OTHER SETTINGS"),         0x777777FF, true, [this] { openOtherSettings(); });
+		addEntry(_("SCRAPER"),              0x777777FF, true, [this] { openScraperSettings(); });
 	} else {
 		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
 	}
@@ -289,6 +288,9 @@ void GuiMenu::openUISettings()
 	screensaver_row.makeAcceptInputHandler(std::bind(&GuiMenu::openScreensaverOptions, this));
 	s->addRow(screensaver_row);
 
+	// 컬렉션 설정 (메인에서 이동)
+	addSubmenuEntry(s, _("GAME COLLECTION SETTINGS"), [this] { openCollectionSystemSettings(); });
+
 	// quick system select (left/right in game list view)
 	auto quick_sys_select = std::make_shared<SwitchComponent>(mWindow);
 	quick_sys_select->setState(Settings::getInstance()->getBool("QuickSystemSelect"));
@@ -330,36 +332,6 @@ void GuiMenu::openUISettings()
 		Settings::getInstance()->setString("TransitionStyle", transition_style->getSelected());
 	});
 
-	// RetroPangui: Language selection
-	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LANGUAGE"), false);
-	std::vector<std::string> languages;
-	languages.push_back("en_US");
-	languages.push_back("ko_KR");
-	for(auto it = languages.cbegin(); it != languages.cend(); it++)
-	{
-		std::string displayName = *it;
-		if (*it == "en_US") displayName = "English";
-		else if (*it == "ko_KR") displayName = "한국어 (Korean)";
-		language->add(displayName, *it, Settings::getInstance()->getString("Language") == *it);
-	}
-	s->addWithLabel(_("LANGUAGE"), language);
-	Window* window2 = mWindow;
-	s->addSaveFunc([language, window2] {
-		std::string oldLang = Settings::getInstance()->getString("Language");
-		std::string newLang = language->getSelected();
-		if(oldLang != newLang)
-		{
-			Settings::getInstance()->setString("Language", newLang);
-			LOG(LogInfo) << "Language changed from " << oldLang << " to " << newLang;
-			// Reinitialize locale
-			LocaleES::init(newLang);
-			// Show restart message
-			window2->pushGui(new GuiMsgBox(window2,
-				_("Language has been changed.\nPlease restart EmulationStation for full effect."),
-				_("OK"), nullptr));
-		}
-	});
-
 	// RetroPangui: Fallback font selection for CJK characters
 	auto fallback_font = std::make_shared< OptionListComponent<std::string> >(mWindow, _("FALLBACK FONT"), false);
 	std::vector<std::pair<std::string, std::string>> fontOptions;
@@ -376,24 +348,6 @@ void GuiMenu::openUISettings()
 	s->addWithLabel(_("FALLBACK FONT"), fallback_font);
 	s->addSaveFunc([fallback_font] {
 		Settings::getInstance()->setString("FallbackFont", fallback_font->getSelected());
-	});
-
-	// RetroPangui: Button Layout selection
-	auto button_layout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("BUTTON LAYOUT"), false);
-	std::vector<std::string> layouts;
-	layouts.push_back("nintendo");
-	layouts.push_back("sony");
-	layouts.push_back("xbox");
-
-	std::string currentLayout = Settings::getInstance()->getString("ButtonLayout");
-	for(auto it = layouts.cbegin(); it != layouts.cend(); it++)
-	{
-		button_layout->add(*it, *it, *it == currentLayout);
-	}
-	s->addWithLabel(_("BUTTON LAYOUT"), button_layout);
-	s->addSaveFunc([button_layout] {
-		Settings::getInstance()->setString("ButtonLayout", button_layout->getSelected());
-		InputConfig::initActionMapping();
 	});
 
 	// theme set
@@ -464,6 +418,34 @@ void GuiMenu::openUISettings()
 		if (needReload)
 			ViewController::get()->reloadAll();
 	});
+
+	// 게임목록 관련 항목 (OTHER SETTINGS에서 이동)
+	auto gamelistsSaveMode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("SAVE METADATA"), false);
+	std::vector<std::string> saveModes;
+	saveModes.push_back("on exit");
+	saveModes.push_back("always");
+	saveModes.push_back("never");
+	for(auto it = saveModes.cbegin(); it != saveModes.cend(); it++)
+		gamelistsSaveMode->add(*it, *it, Settings::getInstance()->getString("SaveGamelistsMode") == *it);
+	s->addWithLabel(_("SAVE METADATA"), gamelistsSaveMode);
+	s->addSaveFunc([gamelistsSaveMode] {
+		Settings::getInstance()->setString("SaveGamelistsMode", gamelistsSaveMode->getSelected());
+	});
+
+	auto parse_gamelists = std::make_shared<SwitchComponent>(mWindow);
+	parse_gamelists->setState(Settings::getInstance()->getBool("ParseGamelistOnly"));
+	s->addWithLabel(_("PARSE GAMESLISTS ONLY"), parse_gamelists);
+	s->addSaveFunc([parse_gamelists] { Settings::getInstance()->setBool("ParseGamelistOnly", parse_gamelists->getState()); });
+
+	auto local_art = std::make_shared<SwitchComponent>(mWindow);
+	local_art->setState(Settings::getInstance()->getBool("LocalArt"));
+	s->addWithLabel(_("SEARCH FOR LOCAL ART"), local_art);
+	s->addSaveFunc([local_art] { Settings::getInstance()->setBool("LocalArt", local_art->getState()); });
+
+	auto hidden_files = std::make_shared<SwitchComponent>(mWindow);
+	hidden_files->setState(Settings::getInstance()->getBool("ShowHiddenFiles"));
+	s->addWithLabel(_("SHOW HIDDEN FILES"), hidden_files);
+	s->addSaveFunc([hidden_files] { Settings::getInstance()->setBool("ShowHiddenFiles", hidden_files->getState()); });
 
 	// Optionally ignore leading articles when sorting game titles
 	auto ignore_articles = std::make_shared<SwitchComponent>(mWindow);
@@ -540,9 +522,10 @@ void GuiMenu::openUISettings()
 
 }
 
-void GuiMenu::openOtherSettings()
+// SYSTEM SETTINGS > ADVANCED — 구 OTHER SETTINGS에서 게임목록 항목(UI로 이동)을 뺀 잔여
+void GuiMenu::openAdvancedSettings()
 {
-	auto s = new GuiSettings(mWindow, _("OTHER SETTINGS"));
+	auto s = new GuiSettings(mWindow, _("ADVANCED SETTINGS"));
 
 	// maximum vram
 	auto max_vram = std::make_shared<SliderComponent>(mWindow, 0.f, 1000.f, 10.f, "Mb");
@@ -569,36 +552,6 @@ void GuiMenu::openOtherSettings()
 		Settings::getInstance()->setString("PowerSaverMode", power_saver->getSelected());
 		PowerSaver::init();
 	});
-
-	// gamelists
-	auto gamelistsSaveMode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("SAVE METADATA"), false);
-	std::vector<std::string> saveModes;
-	saveModes.push_back("on exit");
-	saveModes.push_back("always");
-	saveModes.push_back("never");
-
-	for(auto it = saveModes.cbegin(); it != saveModes.cend(); it++)
-		gamelistsSaveMode->add(*it, *it, Settings::getInstance()->getString("SaveGamelistsMode") == *it);
-	s->addWithLabel(_("SAVE METADATA"), gamelistsSaveMode);
-	s->addSaveFunc([gamelistsSaveMode] {
-		Settings::getInstance()->setString("SaveGamelistsMode", gamelistsSaveMode->getSelected());
-	});
-
-	auto parse_gamelists = std::make_shared<SwitchComponent>(mWindow);
-	parse_gamelists->setState(Settings::getInstance()->getBool("ParseGamelistOnly"));
-	s->addWithLabel(_("PARSE GAMESLISTS ONLY"), parse_gamelists);
-	s->addSaveFunc([parse_gamelists] { Settings::getInstance()->setBool("ParseGamelistOnly", parse_gamelists->getState()); });
-
-	auto local_art = std::make_shared<SwitchComponent>(mWindow);
-	local_art->setState(Settings::getInstance()->getBool("LocalArt"));
-	s->addWithLabel(_("SEARCH FOR LOCAL ART"), local_art);
-	s->addSaveFunc([local_art] { Settings::getInstance()->setBool("LocalArt", local_art->getState()); });
-
-	// hidden files
-	auto hidden_files = std::make_shared<SwitchComponent>(mWindow);
-	hidden_files->setState(Settings::getInstance()->getBool("ShowHiddenFiles"));
-	s->addWithLabel(_("SHOW HIDDEN FILES"), hidden_files);
-	s->addSaveFunc([hidden_files] { Settings::getInstance()->setBool("ShowHiddenFiles", hidden_files->getState()); });
 
 #ifdef _OMX_
 	// Video Player - VideoOmxPlayer
@@ -932,18 +885,29 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 	}
 }
 
-void GuiMenu::openFeatureMenu(const std::string& menuId)
+void GuiMenu::addFeatureItemsTo(GuiSettings* s, const std::string& parent,
+                                std::vector<RestartCheck>& checks)
 {
-	auto it = std::find_if(mFeatureMenus.begin(), mFeatureMenus.end(),
-		[&menuId](const FeatureMenu& m){ return m.id == menuId; });
-	if (it == mFeatureMenus.end()) return;
+	for (auto& fm : mFeatureMenus)
+		if (fm.parent == parent)
+			for (auto& item : fm.items)
+				addFeatureItem(s, item, checks);
+}
 
-	auto s = new GuiSettings(mWindow, _(it->label.c_str()));
-	auto checks = std::make_shared<std::vector<RestartCheck>>();
+void GuiMenu::addSubmenuEntry(GuiSettings* s, const std::string& label,
+                              const std::function<void()>& openFunc)
+{
+	ComponentListRow row;
+	row.addElement(std::make_shared<TextComponent>(mWindow, label,
+		Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+	row.addElement(makeArrow(mWindow), false);
+	row.makeAcceptInputHandler(openFunc);
+	s->addRow(row);
+}
 
-	for (auto& item : it->items)
-		addFeatureItem(s, item, *checks);
-
+void GuiMenu::setSaveWithRestartChecks(GuiSettings* s,
+                                       std::shared_ptr<std::vector<RestartCheck>> checks)
+{
 	s->setOnSave([this, checks, s] {
 		// 실제로 값이 변경된 항목 중 가장 강한 restart 레벨 계산
 		std::string actualRestart = "none";
@@ -971,7 +935,113 @@ void GuiMenu::openFeatureMenu(const std::string& menuId)
 			_("CANCEL"), nullptr
 		));
 	});
+}
 
+void GuiMenu::openFeatureMenu(const std::string& menuId)
+{
+	auto it = std::find_if(mFeatureMenus.begin(), mFeatureMenus.end(),
+		[&menuId](const FeatureMenu& m){ return m.id == menuId; });
+	if (it == mFeatureMenus.end()) return;
+
+	auto s = new GuiSettings(mWindow, _(it->label.c_str()));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+
+	for (auto& item : it->items)
+		addFeatureItem(s, item, *checks);
+
+	setSaveWithRestartChecks(s, checks);
+
+	mWindow->pushGui(s);
+}
+
+// GAME SETTINGS — 에뮬레이터(코어) 선택 + YAML(비디오/게임 옵션) + RetroAchievements
+void GuiMenu::openGameSettings()
+{
+	auto s = new GuiSettings(mWindow, _("GAME SETTINGS"));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+
+	addSubmenuEntry(s, _("EMULATOR SETTINGS"), [this] { openEmulatorSettings(); });
+
+	// YAML: 스무딩/정수 스케일(구 VIDEO SETTINGS) + 되감기/자동저장(구 GAME SETTINGS)
+	addFeatureItemsTo(s, "game", *checks);
+
+	addSubmenuEntry(s, _("RETROACHIEVEMENTS"), [this] { openRetroAchievements(); });
+
+	setSaveWithRestartChecks(s, checks);
+	mWindow->pushGui(s);
+}
+
+// CONTROLLER SETTINGS — 입력 설정 + 버튼 방식 + YAML(드라이버/통합 컨트롤)
+void GuiMenu::openControllerSettings()
+{
+	auto s = new GuiSettings(mWindow, _("CONTROLLER SETTINGS"));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+
+	addSubmenuEntry(s, _("CONFIGURE INPUT"), [this] { openConfigInput(); });
+
+	// 버튼 방식 (UI SETTINGS에서 이동)
+	auto button_layout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("BUTTON LAYOUT"), false);
+	std::vector<std::string> layouts;
+	layouts.push_back("nintendo");
+	layouts.push_back("sony");
+	layouts.push_back("xbox");
+	std::string currentLayout = Settings::getInstance()->getString("ButtonLayout");
+	for(auto it = layouts.cbegin(); it != layouts.cend(); it++)
+		button_layout->add(*it, *it, *it == currentLayout);
+	s->addWithLabel(_("BUTTON LAYOUT"), button_layout);
+	s->addSaveFunc([button_layout] {
+		Settings::getInstance()->setString("ButtonLayout", button_layout->getSelected());
+		InputConfig::initActionMapping();
+	});
+
+	// YAML: 조이패드 드라이버 / 통합 컨트롤 설정 (구 ADVANCED SETTINGS)
+	addFeatureItemsTo(s, "controller", *checks);
+
+	setSaveWithRestartChecks(s, checks);
+	mWindow->pushGui(s);
+}
+
+// SYSTEM SETTINGS — 언어 + YAML(시간대/SSH) + 업데이트(준비 중) + 고급
+void GuiMenu::openSystemSettings()
+{
+	auto s = new GuiSettings(mWindow, _("SYSTEM SETTINGS"));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+
+	// 언어 (UI SETTINGS에서 이동) — 변경 시 자체 재시작 안내 팝업
+	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LANGUAGE"), false);
+	std::vector<std::string> languages;
+	languages.push_back("en_US");
+	languages.push_back("ko_KR");
+	for(auto it = languages.cbegin(); it != languages.cend(); it++)
+	{
+		std::string displayName = *it;
+		if (*it == "en_US") displayName = "English";
+		else if (*it == "ko_KR") displayName = "한국어 (Korean)";
+		language->add(displayName, *it, Settings::getInstance()->getString("Language") == *it);
+	}
+	s->addWithLabel(_("LANGUAGE"), language);
+	Window* window = mWindow;
+	s->addSaveFunc([language, window] {
+		std::string oldLang = Settings::getInstance()->getString("Language");
+		std::string newLang = language->getSelected();
+		if(oldLang != newLang)
+		{
+			Settings::getInstance()->setString("Language", newLang);
+			LOG(LogInfo) << "Language changed from " << oldLang << " to " << newLang;
+			LocaleES::init(newLang);
+			window->pushGui(new GuiMsgBox(window,
+				_("Language has been changed.\nPlease restart EmulationStation for full effect."),
+				_("OK"), nullptr));
+		}
+	});
+
+	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH(구 NETWORK SETTINGS)
+	addFeatureItemsTo(s, "system", *checks);
+
+	addSubmenuEntry(s, _("UPDATES & DOWNLOADS"), [this] { openUpdatesAndDownloads(); });
+	addSubmenuEntry(s, _("ADVANCED SETTINGS"), [this] { openAdvancedSettings(); });
+
+	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
 }
 
@@ -982,7 +1052,7 @@ void GuiMenu::openRetroAchievements()
 	// --- 활성화 ---
 	auto cheevos_enable = std::make_shared<SwitchComponent>(mWindow);
 	cheevos_enable->setState(raCfgGet("cheevos_enable", "false") == "true");
-	s->addWithLabel(_("활성화"), cheevos_enable);
+	s->addWithLabel(_("ENABLE"), cheevos_enable);
 
 	// --- 사용자 이름 ---
 	// 고정 너비 필요: TextComponent는 초기 크기로 레이아웃이 결정되므로
@@ -993,10 +1063,10 @@ void GuiMenu::openRetroAchievements()
 	username_text->setSize(valW, Font::get(FONT_SIZE_MEDIUM)->getHeight());
 	ComponentListRow username_row;
 	username_row.addElement(std::make_shared<TextComponent>(mWindow,
-		_("사용자 이름"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		_("USERNAME"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 	username_row.addElement(username_text, false);
 	username_row.makeAcceptInputHandler([this, username_text] {
-		mWindow->pushGui(new GuiArcadeVirtualKeyboard(mWindow, _("사용자 이름"),
+		mWindow->pushGui(new GuiArcadeVirtualKeyboard(mWindow, _("USERNAME"),
 			username_text->getValue(),
 			[username_text](const std::string& val) { username_text->setValue(val); }));
 	});
@@ -1010,10 +1080,10 @@ void GuiMenu::openRetroAchievements()
 	auto password_val = std::make_shared<std::string>(raCfgGet("cheevos_password"));
 	ComponentListRow password_row;
 	password_row.addElement(std::make_shared<TextComponent>(mWindow,
-		_("비밀번호"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		_("PASSWORD"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 	password_row.addElement(password_text, false);
 	password_row.makeAcceptInputHandler([this, password_text, password_val] {
-		mWindow->pushGui(new GuiArcadeVirtualKeyboard(mWindow, _("비밀번호"),
+		mWindow->pushGui(new GuiArcadeVirtualKeyboard(mWindow, _("PASSWORD"),
 			*password_val,
 			[password_text, password_val](const std::string& val) {
 				*password_val = val;
@@ -1025,48 +1095,48 @@ void GuiMenu::openRetroAchievements()
 	// --- 하드코어 모드 ---
 	auto hardcore = std::make_shared<SwitchComponent>(mWindow);
 	hardcore->setState(raCfgGet("cheevos_hardcore_mode_enable", "false") == "true");
-	s->addWithLabel(_("하드코어 모드"), hardcore);
+	s->addWithLabel(_("HARDCORE MODE"), hardcore);
 
 	// 하드코어 모드 안내 텍스트
 	ComponentListRow hardcore_note_row;
 	auto hardcore_note = std::make_shared<TextComponent>(mWindow,
-		_("* 활성화 시 세이브 스테이트, 되감기, 치트 사용 불가"),
+		_("* DISABLES SAVE STATES, REWIND AND CHEATS"),
 		Font::get(FONT_SIZE_SMALL), 0x999999FF);
 	hardcore_note_row.addElement(hardcore_note, true);
 	s->addRow(hardcore_note_row);
 
 	// --- 리더보드 ---
-	auto leaderboards = std::make_shared<OptionListComponent<std::string>>(mWindow, _("리더보드"), false);
+	auto leaderboards = std::make_shared<OptionListComponent<std::string>>(mWindow, _("LEADERBOARDS"), false);
 	std::string lb_val = raCfgGet("cheevos_leaderboards_enable", "false");
-	leaderboards->add(_("비활성"), "false",  lb_val == "false");
-	leaderboards->add(_("활성"),   "true",   lb_val == "true");
-	leaderboards->add(_("트래커만"), "trackers only", lb_val == "trackers only");
-	s->addWithLabel(_("리더보드"), leaderboards);
+	leaderboards->add(_("DISABLED"), "false",  lb_val == "false");
+	leaderboards->add(_("ENABLED"),   "true",   lb_val == "true");
+	leaderboards->add(_("TRACKERS ONLY"), "trackers only", lb_val == "trackers only");
+	s->addWithLabel(_("LEADERBOARDS"), leaderboards);
 
 	// --- 상세 알림 ---
 	auto verbose = std::make_shared<SwitchComponent>(mWindow);
 	verbose->setState(raCfgGet("cheevos_verbose_enable", "false") == "true");
-	s->addWithLabel(_("상세 알림"), verbose);
+	s->addWithLabel(_("VERBOSE MODE"), verbose);
 
 	// --- 자동 스크린샷 ---
 	auto screenshot = std::make_shared<SwitchComponent>(mWindow);
 	screenshot->setState(raCfgGet("cheevos_auto_screenshot", "false") == "true");
-	s->addWithLabel(_("자동 스크린샷"), screenshot);
+	s->addWithLabel(_("AUTO SCREENSHOT"), screenshot);
 
 	// --- 리치 프레즌스 ---
 	auto richpresence = std::make_shared<SwitchComponent>(mWindow);
 	richpresence->setState(raCfgGet("cheevos_rich_presence_enable", "true") == "true");
-	s->addWithLabel(_("리치 프레즌스"), richpresence);
+	s->addWithLabel(_("RICH PRESENCE"), richpresence);
 
 	// --- 배지 표시 ---
 	auto badges = std::make_shared<SwitchComponent>(mWindow);
 	badges->setState(raCfgGet("cheevos_badges_enable", "false") == "true");
-	s->addWithLabel(_("배지 표시"), badges);
+	s->addWithLabel(_("SHOW BADGES"), badges);
 
 	// --- 앙코르 모드 ---
 	auto encore = std::make_shared<SwitchComponent>(mWindow);
 	encore->setState(raCfgGet("cheevos_encore_mode_enable", "false") == "true");
-	s->addWithLabel(_("앙코르 모드"), encore);
+	s->addWithLabel(_("ENCORE MODE"), encore);
 
 	// --- 저장 ---
 	s->addSaveFunc([cheevos_enable, username_text, password_val,
