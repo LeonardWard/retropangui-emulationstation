@@ -5,7 +5,8 @@ All notable changes to RetroPangui EmulationStation will be documented in this f
 ## [2026-06-13] - 메뉴 구조 재정비 (메인 16개 → 8개)
 
 ### Changed
-- **메인 메뉴를 8개 카테고리 골격으로 재편** (실기기 검증 전)
+- **메인 메뉴를 8개 카테고리 골격으로 재편** (실기기 검증 완료 2026-06-13 —
+  메뉴 배치 / YAML 저장·재시작 팝업 / 언어·버튼 방식 이동 동작 확인)
   - KODI / GAME / CONTROLLER / UI / SOUND / SYSTEM / SCRAPER / QUIT
   - GAME SETTINGS(신규) = EMULATOR ▸ + 스무딩·정수 스케일(YAML) +
     되감기·자동저장(YAML) + RETROACHIEVEMENTS ▸
