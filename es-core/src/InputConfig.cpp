@@ -120,8 +120,12 @@ bool InputConfig::isMappedLike(const std::string& name, Input input)
 	}else if(name == "down"){
 		return isMappedTo("down", input) || isMappedTo("leftanalogdown", input) || isMappedTo("rightanalogdown", input);
 	}else if(name == "leftshoulder"){
+		if (mDeviceId == DEVICE_KEYBOARD && input.type == TYPE_KEY && input.id == SDLK_PAGEUP)
+			return true;
 		return isMappedTo("leftshoulder", input) || isMappedTo("pageup", input);
 	}else if(name == "rightshoulder"){
+		if (mDeviceId == DEVICE_KEYBOARD && input.type == TYPE_KEY && input.id == SDLK_PAGEDOWN)
+			return true;
 		return isMappedTo("rightshoulder", input) || isMappedTo("pagedown", input);
 	}
 	return isMappedTo(name, input);
