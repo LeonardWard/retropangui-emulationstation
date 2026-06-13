@@ -172,6 +172,14 @@ bool InputConfig::isMappedToAction(const std::string& action, Input input)
 		initActionMapping();
 	}
 
+	// 키보드는 레이아웃(닌텐도/xbox)에 관계없이 Enter=accept, ESC=back으로 고정.
+	// es_input.cfg 의 keyboard a/b 할당이 어느 쪽으로 되어 있어도 직관적 동작 보장.
+	if (mDeviceId == DEVICE_KEYBOARD && input.type == TYPE_KEY)
+	{
+		if (action == "accept") return input.id == SDLK_RETURN;
+		if (action == "back")   return input.id == SDLK_ESCAPE;
+	}
+
 	// Convert logical action to physical button
 	auto it = sActionMapping.find(action);
 	if (it != sActionMapping.end())
