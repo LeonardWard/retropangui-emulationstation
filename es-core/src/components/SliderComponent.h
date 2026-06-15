@@ -4,6 +4,7 @@
 
 #include "components/ImageComponent.h"
 #include "GuiComponent.h"
+#include <functional>
 
 class Font;
 class TextCache;
@@ -18,6 +19,8 @@ public:
 	void setValue(float val);
 	float getValue();
 
+	void setChangedCallback(const std::function<void(float)>& callback) { mChangedCallback = callback; }
+
 	bool input(InputConfig* config, Input input) override;
 	void update(int deltaTime) override;
 	void render(const Transform4x4f& parentTrans) override;
@@ -28,6 +31,8 @@ public:
 
 private:
 	void onValueChanged();
+
+	std::function<void(float)> mChangedCallback;
 
 	float mMin, mMax;
 	float mValue;
