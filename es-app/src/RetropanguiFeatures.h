@@ -15,7 +15,8 @@ struct FeatureItem {
 	std::string label;
 	std::string type;       // "toggle" | "list" | "slider" | "input"
 	std::string conf_key;   // retropangui.conf 키 (예: "global.video_smooth", "system.ssh")
-	std::string restart = "none";  // "none" | "es" | "system"
+	std::string restart     = "none";  // "none" | "es" | "system"
+	std::string default_val = "";      // conf 키 없을 때 기본값
 	std::vector<FeatureOption> options;
 	float min  = 0.0f;
 	float max  = 100.0f;

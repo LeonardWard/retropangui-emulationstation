@@ -132,11 +132,12 @@ std::vector<FeatureMenu> RetropanguiFeatures::load()
 		}
 
 		if (indent == 8) {
-			if      (key == "label"   ) curItem.label    = val;
-			else if (key == "type"    ) curItem.type     = val;
-			else if (key == "conf_key") curItem.conf_key = val;
-			else if (key == "restart" ) curItem.restart  = val;
-			else if (key == "unit"    ) curItem.unit     = val;
+			if      (key == "label"   ) curItem.label       = val;
+			else if (key == "type"    ) curItem.type        = val;
+			else if (key == "conf_key") curItem.conf_key    = val;
+			else if (key == "restart" ) curItem.restart     = val;
+			else if (key == "default" ) curItem.default_val = val;
+			else if (key == "unit"    ) curItem.unit        = val;
 			else if (key == "min"  ) { try { curItem.min  = std::stof(val); } catch (...) {} }
 			else if (key == "max"  ) { try { curItem.max  = std::stof(val); } catch (...) {} }
 			else if (key == "step" ) { try { curItem.step = std::stof(val); } catch (...) {} }
