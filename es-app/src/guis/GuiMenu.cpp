@@ -740,7 +740,7 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		std::string fallback = item.default_val.empty() ? "false" : item.default_val;
 		std::string orig = cfgReadKey(rpConfPath(), item.conf_key, fallback);
 		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
-		LOG(LogDebug) << "[DBG-toggle] key=" << item.conf_key << " raw='" << orig << "' state=" << state;
+		LOG(LogDebug) << "[DBG-toggle] path=" << rpConfPath() << " key=" << item.conf_key << " raw='" << orig << "' state=" << state;
 		auto sw = std::make_shared<SwitchComponent>(mWindow, state);
 		s->addWithLabel(_(item.label.c_str()), sw);
 		s->addSaveFunc([item, sw] {
