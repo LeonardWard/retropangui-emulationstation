@@ -50,6 +50,10 @@ static std::string trimVal(std::string s)
 {
 	while (!s.empty() && (s.front() == ' ' || s.front() == '\t')) s.erase(s.begin());
 	while (!s.empty() &&  s.front() == '"') s.erase(s.begin());
+	// 인라인 주석 제거: 따옴표 없는 값에서 ' #...' 부분 제거
+	size_t hash = s.find(" #");
+	if (hash != std::string::npos && (s.empty() || s.front() != '"'))
+		s = s.substr(0, hash);
 	while (!s.empty() && (s.back()  == ' ' || s.back()  == '\t')) s.pop_back();
 	while (!s.empty() &&  s.back()  == '"') s.pop_back();
 	return s;

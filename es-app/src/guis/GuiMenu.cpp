@@ -3,6 +3,7 @@
 #include "components/OptionListComponent.h"
 #include "components/SliderComponent.h"
 #include "components/SwitchComponent.h"
+#include "components/TextEditComponent.h"
 #include "guis/GuiCollectionSystemsOptions.h"
 #include "guis/GuiDetectDevice.h"
 #include "guis/GuiGeneralScreensaverOptions.h"
@@ -519,6 +520,11 @@ void GuiMenu::openUISettings()
 	s->addWithLabel(_("DISABLE START MENU IN KID MODE"), disable_start);
 	s->addSaveFunc([disable_start] { Settings::getInstance()->setBool("DisableKidStartMenu", disable_start->getState()); });
 
+	// YAML: UI 관련 항목 (LANGUAGE 등)
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+	addFeatureItemsTo(s, "ui", *checks);
+	setSaveWithRestartChecks(s, checks);
+
 	mWindow->pushGui(s);
 
 }
@@ -869,6 +875,37 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 			checks.push_back({ [list, effectiveOrig]{ return list->getSelected() != effectiveOrig; },
 			                   item.restart });
 	}
+	else if (item.type == "input")
+	{
+		std::string orig = cfgReadKey(rpConfPath(), item.conf_key);
+		auto ed = std::make_shared<TextEditComponent>(mWindow);
+		ed->setValue(orig);
+
+		ComponentListRow row;
+		auto lbl = std::make_shared<TextComponent>(mWindow, _(item.label.c_str()),
+			Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
+		row.addElement(lbl, true);
+		row.addElement(ed, true);
+		auto bracket = std::make_shared<ImageComponent>(mWindow);
+		bracket->setImage(":/arrow.svg");
+		bracket->setResize(Vector2f(0, lbl->getFont()->getLetterHeight()));
+		row.addElement(bracket, false);
+
+		Window* window = mWindow;
+		std::string label = item.label;
+		row.makeAcceptInputHandler([window, label, ed] {
+			window->pushGui(new GuiTextEditPopup(window, label, ed->getValue(),
+				[ed](const std::string& v){ ed->setValue(v); }, false));
+		});
+		s->addRow(row);
+
+		s->addSaveFunc([item, ed] {
+			cfgWriteKey(rpConfPath(), item.conf_key, ed->getValue(), false);
+		});
+		if (item.restart != "none")
+			checks.push_back({ [ed, orig]{ return ed->getValue() != orig; },
+			                   item.restart });
+	}
 	else if (item.type == "slider")
 	{
 		std::string raw = cfgReadKey(rpConfPath(), item.conf_key);
@@ -919,6 +956,9 @@ void GuiMenu::setSaveWithRestartChecks(GuiSettings* s,
 		// 이 함수는 GuiSettings 소멸자에서 호출되므로 저장을 팝업 콜백으로
 		// 미루면 s가 이미 파괴된 뒤에 실행됨 (use-after-free) → 항상 즉시 저장
 		s->executeSaveFuncs();
+
+		// retropangui.conf → OS/ES/RA 즉시 반영 (timezone, hostname 등 runtime 적용)
+		system("/opt/retropangui/share/apply_retropangui_conf.sh &");
 
 		if (actualRestart == "none")
 			return;
@@ -1007,34 +1047,6 @@ void GuiMenu::openSystemSettings()
 {
 	auto s = new GuiSettings(mWindow, _("SYSTEM SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
-
-	// 언어 (UI SETTINGS에서 이동) — 변경 시 자체 재시작 안내 팝업
-	auto language = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LANGUAGE"), false);
-	std::vector<std::string> languages;
-	languages.push_back("en_US");
-	languages.push_back("ko_KR");
-	for(auto it = languages.cbegin(); it != languages.cend(); it++)
-	{
-		std::string displayName = *it;
-		if (*it == "en_US") displayName = "English";
-		else if (*it == "ko_KR") displayName = "한국어 (Korean)";
-		language->add(displayName, *it, Settings::getInstance()->getString("Language") == *it);
-	}
-	s->addWithLabel(_("LANGUAGE"), language);
-	Window* window = mWindow;
-	s->addSaveFunc([language, window] {
-		std::string oldLang = Settings::getInstance()->getString("Language");
-		std::string newLang = language->getSelected();
-		if(oldLang != newLang)
-		{
-			Settings::getInstance()->setString("Language", newLang);
-			LOG(LogInfo) << "Language changed from " << oldLang << " to " << newLang;
-			LocaleES::init(newLang);
-			window->pushGui(new GuiMsgBox(window,
-				_("Language has been changed.\nPlease restart EmulationStation for full effect."),
-				_("OK"), nullptr));
-		}
-	});
 
 	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH(구 NETWORK SETTINGS)
 	addFeatureItemsTo(s, "system", *checks);
