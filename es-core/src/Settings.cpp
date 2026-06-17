@@ -312,16 +312,20 @@ void Settings::loadFile()
 		return;
 	}
 
-	for(pugi::xml_node node = doc.child("bool"); node; node = node.next_sibling("bool"))
+	// apply_retropangui_conf.sh는 <config> 래퍼 안에 저장, ES saveFile은 루트 레벨에 저장
+	// 둘 다 읽을 수 있도록 <config> 래퍼 유무에 따라 루트 노드 선택
+	pugi::xml_node root = doc.child("config") ? doc.child("config") : doc;
+
+	for(pugi::xml_node node = root.child("bool"); node; node = node.next_sibling("bool"))
 		setBool(node.attribute("name").as_string(), node.attribute("value").as_bool());
-	for(pugi::xml_node node = doc.child("int"); node; node = node.next_sibling("int"))
+	for(pugi::xml_node node = root.child("int"); node; node = node.next_sibling("int"))
 		setInt(node.attribute("name").as_string(), node.attribute("value").as_int());
-	for(pugi::xml_node node = doc.child("float"); node; node = node.next_sibling("float"))
+	for(pugi::xml_node node = root.child("float"); node; node = node.next_sibling("float"))
 		setFloat(node.attribute("name").as_string(), node.attribute("value").as_float());
-	for(pugi::xml_node node = doc.child("string"); node; node = node.next_sibling("string"))
+	for(pugi::xml_node node = root.child("string"); node; node = node.next_sibling("string"))
 		setString(node.attribute("name").as_string(), node.attribute("value").as_string());
 
-	for(pugi::xml_node node = doc.child("map"); node; node = node.next_sibling("map"))
+	for(pugi::xml_node node = root.child("map"); node; node = node.next_sibling("map"))
 	{
 		std::string mapName = node.attribute("name").as_string();
 		std::string mapType = node.attribute("type").as_string();
