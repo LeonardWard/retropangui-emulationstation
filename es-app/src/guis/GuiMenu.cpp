@@ -3,7 +3,6 @@
 #include "components/OptionListComponent.h"
 #include "components/SliderComponent.h"
 #include "components/SwitchComponent.h"
-#include "components/TextEditComponent.h"
 #include "guis/GuiCollectionSystemsOptions.h"
 #include "guis/GuiDetectDevice.h"
 #include "guis/GuiGeneralScreensaverOptions.h"
@@ -26,7 +25,6 @@
 #include "FileSorts.h"
 #include "views/gamelist/IGameListView.h"
 #include "guis/GuiInfoPopup.h"
-#include "guis/GuiTextEditPopup.h"
 #include "guis/GuiArcadeVirtualKeyboard.h"
 #include <fstream>
 #include <sstream>
@@ -879,14 +877,16 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 	else if (item.type == "input")
 	{
 		std::string orig = cfgReadKey(rpConfPath(), item.conf_key);
-		auto ed = std::make_shared<TextEditComponent>(mWindow);
-		ed->setValue(orig);
+		auto curVal = std::make_shared<std::string>(orig);
 
-		ComponentListRow row;
 		auto lbl = std::make_shared<TextComponent>(mWindow, _(item.label.c_str()),
 			Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
+		auto valText = std::make_shared<TextComponent>(mWindow, orig,
+			Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_RIGHT);
+
+		ComponentListRow row;
 		row.addElement(lbl, true);
-		row.addElement(ed, true);
+		row.addElement(valText, false);
 		auto bracket = std::make_shared<ImageComponent>(mWindow);
 		bracket->setImage(":/arrow.svg");
 		bracket->setResize(Vector2f(0, lbl->getFont()->getLetterHeight()));
@@ -894,17 +894,21 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 
 		Window* window = mWindow;
 		std::string label = item.label;
-		row.makeAcceptInputHandler([window, label, ed] {
-			window->pushGui(new GuiTextEditPopup(window, label, ed->getValue(),
-				[ed](const std::string& v){ ed->setValue(v); }, false));
+		row.makeAcceptInputHandler([window, label, valText, curVal] {
+			window->pushGui(new GuiArcadeVirtualKeyboard(window, _(label.c_str()),
+				*curVal,
+				[valText, curVal](const std::string& v) {
+					*curVal = v;
+					valText->setValue(v);
+				}));
 		});
 		s->addRow(row);
 
-		s->addSaveFunc([item, ed] {
-			cfgWriteKey(rpConfPath(), item.conf_key, ed->getValue(), false);
+		s->addSaveFunc([item, curVal] {
+			cfgWriteKey(rpConfPath(), item.conf_key, *curVal, false);
 		});
 		if (item.restart != "none")
-			checks.push_back({ [ed, orig]{ return ed->getValue() != orig; },
+			checks.push_back({ [curVal, orig]{ return *curVal != orig; },
 			                   item.restart });
 	}
 	else if (item.type == "slider")
