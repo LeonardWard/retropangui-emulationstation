@@ -1049,15 +1049,8 @@ void GuiMenu::openSystemSettings()
 	auto s = new GuiSettings(mWindow, _("SYSTEM SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
+	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH(구 NETWORK SETTINGS)
 	addFeatureItemsTo(s, "system", *checks);
-
-	addSubmenuEntry(s, _("NETWORK SETTINGS"), [this] {
-		auto ns = new GuiSettings(mWindow, _("NETWORK SETTINGS"));
-		auto nchecks = std::make_shared<std::vector<RestartCheck>>();
-		addFeatureItemsTo(ns, "network", *nchecks);
-		setSaveWithRestartChecks(ns, nchecks);
-		mWindow->pushGui(ns);
-	});
 
 	addSubmenuEntry(s, _("UPDATES & DOWNLOADS"), [this] { openUpdatesAndDownloads(); });
 	addSubmenuEntry(s, _("ADVANCED SETTINGS"), [this] { openAdvancedSettings(); });
