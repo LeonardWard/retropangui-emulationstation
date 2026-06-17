@@ -79,6 +79,9 @@ bool ComponentList::input(InputConfig* config, Input input)
 		return listInput(input.value != 0 ? -1 : 0);
 	}else if(config->isMappedLike("down", input))
 	{
+		// 마지막 항목에서 Down은 false 반환 → ComponentGrid가 버튼 그리드로 포커스 이동
+		if(input.value != 0 && mCursor >= (int)mEntries.size() - 1)
+			return false;
 		return listInput(input.value != 0 ? 1 : 0);
 
 	}else if(config->isMappedLike("leftshoulder", input))

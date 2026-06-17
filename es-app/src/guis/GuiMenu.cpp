@@ -118,111 +118,9 @@ void GuiMenu::openSoundSettings()
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 	addFeatureItemsTo(s, "sound", *checks);
 
-	// volume
-	auto volume = std::make_shared<SliderComponent>(mWindow, 0.f, 100.f, 1.f, "%");
-	volume->setValue((float)VolumeControl::getInstance()->getVolume());
-	volume->setChangedCallback([](float val) { VolumeControl::getInstance()->setVolume((int)Math::round(val)); });
-	s->addWithLabel(_("SYSTEM VOLUME"), volume);
-	s->addSaveFunc([volume] { VolumeControl::getInstance()->setVolume((int)Math::round(volume->getValue())); });
-
+#ifdef _OMX_
 	if (UIModeController::getInstance()->isUIModeFull())
 	{
-#if defined(__linux__)
-		// audio card
-		auto audio_card = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO CARD"), false);
-		std::vector<std::string> audio_cards;
-		audio_cards.push_back("default");
-		audio_cards.push_back("sysdefault");
-		audio_cards.push_back("dmix");
-		audio_cards.push_back("hw");
-		audio_cards.push_back("plughw");
-		audio_cards.push_back("null");
-		if (Settings::getInstance()->getString("AudioCard") != "") {
-			if(std::find(audio_cards.begin(), audio_cards.end(), Settings::getInstance()->getString("AudioCard")) == audio_cards.end()) {
-				audio_cards.push_back(Settings::getInstance()->getString("AudioCard"));
-			}
-		}
-		for(auto ac = audio_cards.cbegin(); ac != audio_cards.cend(); ac++)
-			audio_card->add(*ac, *ac, Settings::getInstance()->getString("AudioCard") == *ac);
-		s->addWithLabel(_("AUDIO CARD"), audio_card);
-		s->addSaveFunc([audio_card] {
-			Settings::getInstance()->setString("AudioCard", audio_card->getSelected());
-			// RA 출력 디바이스도 동일 값으로 (retropangui.conf: global.audio_device, 부팅 시 retroarch.cfg 반영)
-			cfgWriteKey(rpConfPath(), "global.audio_device", audio_card->getSelected(), false);
-			VolumeControl::getInstance()->deinit();
-			VolumeControl::getInstance()->init();
-		});
-
-		// volume control device
-		auto vol_dev = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO DEVICE"), false);
-		std::vector<std::string> transitions;
-		transitions.push_back("PCM");
-		transitions.push_back("HDMI");
-		transitions.push_back("Headphone");
-		transitions.push_back("Speaker");
-		transitions.push_back("Master");
-		transitions.push_back("Digital");
-		transitions.push_back("Analogue");
-		if (Settings::getInstance()->getString("AudioDevice") != "") {
-			if(std::find(transitions.begin(), transitions.end(), Settings::getInstance()->getString("AudioDevice")) == transitions.end()) {
-				transitions.push_back(Settings::getInstance()->getString("AudioDevice"));
-			}
-		}
-		for(auto it = transitions.cbegin(); it != transitions.cend(); it++)
-			vol_dev->add(*it, *it, Settings::getInstance()->getString("AudioDevice") == *it);
-		s->addWithLabel(_("AUDIO DEVICE"), vol_dev);
-		s->addSaveFunc([vol_dev] {
-			Settings::getInstance()->setString("AudioDevice", vol_dev->getSelected());
-			VolumeControl::getInstance()->deinit();
-			VolumeControl::getInstance()->init();
-		});
-#endif
-
-		// disable sounds
-		auto sounds_enabled = std::make_shared<SwitchComponent>(mWindow);
-		sounds_enabled->setState(Settings::getInstance()->getBool("EnableSounds"));
-		s->addWithLabel(_("ENABLE NAVIGATION SOUNDS"), sounds_enabled);
-		s->addSaveFunc([sounds_enabled] {
-			if (sounds_enabled->getState()
-				&& !Settings::getInstance()->getBool("EnableSounds")
-				&& PowerSaver::getMode() == PowerSaver::INSTANT)
-			{
-				Settings::getInstance()->setString("PowerSaverMode", "default");
-				PowerSaver::init();
-			}
-			Settings::getInstance()->setBool("EnableSounds", sounds_enabled->getState());
-		});
-
-		auto video_audio = std::make_shared<SwitchComponent>(mWindow);
-		video_audio->setState(Settings::getInstance()->getBool("VideoAudio"));
-		s->addWithLabel(_("ENABLE VIDEO AUDIO"), video_audio);
-		s->addSaveFunc([video_audio] { Settings::getInstance()->setBool("VideoAudio", video_audio->getState()); });
-
-		// 배경 음악 (<share>/music 셔플 재생) — 토글 즉시 시작/정지
-		auto bgm_enabled = std::make_shared<SwitchComponent>(mWindow);
-		bgm_enabled->setState(Settings::getInstance()->getBool("BackgroundMusic"));
-		s->addWithLabel(_("FRONTEND MUSIC"), bgm_enabled);
-		s->addSaveFunc([bgm_enabled] {
-			Settings::getInstance()->setBool("BackgroundMusic", bgm_enabled->getState());
-			if (bgm_enabled->getState())
-				MusicManager::getInstance()->start();
-			else
-				MusicManager::getInstance()->stop();
-		});
-
-		// RA audio latency (retropangui.conf: global.audio_latency)
-		auto audio_lat = std::make_shared<SliderComponent>(mWindow, 16.f, 256.f, 8.f, "ms");
-		float latVal = 64.f;
-		std::string latStr = cfgReadKey(rpConfPath(), "global.audio_latency", "64");
-		if (!latStr.empty()) latVal = std::stof(latStr);
-		audio_lat->setValue(latVal);
-		s->addWithLabel(_("RA AUDIO LATENCY"), audio_lat);
-		s->addSaveFunc([audio_lat] {
-			cfgWriteKey(rpConfPath(), "global.audio_latency",
-			            std::to_string((int)Math::round(audio_lat->getValue())), false);
-		});
-
-#ifdef _OMX_
 		// OMX player Audio Device
 		auto omx_audio_dev = std::make_shared< OptionListComponent<std::string> >(mWindow, _("OMX PLAYER AUDIO DEVICE"), false);
 		std::vector<std::string> omx_cards;
@@ -245,8 +143,8 @@ void GuiMenu::openSoundSettings()
 			if (Settings::getInstance()->getString("OMXAudioDev") != omx_audio_dev->getSelected())
 				Settings::getInstance()->setString("OMXAudioDev", omx_audio_dev->getSelected());
 		});
-#endif
 	}
+#endif
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
@@ -842,10 +740,26 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		std::string fallback = item.default_val.empty() ? "false" : item.default_val;
 		std::string orig = cfgReadKey(rpConfPath(), item.conf_key, fallback);
 		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		LOG(LogDebug) << "[DBG-toggle] key=" << item.conf_key << " raw='" << orig << "' state=" << state;
 		auto sw = std::make_shared<SwitchComponent>(mWindow, state);
 		s->addWithLabel(_(item.label.c_str()), sw);
 		s->addSaveFunc([item, sw] {
-			cfgWriteKey(rpConfPath(), item.conf_key, sw->getState() ? "true" : "false", false);
+			bool newVal = sw->getState();
+			cfgWriteKey(rpConfPath(), item.conf_key, newVal ? "true" : "false", false);
+			if (item.conf_key == "emulationstation.EnableSounds") {
+				if (newVal && !Settings::getInstance()->getBool("EnableSounds")
+				    && PowerSaver::getMode() == PowerSaver::INSTANT) {
+					Settings::getInstance()->setString("PowerSaverMode", "default");
+					PowerSaver::init();
+				}
+				Settings::getInstance()->setBool("EnableSounds", newVal);
+			} else if (item.conf_key == "emulationstation.VideoAudio") {
+				Settings::getInstance()->setBool("VideoAudio", newVal);
+			} else if (item.conf_key == "emulationstation.BackgroundMusic") {
+				Settings::getInstance()->setBool("BackgroundMusic", newVal);
+				if (newVal) MusicManager::getInstance()->start();
+				else MusicManager::getInstance()->stop();
+			}
 		});
 		if (item.restart != "none")
 			checks.push_back({ [sw, state]{ return sw->getState() != state; },
@@ -872,6 +786,15 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		s->addWithLabel(_(item.label.c_str()), list);
 		s->addSaveFunc([item, list] {
 			cfgWriteKey(rpConfPath(), item.conf_key, list->getSelected(), false);
+			if (item.conf_key == "global.audio_device") {
+				Settings::getInstance()->setString("AudioCard", list->getSelected());
+				VolumeControl::getInstance()->deinit();
+				VolumeControl::getInstance()->init();
+			} else if (item.conf_key == "emulationstation.AudioDevice") {
+				Settings::getInstance()->setString("AudioDevice", list->getSelected());
+				VolumeControl::getInstance()->deinit();
+				VolumeControl::getInstance()->init();
+			}
 		});
 		if (item.restart != "none")
 			checks.push_back({ [list, effectiveOrig]{ return list->getSelected() != effectiveOrig; },
@@ -917,6 +840,11 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		if (!raw.empty()) { try { orig = std::stof(raw); } catch (...) {} }
 		auto sl = std::make_shared<SliderComponent>(mWindow, item.min, item.max, item.step, item.unit);
 		sl->setValue(orig);
+		if (item.conf_key == "system.volume") {
+			sl->setChangedCallback([](float val) {
+				VolumeControl::getInstance()->setVolume((int)Math::round(val));
+			});
+		}
 		s->addWithLabel(_(item.label.c_str()), sl);
 		s->addSaveFunc([item, sl] {
 			cfgWriteKey(rpConfPath(), item.conf_key, std::to_string((int)sl->getValue()), false);
