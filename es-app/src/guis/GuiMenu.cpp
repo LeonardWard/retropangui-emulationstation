@@ -762,7 +762,7 @@ static std::string cfgReadKey(const std::string& filePath, const std::string& fu
 		if (k != fullKey) continue;
 		std::string v = line.substr(eq + 1);
 		while (!v.empty() && (v.front() == ' ' || v.front() == '\t' || v.front() == '"')) v.erase(v.begin());
-		while (!v.empty() && (v.back()  == ' ' || v.back()  == '\t' || v.back()  == '"')) v.pop_back();
+		while (!v.empty() && (v.back()  == ' ' || v.back()  == '\t' || v.back()  == '"' || v.back() == '\r')) v.pop_back();
 		return v;
 	}
 	return def;
