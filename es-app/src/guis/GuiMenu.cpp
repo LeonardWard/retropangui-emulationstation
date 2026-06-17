@@ -115,6 +115,8 @@ void GuiMenu::openScraperSettings()
 void GuiMenu::openSoundSettings()
 {
 	auto s = new GuiSettings(mWindow, _("SOUND SETTINGS"));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+	addFeatureItemsTo(s, "sound", *checks);
 
 	// volume
 	auto volume = std::make_shared<SliderComponent>(mWindow, 0.f, 100.f, 1.f, "%");
@@ -246,6 +248,7 @@ void GuiMenu::openSoundSettings()
 #endif
 	}
 
+	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
 
 }
