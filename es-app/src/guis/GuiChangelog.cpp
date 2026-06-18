@@ -1,6 +1,6 @@
 #include "guis/GuiChangelog.h"
 #include "InputConfig.h"
-#include "Renderer.h"
+#include "renderers/Renderer.h"
 #include "resources/Font.h"
 #include <cstdio>
 #include <fstream>
