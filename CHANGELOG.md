@@ -2,6 +2,23 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
+## [2026-06-18] - 토글 표시 버그 수정 / es_settings.cfg 읽기 개선
+
+### Fixed
+
+- **SwitchComponent 생성자가 state를 무시하고 항상 off.svg를 사용하던 문제**
+
+  YAML 메뉴의 모든 toggle 항목(SSH, SAMBA 등)이 conf에 `true`로 저장되어 있어도
+  UI에서 항상 OFF로 표시되던 문제. `SwitchComponent(Window*, bool state)` 생성자에서
+  `mState`를 기반으로 초기 이미지를 선택하도록 수정.
+
+- **es_settings.cfg의 `<config>` 래퍼 형식을 읽지 못하던 문제**
+
+  `apply_retropangui_conf.sh`가 `<config>…</config>` 래퍼 안에 설정을 저장하는데
+  `Settings::loadFile()`이 루트 레벨만 탐색하여 Language 등 모든 설정이 무시되던 문제.
+  → 파일에 `<config>` 래퍼가 있으면 그 안을 읽고, 없으면 루트를 읽도록 수정.
+  ES 자체 `saveFile()`이 쓴 파일(래퍼 없음)도 동일하게 읽힘.
+
 ## [2026-06-13] - 메뉴 구조 재정비 (메인 16개 → 8개)
 
 ### Changed
