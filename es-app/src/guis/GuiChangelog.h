@@ -3,6 +3,7 @@
 #define ES_APP_GUIS_GUI_CHANGELOG_H
 
 #include "GuiComponent.h"
+#include "Window.h"
 #include "components/NinePatchComponent.h"
 #include "components/ScrollableContainer.h"
 #include "components/TextComponent.h"

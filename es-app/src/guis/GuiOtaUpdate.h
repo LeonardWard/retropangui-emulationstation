@@ -3,6 +3,7 @@
 #define ES_APP_GUIS_GUI_OTA_UPDATE_H
 
 #include "GuiComponent.h"
+#include "Window.h"
 #include "components/NinePatchComponent.h"
 #include "components/TextComponent.h"
 #include <future>
