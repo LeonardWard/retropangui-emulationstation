@@ -37,6 +37,8 @@ set(ES_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiCollectionSystemsOptions.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiRandomCollectionOptions.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiOtaUpdate.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiChangelog.h
 
     # Scrapers
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scrapers/Scraper.h
@@ -97,6 +99,8 @@ set(ES_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiCollectionSystemsOptions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiRandomCollectionOptions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiOtaUpdate.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiChangelog.cpp
 
     # Scrapers
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scrapers/Scraper.cpp

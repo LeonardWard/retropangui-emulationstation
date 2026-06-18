@@ -1,6 +1,7 @@
 //EmulationStation, a graphical front-end for ROM browsing. Created by Alec "Aloshi" Lofquist.
 //http://www.aloshi.com
 
+#include "guis/GuiChangelog.h"
 #include "guis/GuiDetectDevice.h"
 #include "guis/GuiMsgBox.h"
 #include "utils/FileSystemUtil.h"
@@ -426,11 +427,20 @@ int main(int argc, char* argv[])
 	//choose which GUI to open depending on if an input configuration already exists
 	if(errorMsg == NULL)
 	{
+		auto showChangelogIfPending = [&window]() {
+			if(Utils::FileSystem::exists("/etc/.ota-changelog-pending"))
+				window.pushGui(new GuiChangelog(&window));
+		};
+
 		if(Utils::FileSystem::exists(InputManager::getConfigPath()) && InputManager::getInstance()->getNumConfiguredDevices() > 0)
 		{
 			ViewController::get()->goToStart();
+			showChangelogIfPending();
 		}else{
-			window.pushGui(new GuiDetectDevice(&window, true, [] { ViewController::get()->goToStart(); }));
+			window.pushGui(new GuiDetectDevice(&window, true, [&window, showChangelogIfPending] {
+				ViewController::get()->goToStart();
+				showChangelogIfPending();
+			}));
 		}
 	}
 
