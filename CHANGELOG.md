@@ -2,6 +2,29 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
+## [2026-06-20] - OTA 업데이트 UI 완전 재구현
+
+### Added
+
+- **GuiOtaCheck 클래스** — 버전 확인 비동기 대기 화면
+  `GuiOtaDownload`와 동일 패턴. `std::async`로 백그라운드 HTTP 체크,
+  완료 시 서버 버전 문자열을 콜백으로 전달.
+
+- **ES 시작 시 자동 OTA 버전 체크** (`main.cpp`)
+  `std::async`로 백그라운드 체크 시작, 메인 루프에서 `future` 폴링.
+  새 버전 발견 시 팝업 → 확인 시 다운로드 흐름 진입.
+  네트워크 없거나 서버 응답 없으면 조용히 무시.
+
+### Changed
+
+- **`openUpdatesAndDownloads()` 전면 재작성** (`GuiMenu.cpp`)
+  - USB 스캔 우선: `/media/` 하위에서 `retropangui-<device>.squashfs` 탐색
+  - USB 발견 시 `usb-ota-install.sh` 호출 (GuiOtaDownload로 진행 표시)
+  - USB 없으면 네트워크 폴백 (GuiOtaCheck → 버전 비교 다이얼로그)
+  - 기존 HTTP 체크의 메인 스레드 최대 5초 블로킹 제거
+
+---
+
 ## [2026-06-18] - 토글 표시 버그 수정 / es_settings.cfg 읽기 개선
 
 ### Fixed
