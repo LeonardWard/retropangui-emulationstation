@@ -2,6 +2,22 @@
 
 All notable changes to RetroPangui EmulationStation will be documented in this file.
 
+## [2026-06-21] - 배경음악 on/off 버그 수정
+
+### Fixed
+
+- **배경음악 on/off 설정이 시간 지나면 무시되는 버그** (`MusicManager.cpp`)
+
+  `update()`가 `BackgroundMusic` 설정 체크 없이 곡 종료 시 다음 곡을 재생하던 문제.
+  `update()` 진입 시 off 상태면 즉시 `stop()` 호출하도록 수정.
+
+### Added
+
+- **`SwitchComponent::setChangedCallback()`** — toggle 상태 변경 시 즉시 콜백 호출.
+  배경음악 toggle에 적용: 메뉴를 닫기 전에도 on/off가 즉시 반영됨.
+
+---
+
 ## [2026-06-20] - OTA 업데이트 UI 완전 재구현
 
 ### Added
