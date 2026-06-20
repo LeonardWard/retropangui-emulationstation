@@ -29,6 +29,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <dirent.h>
 #include "utils/FileSystemUtil.h"
 #include "guis/GuiOtaUpdate.h"
 #include "HttpReq.h"
@@ -1106,96 +1107,139 @@ void GuiMenu::openRetroAchievements()
 
 void GuiMenu::openUpdatesAndDownloads()
 {
-	// 1. 서버 URL + 디바이스명 읽기 (/etc/retropangui-ota.conf)
-	// 형식: 1행 = URL, 2행 = device (예: odroidc5)
+	// conf 읽기 (없어도 USB 스캔은 진행)
 	std::string serverUrl;
-	std::string device;
+	std::string device = "odroidc5";
 	{
-		std::ifstream f("/etc/retropangui-ota.conf");
-		if (!f.good()) {
-			mWindow->pushGui(new GuiMsgBox(mWindow,
-				_("OTA 서버 URL이 설정되지 않았습니다.\n/etc/retropangui-ota.conf 파일을 확인하세요."),
-				_("확인"), nullptr));
-			return;
-		}
 		auto trim = [](std::string& s) {
 			s.erase(s.find_last_not_of(" \t\r\n") + 1);
 			s.erase(0, s.find_first_not_of(" \t\r\n"));
 		};
-		std::getline(f, serverUrl); trim(serverUrl);
-		std::getline(f, device);   trim(device);
-		if (serverUrl.empty()) {
-			mWindow->pushGui(new GuiMsgBox(mWindow,
-				_("OTA 서버 URL이 비어있습니다."), _("확인"), nullptr));
-			return;
+		std::ifstream f("/etc/retropangui-ota.conf");
+		if (f.good()) {
+			std::getline(f, serverUrl); trim(serverUrl);
+			std::string d; std::getline(f, d); trim(d);
+			if (!d.empty()) device = d;
 		}
-		if (device.empty()) device = "odroidc5"; // 폴백
 	}
 
-	// 2. 현재 버전
+	// 현재 버전
 	std::string curVer;
 	{
 		std::ifstream f("/etc/retropangui-version");
-		if (f.good()) std::getline(f, curVer);
-		curVer.erase(curVer.find_last_not_of(" \t\r\n") + 1);
+		if (f.good()) {
+			std::getline(f, curVer);
+			curVer.erase(curVer.find_last_not_of(" \t\r\n") + 1);
+		}
 	}
 
-	// 3. 서버 버전 확인 (비동기 HttpReq, 5초 타임아웃)
-	auto req = std::make_shared<HttpReq>(serverUrl + "/version");
-	for (int i = 0; i < 50 && req->status() == HttpReq::REQ_IN_PROGRESS; i++)
-		SDL_Delay(100);
+	// USB 스캔: /media/ 하위 디렉토리 루트에서 retropangui-<device>.squashfs 검색
+	std::string usbPath;
+	std::string usbTarget = "retropangui-" + device + ".squashfs";
+	{
+		DIR* media = opendir("/media");
+		if (media) {
+			struct dirent* entry;
+			while ((entry = readdir(media)) != nullptr && usbPath.empty()) {
+				if (entry->d_type != DT_DIR) continue;
+				if (std::string(entry->d_name) == "." || std::string(entry->d_name) == "..") continue;
+				std::string candidate = std::string("/media/") + entry->d_name + "/" + usbTarget;
+				struct stat st;
+				if (stat(candidate.c_str(), &st) == 0 && S_ISREG(st.st_mode))
+					usbPath = candidate;
+			}
+			closedir(media);
+		}
+	}
 
-	if (req->status() != HttpReq::REQ_SUCCESS) {
-		mWindow->pushGui(new GuiMsgBox(mWindow,
-			_("서버 연결 실패.\n네트워크 연결을 확인하세요."),
-			_("확인"), nullptr));
+	// USB 파일 발견 — USB 설치 흐름
+	if (!usbPath.empty()) {
+		std::string msg = "USB 업데이트 파일을 발견했습니다.\n" + usbPath + "\n\n지금 설치하시겠습니까?\n(재부팅 후 적용됩니다)";
+		mWindow->pushGui(new GuiMsgBox(mWindow, msg,
+			"설치", [this, usbPath]() {
+				auto install_fn = [usbPath]() -> int {
+					std::string cmd = "/usr/share/retropangui/usb-ota-install.sh \"" + usbPath + "\"";
+					int ret = ::system(cmd.c_str());
+					return WEXITSTATUS(ret);
+				};
+				auto done_fn = [this](bool success) {
+					if (success) {
+						mWindow->pushGui(new GuiMsgBox(mWindow,
+							"USB 업데이트 설치 완료!\n재부팅하면 적용됩니다.\n\n지금 재부팅하시겠습니까?",
+							"재부팅", []() { ::system("reboot"); },
+							"나중에", nullptr));
+					} else {
+						mWindow->pushGui(new GuiMsgBox(mWindow,
+							"USB 업데이트 실패.\n파일을 확인하세요.",
+							"확인", nullptr));
+					}
+				};
+				mWindow->pushGui(new GuiOtaDownload(mWindow, install_fn, done_fn));
+			},
+			"취소", nullptr));
 		return;
 	}
 
-	std::string serverVer = req->getContent();
-	serverVer.erase(serverVer.find_last_not_of(" \t\r\n") + 1);
-
-	// 4. 버전 비교
-	if (serverVer <= curVer) {
+	// USB 없음 — 네트워크 체크
+	if (serverUrl.empty()) {
 		mWindow->pushGui(new GuiMsgBox(mWindow,
-			_("이미 최신 버전입니다.\n현재 버전: ") + curVer,
-			_("확인"), nullptr));
+			"업데이트 서버가 설정되지 않았습니다.\n/etc/retropangui-ota.conf 를 확인하세요.",
+			"확인", nullptr));
 		return;
 	}
 
-	// 5. 업데이트 확인 다이얼로그
-	std::string msg = _("새 버전이 있습니다.\n현재: ") + curVer +
-	                  _("  →  새 버전: ") + serverVer +
-	                  _("\n\n업데이트를 다운로드하시겠습니까?\n(재부팅 후 적용됩니다)");
+	auto check_fn = [serverUrl]() -> std::string {
+		auto req = std::make_shared<HttpReq>(serverUrl + "/version");
+		for (int i = 0; i < 50 && req->status() == HttpReq::REQ_IN_PROGRESS; i++)
+			SDL_Delay(100);
+		if (req->status() != HttpReq::REQ_SUCCESS) return "";
+		std::string v = req->getContent();
+		v.erase(v.find_last_not_of(" \t\r\n") + 1);
+		return v;
+	};
 
-	mWindow->pushGui(new GuiMsgBox(mWindow, msg,
-		_("업데이트"), [this, serverUrl, serverVer, device]() {
-			// 6. 다운로드 시작
-			auto download_fn = [serverUrl, device]() -> int {
-				std::string script =
-					"/usr/share/retropangui/ota-update.sh "
-					+ serverUrl + " " + device;
-				int ret = ::system(script.c_str());
-				return WEXITSTATUS(ret);
-			};
+	auto check_done = [this, curVer, serverUrl, device](std::string serverVer) {
+		if (serverVer.empty()) {
+			mWindow->pushGui(new GuiMsgBox(mWindow,
+				"서버 연결 실패.\n네트워크 연결을 확인하세요.",
+				"확인", nullptr));
+			return;
+		}
+		if (serverVer <= curVer) {
+			mWindow->pushGui(new GuiMsgBox(mWindow,
+				"현재 최신 버전입니다.\n현재 버전: " + curVer,
+				"확인", nullptr));
+			return;
+		}
+		std::string msg = "새 버전이 있습니다.\n현재: " + curVer +
+		                  "  →  새 버전: " + serverVer +
+		                  "\n\n업데이트를 다운로드하시겠습니까?\n(재부팅 후 적용됩니다)";
+		mWindow->pushGui(new GuiMsgBox(mWindow, msg,
+			"업데이트", [this, serverUrl, device, serverVer]() {
+				auto download_fn = [serverUrl, device]() -> int {
+					std::string cmd = "/usr/share/retropangui/ota-update.sh " + serverUrl + " " + device;
+					int ret = ::system(cmd.c_str());
+					return WEXITSTATUS(ret);
+				};
+				auto done_fn = [this, serverVer](bool success) {
+					if (success) {
+						mWindow->pushGui(new GuiMsgBox(mWindow,
+							"업데이트 준비 완료!\n새 버전: " + serverVer +
+							"\n\n지금 재부팅하시겠습니까?",
+							"재부팅", []() { ::system("reboot"); },
+							"나중에", nullptr));
+					} else {
+						mWindow->pushGui(new GuiMsgBox(mWindow,
+							"업데이트 실패.\n다운로드 또는 검증 오류입니다.",
+							"확인", nullptr));
+					}
+				};
+				mWindow->pushGui(new GuiOtaDownload(mWindow, download_fn, done_fn));
+			},
+			"취소", nullptr));
+	};
 
-			auto done_fn = [this, serverVer](bool success) {
-				if (success) {
-					mWindow->pushGui(new GuiMsgBox(mWindow,
-						_("업데이트 준비 완료!\n새 버전: ") + serverVer +
-						_("\n\n지금 재부팅하시겠습니까?"),
-						_("재부팅"), []() { ::system("reboot"); },
-						_("나중에"), nullptr));
-				} else {
-					mWindow->pushGui(new GuiMsgBox(mWindow,
-						_("업데이트 실패.\n다운로드 또는 검증 오류입니다."),
-						_("확인"), nullptr));
-				}
-			};
-
-			mWindow->pushGui(new GuiOtaDownload(mWindow, download_fn, done_fn));
-		},
-		_("취소"), nullptr));
+	mWindow->pushGui(new GuiOtaCheck(mWindow, check_fn, check_done));
 }
 
 void GuiMenu::onSizeChanged()

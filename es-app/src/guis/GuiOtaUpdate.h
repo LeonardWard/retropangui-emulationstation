@@ -31,4 +31,25 @@ private:
 	std::function<void(bool)> mDoneFn;
 };
 
+// 버전 확인 대기 화면.
+// 생성 즉시 백그라운드 스레드에서 check_fn() 실행.
+// 완료되면 자신을 Window에서 제거하고 done_fn(serverVer) 호출. 실패 시 빈 문자열.
+class GuiOtaCheck : public GuiComponent
+{
+public:
+	GuiOtaCheck(Window* window,
+	            std::function<std::string()> check_fn,
+	            std::function<void(std::string)> done_fn);
+
+	void update(int dt) override;
+	void onSizeChanged() override;
+	bool input(InputConfig* config, Input input) override { return true; }
+
+private:
+	NinePatchComponent mBackground;
+	std::shared_ptr<TextComponent> mMsg;
+	std::future<std::string> mFuture;
+	std::function<void(std::string)> mDoneFn;
+};
+
 #endif // ES_APP_GUIS_GUI_OTA_UPDATE_H

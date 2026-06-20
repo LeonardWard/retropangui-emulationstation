@@ -30,6 +30,10 @@
 #endif
 
 #include <FreeImage.h>
+#include "guis/GuiOtaUpdate.h"
+#include "HttpReq.h"
+#include <future>
+#include <fstream>
 
 bool scrape_cmdline = false;
 
@@ -424,6 +428,32 @@ int main(int argc, char* argv[])
 
 	InputManager::getInstance()->init();
 
+	// 백그라운드 OTA 자동 버전 체크
+	auto otaAutoFuture = std::async(std::launch::async, []() -> std::pair<std::string,std::string> {
+		std::string serverUrl, curVer;
+		{
+			std::ifstream f("/etc/retropangui-ota.conf");
+			if (!f.good()) return {"", ""};
+			std::getline(f, serverUrl);
+			serverUrl.erase(serverUrl.find_last_not_of(" \t\r\n") + 1);
+			if (serverUrl.empty()) return {"", ""};
+		}
+		{
+			std::ifstream f("/etc/retropangui-version");
+			if (f.good()) {
+				std::getline(f, curVer);
+				curVer.erase(curVer.find_last_not_of(" \t\r\n") + 1);
+			}
+		}
+		auto req = std::make_shared<HttpReq>(serverUrl + "/version");
+		for (int i = 0; i < 50 && req->status() == HttpReq::REQ_IN_PROGRESS; i++)
+			SDL_Delay(100);
+		if (req->status() != HttpReq::REQ_SUCCESS) return {"", ""};
+		std::string serverVer = req->getContent();
+		serverVer.erase(serverVer.find_last_not_of(" \t\r\n") + 1);
+		return {curVer, serverVer};
+	});
+
 	//choose which GUI to open depending on if an input configuration already exists
 	if(errorMsg == NULL)
 	{
@@ -480,6 +510,54 @@ int main(int argc, char* argv[])
 			// If exitting SDL_WaitEventTimeout due to timeout. Trail considering
 			// timeout as an event
 			ps_time = SDL_GetTicks();
+		}
+
+		// 자동 OTA 체크 결과 처리 (한 번만)
+		if (otaAutoFuture.valid() &&
+		    otaAutoFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+		{
+			auto res = otaAutoFuture.get();
+			const std::string& curVer   = res.first;
+			const std::string& serverVer = res.second;
+			if (!serverVer.empty() && serverVer > curVer)
+			{
+				std::string msg = "새 버전이 있습니다.\n현재: " + curVer +
+				                  "  →  새 버전: " + serverVer +
+				                  "\n\n지금 업데이트하시겠습니까?";
+				window.pushGui(new GuiMsgBox(&window, msg,
+					"업데이트", [&window, serverVer]() {
+						std::string serverUrl2, device2 = "odroidc5";
+						{
+							std::ifstream cf("/etc/retropangui-ota.conf");
+							if (cf.good()) {
+								std::getline(cf, serverUrl2);
+								serverUrl2.erase(serverUrl2.find_last_not_of(" \t\r\n") + 1);
+								std::string d; std::getline(cf, d);
+								d.erase(d.find_last_not_of(" \t\r\n") + 1);
+								if (!d.empty()) device2 = d;
+							}
+						}
+						auto dl_fn = [serverUrl2, device2]() -> int {
+							std::string cmd = "/usr/share/retropangui/ota-update.sh " + serverUrl2 + " " + device2;
+							int ret = ::system(cmd.c_str());
+							return WEXITSTATUS(ret);
+						};
+						auto done_fn = [&window, serverVer](bool success) {
+							if (success)
+								window.pushGui(new GuiMsgBox(&window,
+									"업데이트 준비 완료!\n새 버전: " + serverVer +
+									"\n\n지금 재부팅하시겠습니까?",
+									"재부팅", []() { ::system("reboot"); },
+									"나중에", nullptr));
+							else
+								window.pushGui(new GuiMsgBox(&window,
+									"업데이트 실패.\n메뉴에서 다시 시도하세요.",
+									"확인", nullptr));
+						};
+						window.pushGui(new GuiOtaDownload(&window, dl_fn, done_fn));
+					},
+					"나중에", nullptr));
+			}
 		}
 
 		if(window.isSleeping())
