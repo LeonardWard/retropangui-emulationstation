@@ -66,6 +66,8 @@ void SwitchComponent::setValue(const std::string& statestring)
 void SwitchComponent::onStateChanged()
 {
 	mImage.setImage(mState ? ":/on.svg" : ":/off.svg");
+	if (mChangedCallback)
+		mChangedCallback(mState);
 }
 
 std::vector<HelpPrompt> SwitchComponent::getHelpPrompts()

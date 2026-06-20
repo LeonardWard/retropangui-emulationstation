@@ -747,6 +747,16 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
 		auto sw = std::make_shared<SwitchComponent>(mWindow, state);
 		s->addWithLabel(_(item.label.c_str()), sw);
+
+		// BackgroundMusic: toggle 변경 즉시 반응 (메뉴를 닫기 전에도 적용)
+		if (item.conf_key == "emulationstation.BackgroundMusic") {
+			sw->setChangedCallback([](bool val) {
+				Settings::getInstance()->setBool("BackgroundMusic", val);
+				if (val) MusicManager::getInstance()->start();
+				else     MusicManager::getInstance()->stop();
+			});
+		}
+
 		s->addSaveFunc([item, sw] {
 			bool newVal = sw->getState();
 			cfgWriteKey(rpConfPath(), item.conf_key, newVal ? "true" : "false", false);

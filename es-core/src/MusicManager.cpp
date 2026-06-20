@@ -157,6 +157,13 @@ void MusicManager::update()
 	if (!mPlaying || mPlayer == nullptr)
 		return;
 
+	// BackgroundMusic 설정이 꺼진 경우 즉시 정지 (어떤 경로로 재생이 시작됐더라도)
+	if (!Settings::getInstance()->getBool("BackgroundMusic"))
+	{
+		stop();
+		return;
+	}
+
 	// 이벤트 콜백 대신 폴링으로 종료 감지 (VideoVlcComponent::handleLooping 과 동일)
 	libvlc_state_t state = libvlc_media_player_get_state(mPlayer);
 	if (state == libvlc_Ended || state == libvlc_Error)
