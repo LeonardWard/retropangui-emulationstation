@@ -21,11 +21,10 @@ static std::string readFileFull(const std::string& path)
 GuiChangelog::GuiChangelog(Window* window)
     : GuiComponent(window),
       mBackground(window, ":/frame.png"),
-      mTitle(window, "업데이트 완료!", Font::get(FONT_SIZE_LARGE), 0xFFFFFFFF, ALIGN_CENTER),
-      mVersion(window, "", Font::get(FONT_SIZE_MEDIUM), 0x999999FF, ALIGN_CENTER),
+      mTitle(window, "업데이트 완료!", Font::get(FONT_SIZE_LARGE), 0x555555FF, ALIGN_CENTER),
+      mVersion(window, "", Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_CENTER),
       mScrollContainer(window),
-      mBody(window, "", Font::get(FONT_SIZE_SMALL), 0xDDDDDDFF, ALIGN_LEFT),
-      mFooter(window, "[A / Start] 닫기", Font::get(FONT_SIZE_SMALL), 0x666666FF, ALIGN_CENTER)
+      mBody(window, "", Font::get(FONT_SIZE_SMALL), 0x444444FF, ALIGN_LEFT)
 {
     std::string ver = readFileFull(FLAG_FILE);
     while (!ver.empty() && (ver.back() == '\n' || ver.back() == '\r'))
@@ -43,7 +42,6 @@ GuiChangelog::GuiChangelog(Window* window)
     addChild(&mVersion);
     addChild(&mScrollContainer);
     mScrollContainer.addChild(&mBody);
-    addChild(&mFooter);
 
     mScrollContainer.setAutoScroll(true);
 
@@ -55,12 +53,11 @@ GuiChangelog::GuiChangelog(Window* window)
 
 void GuiChangelog::onSizeChanged()
 {
-    const float pad     = 20.0f;
-    const float innerW  = mSize.x() - pad * 2.0f;
-    const float titleH  = Font::get(FONT_SIZE_LARGE)->getHeight();
-    const float verH    = Font::get(FONT_SIZE_MEDIUM)->getHeight();
-    const float footerH = Font::get(FONT_SIZE_SMALL)->getHeight();
-    const float scrollH = mSize.y() - pad * 3.0f - titleH - verH - footerH;
+    const float pad    = 20.0f;
+    const float innerW = mSize.x() - pad * 2.0f;
+    const float titleH = Font::get(FONT_SIZE_LARGE)->getHeight();
+    const float verH   = Font::get(FONT_SIZE_MEDIUM)->getHeight();
+    const float scrollH = mSize.y() - pad * 3.0f - titleH - verH;
 
     mBackground.setSize(mSize);
 
@@ -74,9 +71,6 @@ void GuiChangelog::onSizeChanged()
     mScrollContainer.setSize(innerW, scrollH);
 
     mBody.setSize(innerW, 0);
-
-    mFooter.setSize(innerW, 0);
-    mFooter.setPosition(pad, mSize.y() - pad - footerH);
 }
 
 bool GuiChangelog::input(InputConfig* config, Input input)
@@ -88,6 +82,11 @@ bool GuiChangelog::input(InputConfig* config, Input input)
         return true;
     }
     return GuiComponent::input(config, input);
+}
+
+std::vector<HelpPrompt> GuiChangelog::getHelpPrompts()
+{
+    return { { "a", "닫기" } };
 }
 
 void GuiChangelog::close()

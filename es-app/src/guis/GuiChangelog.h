@@ -17,6 +17,7 @@ public:
     explicit GuiChangelog(Window* window);
     bool input(InputConfig* config, Input input) override;
     void onSizeChanged() override;
+    std::vector<HelpPrompt> getHelpPrompts() override;
 
 private:
     void close();
@@ -26,7 +27,6 @@ private:
     TextComponent       mVersion;
     ScrollableContainer mScrollContainer;
     TextComponent       mBody;
-    TextComponent       mFooter;
 };
 
 #endif // ES_APP_GUIS_GUI_CHANGELOG_H
