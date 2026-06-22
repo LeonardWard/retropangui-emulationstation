@@ -751,6 +751,7 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		// BackgroundMusic: toggle 변경 즉시 반응 (메뉴를 닫기 전에도 적용)
 		if (item.conf_key == "emulationstation.BackgroundMusic") {
 			sw->setChangedCallback([](bool val) {
+				LOG(LogInfo) << "[BGM-DEBUG] setChangedCallback: val=" << val;
 				Settings::getInstance()->setBool("BackgroundMusic", val);
 				if (val) MusicManager::getInstance()->start();
 				else     MusicManager::getInstance()->stop();
@@ -770,6 +771,7 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 			} else if (item.conf_key == "emulationstation.VideoAudio") {
 				Settings::getInstance()->setBool("VideoAudio", newVal);
 			} else if (item.conf_key == "emulationstation.BackgroundMusic") {
+				LOG(LogInfo) << "[BGM-DEBUG] addSaveFunc: newVal=" << newVal;
 				Settings::getInstance()->setBool("BackgroundMusic", newVal);
 				if (newVal) MusicManager::getInstance()->start();
 				else MusicManager::getInstance()->stop();
