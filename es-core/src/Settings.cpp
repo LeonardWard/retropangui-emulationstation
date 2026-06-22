@@ -9,6 +9,8 @@
 #include <vector>
 #include <fstream>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 Settings* Settings::sInstance = NULL;
 
@@ -503,8 +505,12 @@ void Settings::saveRetropanguiConf()
 	}
 	for (auto& l : lines)
 		fout << l << "\n";
+	fout.close();
+	// exFAT lazy write-back 대응: fsync로 eMMC까지 강제 flush
+	int fd = ::open(confPath.c_str(), O_RDONLY);
+	if (fd >= 0) { ::fsync(fd); ::close(fd); }
 
-	LOG(LogDebug) << "saveRetropanguiConf: updated " << confPath;
+	LOG(LogInfo) << "saveRetropanguiConf: updated " << confPath;
 }
 
 

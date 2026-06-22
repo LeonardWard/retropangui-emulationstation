@@ -29,6 +29,8 @@
 #include <fstream>
 #include <sstream>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <dirent.h>
 #include "utils/FileSystemUtil.h"
 #include "guis/GuiOtaUpdate.h"
@@ -708,6 +710,11 @@ static void cfgWriteKey(const std::string& filePath, const std::string& fullKey,
 		                            : (fullKey + " = " + value));
 	std::ofstream fout(filePath);
 	for (auto& l : lines) fout << l << "\n";
+	fout.close();
+	// exFAT은 lazy write-back이라 재부팅 시 dirty page가 유실될 수 있음.
+	// fsync로 eMMC까지 강제 flush하여 conf 값 유실 방지.
+	int fd = ::open(filePath.c_str(), O_RDONLY);
+	if (fd >= 0) { ::fsync(fd); ::close(fd); }
 }
 
 // ── 공개 헬퍼 ────────────────────────────────────────────────────────────────
