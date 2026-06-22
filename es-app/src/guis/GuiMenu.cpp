@@ -1225,7 +1225,25 @@ void GuiMenu::openUpdatesAndDownloads()
 				"확인", nullptr));
 			return;
 		}
-		if (serverVer <= curVer) {
+		// 버전 형식: "0.14-10-g785974d" (git describe: <tag>-<commits>-g<hash>)
+		// 단순 문자열 비교 시 "10" < "9" 오류 → commit 수를 숫자로 비교
+		auto getTag = [](const std::string& v) -> std::string {
+			auto d2 = v.rfind('-');
+			if (d2 == std::string::npos) return v;
+			auto d1 = v.rfind('-', d2 - 1);
+			return (d1 == std::string::npos) ? v : v.substr(0, d1);
+		};
+		auto getCommits = [](const std::string& v) -> int {
+			auto d2 = v.rfind('-');
+			if (d2 == std::string::npos) return 0;
+			auto d1 = v.rfind('-', d2 - 1);
+			if (d1 == std::string::npos) return 0;
+			try { return std::stoi(v.substr(d1 + 1, d2 - d1 - 1)); } catch (...) { return 0; }
+		};
+		bool serverNewer = (getTag(serverVer) != getTag(curVer))
+		                   ? (getTag(serverVer) > getTag(curVer))
+		                   : (getCommits(serverVer) > getCommits(curVer));
+		if (!serverNewer) {
 			mWindow->pushGui(new GuiMsgBox(mWindow,
 				"현재 최신 버전입니다.\n현재 버전: " + curVer,
 				"확인", nullptr));
