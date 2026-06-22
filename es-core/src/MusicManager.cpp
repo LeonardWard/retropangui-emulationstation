@@ -143,7 +143,6 @@ void MusicManager::start()
 
 void MusicManager::stop()
 {
-	LOG(LogInfo) << "MusicManager: stop() 호출됨 (mPlaying=" << mPlaying << ")";
 	if (mPlayer != nullptr)
 	{
 		libvlc_media_player_stop(mPlayer);
