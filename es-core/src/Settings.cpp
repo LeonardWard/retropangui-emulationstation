@@ -507,7 +507,7 @@ void Settings::saveRetropanguiConf()
 		fout << l << "\n";
 	fout.close();
 	// exFAT lazy write-back 대응: fsync로 eMMC까지 강제 flush
-	int fd = ::open(confPath.c_str(), O_RDONLY);
+	int fd = ::open(confPath.c_str(), O_WRONLY);
 	if (fd >= 0) { ::fsync(fd); ::close(fd); }
 
 	LOG(LogInfo) << "saveRetropanguiConf: updated " << confPath;
