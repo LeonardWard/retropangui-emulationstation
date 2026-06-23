@@ -427,6 +427,7 @@ void Settings::loadRetropanguiConf()
 
 		LOG(LogDebug) << "retropangui.conf → " << key << " = " << val;
 	}
+	mRetropanguiConfLoaded = true;
 }
 
 // retropangui.conf 에 존재하는 emulationstation.* 키를 현재 설정값으로 갱신.
@@ -434,6 +435,12 @@ void Settings::loadRetropanguiConf()
 // 바꾼 값이 재부팅마다 conf 값으로 되돌아감 (conf 가 마스터 설정).
 void Settings::saveRetropanguiConf()
 {
+	// loadRetropanguiConf() 완료 전에 SIGTERM으로 saveFile()이 호출되면
+	// mBoolMap에 기본값(true)이 남아있어서 retropangui.conf를 true로 덮어쓰게 됨.
+	// conf 로드가 완료된 경우에만 역기록.
+	if (!mRetropanguiConfLoaded)
+		return;
+
 	if (mRetropanguiKeys.empty())
 		return;
 

@@ -49,6 +49,8 @@ private:
 
 	// retropangui.conf 에서 로드된 emulationstation.* 키 목록 (역기록 대상)
 	std::set<std::string> mRetropanguiKeys;
+	// loadRetropanguiConf() 완료 전에는 saveRetropanguiConf()가 덮어쓰지 않도록
+	bool mRetropanguiConfLoaded = false;
 };
 
 #endif // ES_CORE_SETTINGS_H
