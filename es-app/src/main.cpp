@@ -4,6 +4,7 @@
 #include "guis/GuiChangelog.h"
 #include "guis/GuiDetectDevice.h"
 #include "guis/GuiMsgBox.h"
+#include "guis/GuiStorageSelect.h"
 #include "utils/FileSystemUtil.h"
 #include "utils/ProfilingUtil.h"
 #include "views/ViewController.h"
@@ -21,6 +22,11 @@
 #include "SystemData.h"
 #include "SystemScreenSaver.h"
 #include <SDL_events.h>
+#include <dirent.h>
+#include <fstream>
+#include <map>
+#include <set>
+#include <sstream>
 #include <SDL_main.h>
 #include <SDL_timer.h>
 #include <iostream>
@@ -473,6 +479,93 @@ int main(int argc, char* argv[])
 			}));
 		}
 	}
+
+	// RetroPangui: 외부 저장장치 감지 콜백 등록
+	window.setStorageDetectedCallback([&window]() {
+		std::vector<GuiStorageSelect::StoragePartInfo> parts;
+
+		// 감지된 파티션명 읽기 → 상위 디바이스 추출
+		std::set<std::string> deviceNames;
+		{
+			std::ifstream fin("/tmp/retropangui-new-storage");
+			std::string part;
+			while (std::getline(fin, part)) {
+				if (part.empty()) continue;
+				std::string dev = part;
+				while (!dev.empty() && isdigit((unsigned char)dev.back())) dev.pop_back();
+				if (!dev.empty()) deviceNames.insert(dev);
+			}
+		}
+
+		// UUID 맵: 파티션명 → UUID
+		std::map<std::string, std::string> uuidMap;
+		DIR* dir = opendir("/dev/disk/by-uuid");
+		if (dir) {
+			struct dirent* ent;
+			while ((ent = readdir(dir)) != nullptr) {
+				if (ent->d_name[0] == '.') continue;
+				std::string lp = std::string("/dev/disk/by-uuid/") + ent->d_name;
+				char tgt[256]; ssize_t len = readlink(lp.c_str(), tgt, sizeof(tgt)-1);
+				if (len > 0) {
+					tgt[len] = '\0';
+					std::string t(tgt);
+					size_t sl = t.rfind('/');
+					if (sl != std::string::npos) t = t.substr(sl + 1);
+					uuidMap[t] = ent->d_name;
+				}
+			}
+			closedir(dir);
+		}
+
+		// /proc/partitions에서 해당 디바이스 파티션 열거
+		{
+			std::ifstream procParts("/proc/partitions");
+			std::string line;
+			std::getline(procParts, line);
+			std::getline(procParts, line);
+			while (std::getline(procParts, line)) {
+				std::istringstream iss(line);
+				unsigned int major, minor; uint64_t blocks; std::string name;
+				iss >> major >> minor >> blocks >> name;
+				if (name.empty()) continue;
+				std::string parent = name;
+				while (!parent.empty() && isdigit((unsigned char)parent.back())) parent.pop_back();
+				if (deviceNames.find(parent) == deviceNames.end() || name == parent) continue;
+
+				GuiStorageSelect::StoragePartInfo info;
+				info.devname   = name;
+				info.uuid      = uuidMap.count(name) ? uuidMap[name] : "";
+				info.sizeBytes = blocks * 1024ULL;
+
+				std::string cmd = "blkid -o value -s LABEL /dev/" + name + " 2>/dev/null";
+				FILE* fp = popen(cmd.c_str(), "r");
+				if (fp) {
+					char buf[64] = {};
+					if (fgets(buf, sizeof(buf), fp)) {
+						info.label = buf;
+						if (!info.label.empty() && info.label.back() == '\n') info.label.pop_back();
+					}
+					pclose(fp);
+				}
+				if (info.label.empty()) info.label = name;
+				parts.push_back(info);
+			}
+		}
+
+		if (parts.empty()) {
+			::remove("/tmp/retropangui-new-storage");
+			return;
+		}
+
+		window.pushGui(new GuiMsgBox(&window,
+			"새 저장장치가 감지됐습니다.\nshare로 사용하시겠습니까?",
+			"예", [&window, parts]() {
+				window.pushGui(new GuiStorageSelect(&window, parts));
+			},
+			"아니오", []() {
+				::remove("/tmp/retropangui-new-storage");
+			}));
+	});
 
 	// RetroPangui: 배경 음악 시작 (BackgroundMusic=false거나 <share>/music 비어 있으면 no-op)
 	MusicManager::getInstance()->start();

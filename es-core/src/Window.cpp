@@ -8,13 +8,15 @@
 #include "Scripting.h"
 #include <algorithm>
 #include <iomanip>
+#include <sys/stat.h>
 
 #ifdef WIN32
 #include <SDL_events.h>
 #endif
 
 Window::Window() : mNormalizeNextUpdate(false), mFrameTimeElapsed(0), mFrameCountElapsed(0), mAverageDeltaTime(10),
-	mAllowSleep(true), mSleeping(false), mTimeSinceLastInput(0), mScreenSaver(NULL), mRenderScreenSaver(false), mInfoPopup(NULL)
+	mAllowSleep(true), mSleeping(false), mTimeSinceLastInput(0), mScreenSaver(NULL), mRenderScreenSaver(false), mInfoPopup(NULL),
+	mStorageCheckTimer(0), mStoragePopupShown(false)
 {
 	mHelp = new HelpComponent(this);
 	mBackgroundOverlay = new ImageComponent(this);
@@ -202,6 +204,15 @@ void Window::update(int deltaTime)
 	// Update the screensaver
 	if (mScreenSaver)
 		mScreenSaver->update(deltaTime);
+
+	// 외부 저장장치 감지 — 5초마다 체크, GuiStack이 준비된 후에만
+	if (!mGuiStack.empty() && !mStoragePopupShown) {
+		mStorageCheckTimer += deltaTime;
+		if (mStorageCheckTimer >= 5000) {
+			mStorageCheckTimer = 0;
+			checkNewStorage();
+		}
+	}
 }
 
 void Window::render()
@@ -454,4 +465,16 @@ void Window::renderScreenSaver()
 {
 	if (mScreenSaver)
 		mScreenSaver->renderScreenSaver();
+}
+
+void Window::checkNewStorage()
+{
+	struct stat st;
+	if (stat("/tmp/retropangui-new-storage", &st) != 0 || st.st_size == 0)
+		return;
+	if (!mStorageDetectedCallback)
+		return;
+
+	mStoragePopupShown = true;
+	mStorageDetectedCallback();
 }

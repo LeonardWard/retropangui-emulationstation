@@ -6,6 +6,7 @@
 #include "InputConfig.h"
 #include "Settings.h"
 
+#include <functional>
 #include <memory>
 
 class SystemData;
@@ -73,6 +74,8 @@ public:
 	void setInfoPopup(InfoPopup* infoPopup) { delete mInfoPopup; mInfoPopup = infoPopup; }
 	inline void stopInfoPopup() { if (mInfoPopup) mInfoPopup->stop(); };
 
+	void setStorageDetectedCallback(std::function<void()> cb) { mStorageDetectedCallback = cb; }
+
 	void startScreenSaver(SystemData* system=NULL);
 	bool cancelScreenSaver();
 	void renderScreenSaver();
@@ -107,6 +110,11 @@ private:
 	unsigned int mTimeSinceLastInput;
 
 	bool mRenderedHelpPrompts;
+
+	int  mStorageCheckTimer;
+	bool mStoragePopupShown;
+	std::function<void()> mStorageDetectedCallback;
+	void checkNewStorage();
 };
 
 #endif // ES_CORE_WINDOW_H
