@@ -23,6 +23,7 @@
 #include "SystemScreenSaver.h"
 #include <SDL_events.h>
 #include <dirent.h>
+#include <unistd.h>
 #include <fstream>
 #include <map>
 #include <set>
