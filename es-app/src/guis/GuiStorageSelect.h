@@ -17,6 +17,9 @@ public:
 		uint64_t    sizeBytes;
 	};
 
+	static std::vector<StoragePartInfo> collectExternalParts();
+
+	GuiStorageSelect(Window* window);
 	GuiStorageSelect(Window* window, const std::vector<StoragePartInfo>& parts);
 };
 

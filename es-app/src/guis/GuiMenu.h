@@ -35,6 +35,7 @@ private:
 	void openScraperSettings();
 	void openScreensaverOptions();
 	void openSoundSettings();
+	void openStorageSettings();
 	void openSystemSettings();
 	void openUISettings();
 	void openUpdatesAndDownloads();

@@ -4,6 +4,7 @@
 #include "components/SliderComponent.h"
 #include "components/SwitchComponent.h"
 #include "guis/GuiCollectionSystemsOptions.h"
+#include "guis/GuiStorageSelect.h"
 #include "guis/GuiDetectDevice.h"
 #include "guis/GuiGeneralScreensaverOptions.h"
 #include "guis/GuiMsgBox.h"
@@ -999,6 +1000,18 @@ void GuiMenu::openControllerSettings()
 }
 
 // SYSTEM SETTINGS — 언어 + YAML(시간대/SSH) + 업데이트(준비 중) + 고급
+void GuiMenu::openStorageSettings()
+{
+	auto parts = GuiStorageSelect::collectExternalParts();
+	if (parts.empty()) {
+		mWindow->pushGui(new GuiMsgBox(mWindow,
+			"연결된 외부 저장장치가 없습니다.\nUSB 또는 SD카드를 연결한 후 다시 시도하세요.",
+			"확인", nullptr));
+		return;
+	}
+	mWindow->pushGui(new GuiStorageSelect(mWindow, parts));
+}
+
 void GuiMenu::openSystemSettings()
 {
 	auto s = new GuiSettings(mWindow, _("SYSTEM SETTINGS"));
@@ -1008,7 +1021,8 @@ void GuiMenu::openSystemSettings()
 	addFeatureItemsTo(s, "system", *checks);
 
 	addSubmenuEntry(s, _("UPDATES & DOWNLOADS"), [this] { openUpdatesAndDownloads(); });
-	addSubmenuEntry(s, _("ADVANCED SETTINGS"), [this] { openAdvancedSettings(); });
+	addSubmenuEntry(s, _("STORAGE DEVICE"),      [this] { openStorageSettings(); });
+	addSubmenuEntry(s, _("ADVANCED SETTINGS"),   [this] { openAdvancedSettings(); });
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
