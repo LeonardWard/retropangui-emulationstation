@@ -559,7 +559,7 @@ int main(int argc, char* argv[])
 		}
 
 		window.pushGui(new GuiMsgBox(&window,
-			"새 저장장치가 감지됐습니다.\nshare로 사용하시겠습니까?",
+			"외부 저장장치가 감지됐습니다.\n게임과 세이브 파일을 여기에 저장하시겠습니까?",
 			"예", [&window, parts]() {
 				window.pushGui(new GuiStorageSelect(&window, parts));
 			},
