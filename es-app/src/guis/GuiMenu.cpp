@@ -1365,7 +1365,7 @@ void GuiMenu::openEmulatorSettings()
 			emulatorList->add(label, core.name, core.priority == 1);
 		}
 
-		s->addWithLabel(system->getFullName(), emulatorList);
+		s->addWithLabel(Utils::String::toUpper(system->getName()), emulatorList);
 		s->addSaveFunc([system, emulatorList, currentDefault] {
 			std::string selectedCore = emulatorList->getSelected();
 			std::string systemName = system->getName();
