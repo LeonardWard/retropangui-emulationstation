@@ -544,24 +544,6 @@ void GuiMenu::openQuitMenu()
 		row.addElement(std::make_shared<TextComponent>(window, _("RESTART EMULATIONSTATION"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 		s->addRow(row);
 
-		if(Settings::getInstance()->getBool("ShowExit"))
-		{
-			auto static quit_es_fx = [] {
-				Scripting::fireEvent("quit");
-				quitES();
-			};
-
-			row.elements.clear();
-			if (confirm_quit) {
-				row.makeAcceptInputHandler([window] {
-					window->pushGui(new GuiMsgBox(window, _("REALLY QUIT?"), _("YES"), quit_es_fx, _("NO"), nullptr));
-				});
-			} else {
-				row.makeAcceptInputHandler(quit_es_fx);
-			}
-			row.addElement(std::make_shared<TextComponent>(window, _("QUIT EMULATIONSTATION"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
-			s->addRow(row);
-		}
 	}
 
 	auto static reboot_sys_fx = [] {
