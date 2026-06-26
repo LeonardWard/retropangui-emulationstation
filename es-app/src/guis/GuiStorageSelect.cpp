@@ -12,6 +12,8 @@
 static void writeBootConf(const std::string& uuid)
 {
 	const std::string confPath = "/boot/retropangui-boot.conf";
+	// uuid가 비어있으면 INTERNAL, 아니면 DEV UUID=<uuid>
+	std::string value = uuid.empty() ? "INTERNAL" : ("DEV UUID=" + uuid);
 	std::vector<std::string> lines;
 	{
 		std::ifstream fin(confPath);
@@ -19,20 +21,69 @@ static void writeBootConf(const std::string& uuid)
 		bool found = false;
 		while (std::getline(fin, line)) {
 			if (line.substr(0, 12) == "sharedevice=") {
-				lines.push_back("sharedevice=DEV UUID=" + uuid);
+				lines.push_back("sharedevice=" + value);
 				found = true;
 			} else {
 				lines.push_back(line);
 			}
 		}
 		if (!found)
-			lines.push_back("sharedevice=DEV UUID=" + uuid);
+			lines.push_back("sharedevice=" + value);
 	}
 	{
 		std::ofstream fout(confPath);
 		for (auto& l : lines) fout << l << "\n";
 	}
 	::sync();
+}
+
+// 내장 eMMC share 파티션(p3) 정보 반환. 없으면 빈 항목.
+static GuiStorageSelect::StoragePartInfo collectInternalPart()
+{
+	GuiStorageSelect::StoragePartInfo info;
+
+	// 부트 디바이스 확인 (예: mmcblk0)
+	std::string bootDev;
+	{
+		std::ifstream mounts("/proc/mounts");
+		std::string line;
+		while (std::getline(mounts, line)) {
+			std::istringstream iss(line);
+			std::string dev, mnt;
+			iss >> dev >> mnt;
+			if (mnt == "/boot" && dev.find("/dev/") == 0) {
+				bootDev = dev;
+				// p1 → mmcblk0
+				while (!bootDev.empty() && (isdigit((unsigned char)bootDev.back()) || bootDev.back() == 'p'))
+					bootDev.pop_back();
+				break;
+			}
+		}
+	}
+	if (bootDev.empty()) return info;
+
+	std::string devName = bootDev.substr(5); // "/dev/" 제거
+	// p3 파티션 찾기 (p1, p2 제외)
+	std::ifstream pp("/proc/partitions");
+	std::string line;
+	std::getline(pp, line); std::getline(pp, line);
+	std::string partName;
+	while (std::getline(pp, line)) {
+		std::istringstream iss(line);
+		unsigned int major, minor; uint64_t blocks; std::string name;
+		iss >> major >> minor >> blocks >> name;
+		if (name.substr(0, devName.size()) != devName) continue;
+		if (name == devName) continue;
+		std::string suffix = name.substr(devName.size());
+		if (suffix == "p1" || suffix == "p2" || suffix == "boot0" || suffix == "boot1" || suffix == "rpmb") continue;
+		// 첫 번째 data 파티션 (p3)
+		info.devname   = name;
+		info.uuid      = ""; // 빈 UUID = INTERNAL 센티널
+		info.sizeBytes = blocks * 1024ULL;
+		info.label     = "INTERNAL";
+		break;
+	}
+	return info;
 }
 
 std::vector<GuiStorageSelect::StoragePartInfo> GuiStorageSelect::collectExternalParts()
@@ -138,6 +189,19 @@ GuiStorageSelect::GuiStorageSelect(Window* window, const std::vector<StoragePart
 	: GuiSettings(window, "저장장치 선택")
 {
 	auto list = std::make_shared<OptionListComponent<std::string>>(window, "파티션 선택", false);
+
+	// 내장 파티션을 맨 앞에 추가
+	StoragePartInfo internalPart = collectInternalPart();
+	if (!internalPart.devname.empty()) {
+		uint64_t gb = internalPart.sizeBytes / (1024ULL * 1024 * 1024);
+		uint64_t mb = (internalPart.sizeBytes / (1024ULL * 1024)) % 1024;
+		std::string sizeStr = gb > 0
+			? (std::to_string(gb) + "." + std::to_string(mb / 100) + "GB")
+			: (std::to_string(internalPart.sizeBytes / (1024ULL * 1024)) + "MB");
+		std::string label = "INTERNAL [" + sizeStr + "] (" + internalPart.devname + ")";
+		list->add(label, internalPart.uuid, false); // uuid="" → INTERNAL
+	}
+
 	for (const auto& p : parts) {
 		uint64_t gb  = p.sizeBytes / (1024ULL * 1024 * 1024);
 		uint64_t mb  = (p.sizeBytes / (1024ULL * 1024)) % 1024;
