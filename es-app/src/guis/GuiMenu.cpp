@@ -430,13 +430,13 @@ void GuiMenu::openUISettings()
 	// maximum vram (ES UI 텍스처 한도)
 	auto max_vram = std::make_shared<SliderComponent>(mWindow, 0.f, 1000.f, 10.f, "Mb");
 	max_vram->setValue((float)(Settings::getInstance()->getInt("MaxVRAM")));
-	s->addWithLabel(_("VRAM LIMIT"), max_vram);
+	s->addWithLabel(_("ES VRAM 제한"), max_vram);
 	s->addSaveFunc([max_vram] { Settings::getInstance()->setInt("MaxVRAM", (int)Math::round(max_vram->getValue())); });
 
 	// framerate
 	auto framerate = std::make_shared<SwitchComponent>(mWindow);
 	framerate->setState(Settings::getInstance()->getBool("DrawFramerate"));
-	s->addWithLabel(_("SHOW FRAMERATE"), framerate);
+	s->addWithLabel(_("ES 프레임 표시"), framerate);
 	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
 
 	// YAML: UI 관련 항목 (LANGUAGE 등)
