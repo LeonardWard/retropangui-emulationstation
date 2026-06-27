@@ -427,6 +427,18 @@ void GuiMenu::openUISettings()
 	s->addWithLabel(_("DISABLE START MENU IN KID MODE"), disable_start);
 	s->addSaveFunc([disable_start] { Settings::getInstance()->setBool("DisableKidStartMenu", disable_start->getState()); });
 
+	// maximum vram (ES UI 텍스처 한도)
+	auto max_vram = std::make_shared<SliderComponent>(mWindow, 0.f, 1000.f, 10.f, "Mb");
+	max_vram->setValue((float)(Settings::getInstance()->getInt("MaxVRAM")));
+	s->addWithLabel(_("VRAM LIMIT"), max_vram);
+	s->addSaveFunc([max_vram] { Settings::getInstance()->setInt("MaxVRAM", (int)Math::round(max_vram->getValue())); });
+
+	// framerate
+	auto framerate = std::make_shared<SwitchComponent>(mWindow);
+	framerate->setState(Settings::getInstance()->getBool("DrawFramerate"));
+	s->addWithLabel(_("SHOW FRAMERATE"), framerate);
+	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
+
 	// YAML: UI 관련 항목 (LANGUAGE 등)
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 	addFeatureItemsTo(s, "ui", *checks);
@@ -436,36 +448,10 @@ void GuiMenu::openUISettings()
 
 }
 
-// SYSTEM SETTINGS > ADVANCED — 구 OTHER SETTINGS에서 게임목록 항목(UI로 이동)을 뺀 잔여
+// SYSTEM SETTINGS > ADVANCED — 공장 초기화
 void GuiMenu::openAdvancedSettings()
 {
 	auto s = new GuiSettings(mWindow, _("ADVANCED SETTINGS"));
-
-	// maximum vram
-	auto max_vram = std::make_shared<SliderComponent>(mWindow, 0.f, 1000.f, 10.f, "Mb");
-	max_vram->setValue((float)(Settings::getInstance()->getInt("MaxVRAM")));
-	s->addWithLabel(_("VRAM LIMIT"), max_vram);
-	s->addSaveFunc([max_vram] { Settings::getInstance()->setInt("MaxVRAM", (int)Math::round(max_vram->getValue())); });
-
-	// power saver
-	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);
-	std::vector<std::string> modes;
-	modes.push_back("disabled");
-	modes.push_back("default");
-	modes.push_back("enhanced");
-	modes.push_back("instant");
-	for (auto it = modes.cbegin(); it != modes.cend(); it++)
-		power_saver->add(*it, *it, Settings::getInstance()->getString("PowerSaverMode") == *it);
-	s->addWithLabel(_("POWER SAVER MODES"), power_saver);
-	s->addSaveFunc([this, power_saver] {
-		if (Settings::getInstance()->getString("PowerSaverMode") != "instant" && power_saver->getSelected() == "instant") {
-			Settings::getInstance()->setString("TransitionStyle", "instant");
-			Settings::getInstance()->setBool("MoveCarousel", false);
-			Settings::getInstance()->setBool("EnableSounds", false);
-		}
-		Settings::getInstance()->setString("PowerSaverMode", power_saver->getSelected());
-		PowerSaver::init();
-	});
 
 #ifdef _OMX_
 	// Video Player - VideoOmxPlayer
@@ -474,30 +460,14 @@ void GuiMenu::openAdvancedSettings()
 	s->addWithLabel(_("USE OMX PLAYER (HW ACCELERATED)"), omx_player);
 	s->addSaveFunc([omx_player]
 	{
-		// need to reload all views to re-create the right video components
 		bool needReload = false;
 		if(Settings::getInstance()->getBool("VideoOmxPlayer") != omx_player->getState())
 			needReload = true;
-
 		Settings::getInstance()->setBool("VideoOmxPlayer", omx_player->getState());
-
 		if(needReload)
 			ViewController::get()->reloadAll();
 	});
-
 #endif
-
-	// hidden files
-	auto background_indexing = std::make_shared<SwitchComponent>(mWindow);
-	background_indexing->setState(Settings::getInstance()->getBool("BackgroundIndexing"));
-	s->addWithLabel(_("INDEX FILES DURING SCREENSAVER"), background_indexing);
-	s->addSaveFunc([background_indexing] { Settings::getInstance()->setBool("BackgroundIndexing", background_indexing->getState()); });
-
-	// framerate
-	auto framerate = std::make_shared<SwitchComponent>(mWindow);
-	framerate->setState(Settings::getInstance()->getBool("DrawFramerate"));
-	s->addWithLabel(_("SHOW FRAMERATE"), framerate);
-	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
 
 	// 공장 초기화
 	{
@@ -963,6 +933,12 @@ void GuiMenu::openGameSettings()
 	// YAML: 스무딩/정수 스케일(구 VIDEO SETTINGS) + 되감기/자동저장(구 GAME SETTINGS)
 	addFeatureItemsTo(s, "game", *checks);
 
+	// 백그라운드 인덱싱
+	auto background_indexing = std::make_shared<SwitchComponent>(mWindow);
+	background_indexing->setState(Settings::getInstance()->getBool("BackgroundIndexing"));
+	s->addWithLabel(_("INDEX FILES DURING SCREENSAVER"), background_indexing);
+	s->addSaveFunc([background_indexing] { Settings::getInstance()->setBool("BackgroundIndexing", background_indexing->getState()); });
+
 	addSubmenuEntry(s, _("RETROACHIEVEMENTS"), [this] { openRetroAchievements(); });
 
 	setSaveWithRestartChecks(s, checks);
@@ -1019,6 +995,26 @@ void GuiMenu::openSystemSettings()
 
 	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH(구 NETWORK SETTINGS)
 	addFeatureItemsTo(s, "system", *checks);
+
+	// power saver
+	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);
+	std::vector<std::string> modes;
+	modes.push_back("disabled");
+	modes.push_back("default");
+	modes.push_back("enhanced");
+	modes.push_back("instant");
+	for (auto it = modes.cbegin(); it != modes.cend(); it++)
+		power_saver->add(*it, *it, Settings::getInstance()->getString("PowerSaverMode") == *it);
+	s->addWithLabel(_("POWER SAVER MODES"), power_saver);
+	s->addSaveFunc([this, power_saver] {
+		if (Settings::getInstance()->getString("PowerSaverMode") != "instant" && power_saver->getSelected() == "instant") {
+			Settings::getInstance()->setString("TransitionStyle", "instant");
+			Settings::getInstance()->setBool("MoveCarousel", false);
+			Settings::getInstance()->setBool("EnableSounds", false);
+		}
+		Settings::getInstance()->setString("PowerSaverMode", power_saver->getSelected());
+		PowerSaver::init();
+	});
 
 	addSubmenuEntry(s, _("UPDATES & DOWNLOADS"), [this] { openUpdatesAndDownloads(); });
 	addSubmenuEntry(s, _("STORAGE DEVICE"),      [this] { openStorageSettings(); });
