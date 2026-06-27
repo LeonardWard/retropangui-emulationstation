@@ -201,7 +201,7 @@ void Settings::setDefaults()
 	std::map<std::string, int> m3;
 	mMapIntMap["RandomCollectionSystems"] = m3;
 	mStringMap["RandomCollectionExclusionCollection"] = "";
-	mStringMap["CollectionSystemsAuto"] = "";
+	mStringMap["CollectionSystemsAuto"] = "all,recent,favorites,random";
 	mStringMap["CollectionSystemsCustom"] = "";
 	mStringMap["DefaultScreenSaverCollection"] = "";
 	mBoolMap["CollectionShowSystemInfo"] = true;
