@@ -499,6 +499,24 @@ void GuiMenu::openAdvancedSettings()
 	s->addWithLabel(_("SHOW FRAMERATE"), framerate);
 	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
 
+	// 공장 초기화
+	{
+		ComponentListRow row;
+		Window* window = mWindow;
+		row.makeAcceptInputHandler([window] {
+			window->pushGui(new GuiMsgBox(window,
+				_("시스템 설정을 초기화합니다.\nROMs와 세이브 파일은 유지됩니다.\n\n정말 초기화하시겠습니까?"),
+				_("YES"), [] {
+					system("mount -o remount,rw /boot 2>/dev/null; touch /boot/.factory-reset; sync");
+					Scripting::fireEvent("quit", "reboot");
+					Scripting::fireEvent("reboot");
+					quitES(QuitMode::REBOOT);
+				},
+				_("NO"), nullptr));
+		});
+		row.addElement(std::make_shared<TextComponent>(window, _("공장 초기화"), Font::get(FONT_SIZE_MEDIUM), 0xFF5555FF), true);
+		s->addRow(row);
+	}
 
 	mWindow->pushGui(s);
 
