@@ -32,8 +32,7 @@ static std::string getYmlPath()
 	std::string userPath = share + "/system/retropangui_features.yml";
 	if (stat(userPath.c_str(), &st) == 0)
 		return userPath;
-	// 시스템 기본 경로 (C5 rootfs: /opt/retropangui/)
-	return "/opt/retropangui/retropangui_features.yml";
+	return "/usr/share/retropangui/retropangui_features.yml";
 }
 
 static int indentOf(const std::string& line)

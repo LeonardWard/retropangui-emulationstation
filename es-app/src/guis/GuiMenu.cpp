@@ -885,7 +885,7 @@ void GuiMenu::setSaveWithRestartChecks(GuiSettings* s,
 		s->executeSaveFuncs();
 
 		// retropangui.conf → OS/ES/RA 즉시 반영 (timezone, hostname 등 runtime 적용)
-		system("/opt/retropangui/share/apply_retropangui_conf.sh &");
+		system("/usr/share/retropangui/apply_retropangui_conf.sh &");
 
 		if (actualRestart == "none")
 			return;
