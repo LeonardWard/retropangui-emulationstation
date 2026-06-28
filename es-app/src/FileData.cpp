@@ -19,6 +19,7 @@
 #include "Window.h"
 #include <assert.h>
 #include <fstream>
+#include <sys/stat.h>
 #include <set>
 #include <algorithm>
 #include <functional>
@@ -497,6 +498,45 @@ void FileData::sort(const SortType& type)
 	mSortDesc = type.description;
 }
 
+static std::string buildAppendConfig(const std::string& romPath, const std::string& romsRoot)
+{
+	std::vector<std::string> dirs;
+	std::string dir = Utils::FileSystem::getParent(romPath);
+
+	while (dir.size() >= romsRoot.size())
+	{
+		dirs.push_back(dir);
+		if (dir == romsRoot) break;
+		std::string parent = Utils::FileSystem::getParent(dir);
+		if (parent == dir) break;
+		dir = parent;
+	}
+
+	std::reverse(dirs.begin(), dirs.end());
+
+	std::vector<std::string> chain;
+	for (const auto& d : dirs)
+	{
+		std::string candidate = d + "/.retroarch.cfg";
+		if (Utils::FileSystem::exists(candidate))
+			chain.push_back(candidate);
+	}
+
+	std::string gameOverride = romPath + ".retroarch.cfg";
+	if (Utils::FileSystem::exists(gameOverride))
+		chain.push_back(gameOverride);
+
+	if (chain.empty()) return "";
+
+	std::string result;
+	for (size_t i = 0; i < chain.size(); ++i)
+	{
+		if (i > 0) result += "|";
+		result += chain[i];
+	}
+	return result;
+}
+
 void FileData::launchGame(Window* window)
 {
 	LOG(LogInfo) << "Attempting to launch game...";
@@ -612,6 +652,29 @@ void FileData::launchGame(Window* window)
 	const std::string basename = Utils::FileSystem::getStem(getPath());
 	const std::string rom_raw  = Utils::FileSystem::getPreferredPath(getPath());
 	const std::string name     = getName();
+
+	// Config override: romsRoot 아래 .retroarch.cfg 체인을 --appendconfig로 전달
+	{
+		struct stat st;
+		std::string sharePath;
+		const char* shareEnv = getenv("RETROPANGUI_SHARE");
+		if (shareEnv && shareEnv[0] != '\0')
+			sharePath = shareEnv;
+		else if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+			sharePath = "/share";
+		else {
+			const char* home = getenv("HOME");
+			sharePath = home ? std::string(home) + "/share" : "/share";
+		}
+		std::string romsRoot = sharePath + "/roms";
+		std::string appendCfg = buildAppendConfig(rom_raw, romsRoot);
+		if (!appendCfg.empty())
+		{
+			LOG(LogInfo) << "Config override chain: " << appendCfg;
+			command = Utils::String::replace(command, "%ROM%",
+				"--appendconfig \"" + appendCfg + "\" %ROM%");
+		}
+	}
 
 	command = Utils::String::replace(command, "%ROM%", rom);
 	command = Utils::String::replace(command, "%BASENAME%", basename);
