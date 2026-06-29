@@ -45,6 +45,11 @@ Settings::Settings()
 {
 	setDefaults();
 	loadFile();
+
+	// 환경변수는 설정 파일보다 항상 우선
+	const char* coresEnv = std::getenv("LIBRETRO_CORES_PATH");
+	if (coresEnv && coresEnv[0] != '\0')
+		mStringMap["LibretroCoresPath"] = coresEnv;
 }
 
 Settings* Settings::getInstance()
