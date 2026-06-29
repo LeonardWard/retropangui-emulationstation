@@ -500,6 +500,8 @@ void FileData::sort(const SortType& type)
 
 static std::string buildAppendConfig(const std::string& romPath, const std::string& romsRoot)
 {
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac1] romPath=%s romsRoot=%s\n", romPath.c_str(), romsRoot.c_str()); fflush(f); fclose(f); } }
+
 	std::vector<std::string> dirs;
 	std::string dir = Utils::FileSystem::getParent(romPath);
 
@@ -512,19 +514,26 @@ static std::string buildAppendConfig(const std::string& romPath, const std::stri
 		dir = parent;
 	}
 
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac2] dirs=%zu\n", dirs.size()); fflush(f); fclose(f); } }
+
 	std::reverse(dirs.begin(), dirs.end());
 
 	std::vector<std::string> chain;
 	for (const auto& d : dirs)
 	{
+		{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac3] exists? %s\n", (d + "/.retroarch.cfg").c_str()); fflush(f); fclose(f); } }
 		std::string candidate = d + "/.retroarch.cfg";
 		if (Utils::FileSystem::exists(candidate))
 			chain.push_back(candidate);
 	}
 
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac4] game override check\n"); fflush(f); fclose(f); } }
+
 	std::string gameOverride = romPath + ".retroarch.cfg";
 	if (Utils::FileSystem::exists(gameOverride))
 		chain.push_back(gameOverride);
+
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac5] chain=%zu\n", chain.size()); fflush(f); fclose(f); } }
 
 	if (chain.empty()) return "";
 
