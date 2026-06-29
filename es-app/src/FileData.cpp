@@ -539,6 +539,7 @@ static std::string buildAppendConfig(const std::string& romPath, const std::stri
 
 void FileData::launchGame(Window* window)
 {
+	{ FILE* f = fopen("/tmp/es_launch.txt", "w"); if (f) { fprintf(f, "launchGame called\n"); fflush(f); fclose(f); } }
 	LOG(LogInfo) << "Attempting to launch game...";
 
 	MusicManager::getInstance()->stop(); // 게임 중에는 BGM 정지
@@ -682,6 +683,7 @@ void FileData::launchGame(Window* window)
 
 	Scripting::fireEvent("game-start", rom, basename, name);
 
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "command: %s\n", command.c_str()); fflush(f); fclose(f); } }
 	LOG(LogInfo) << "	" << command;
 	int exitCode = runSystemCommand(command);
 
