@@ -500,8 +500,6 @@ void FileData::sort(const SortType& type)
 
 static std::string buildAppendConfig(const std::string& romPath, const std::string& romsRoot)
 {
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac1] romPath=%s romsRoot=%s\n", romPath.c_str(), romsRoot.c_str()); fflush(f); fclose(f); } }
-
 	std::vector<std::string> dirs;
 	std::string dir = Utils::FileSystem::getParent(romPath);
 
@@ -514,26 +512,19 @@ static std::string buildAppendConfig(const std::string& romPath, const std::stri
 		dir = parent;
 	}
 
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac2] dirs=%zu\n", dirs.size()); fflush(f); fclose(f); } }
-
 	std::reverse(dirs.begin(), dirs.end());
 
 	std::vector<std::string> chain;
 	for (const auto& d : dirs)
 	{
-		{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac3] exists? %s\n", (d + "/.retroarch.cfg").c_str()); fflush(f); fclose(f); } }
 		std::string candidate = d + "/.retroarch.cfg";
 		if (Utils::FileSystem::exists(candidate))
 			chain.push_back(candidate);
 	}
 
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac4] game override check\n"); fflush(f); fclose(f); } }
-
 	std::string gameOverride = romPath + ".retroarch.cfg";
 	if (Utils::FileSystem::exists(gameOverride))
 		chain.push_back(gameOverride);
-
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[bac5] chain=%zu\n", chain.size()); fflush(f); fclose(f); } }
 
 	if (chain.empty()) return "";
 
@@ -548,7 +539,6 @@ static std::string buildAppendConfig(const std::string& romPath, const std::stri
 
 void FileData::launchGame(Window* window)
 {
-	{ FILE* f = fopen("/tmp/es_launch.txt", "w"); if (f) { fprintf(f, "[1] launchGame called\n"); fflush(f); fclose(f); } }
 	LOG(LogInfo) << "Attempting to launch game...";
 
 	MusicManager::getInstance()->stop();
@@ -557,11 +547,7 @@ void FileData::launchGame(Window* window)
 	InputManager::getInstance()->deinit();
 	window->deinit();
 
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[2] window deinit done\n"); fflush(f); fclose(f); } }
-
 	std::string command = mEnvData->mLaunchCommand;
-
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[3] command template: %s\n", command.c_str()); fflush(f); fclose(f); } }
 
 	// RetroPangui: Handle %CORE% and %CONFIG% variables
 	if (command.find("%CORE%") != std::string::npos || command.find("%CONFIG%") != std::string::npos)
@@ -662,8 +648,6 @@ void FileData::launchGame(Window* window)
 		command = Utils::String::replace(command, "%CONFIG%", configPath);
 	}
 
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4] core resolved: %s\n", command.c_str()); fflush(f); fclose(f); } }
-
 	const std::string rom      = Utils::FileSystem::getEscapedPath(getPath());
 	const std::string basename = Utils::FileSystem::getStem(getPath());
 	const std::string rom_raw  = Utils::FileSystem::getPreferredPath(getPath());
@@ -684,17 +668,13 @@ void FileData::launchGame(Window* window)
 		}
 		std::string romsRoot = sharePath + "/roms";
 		std::string appendCfg = buildAppendConfig(rom_raw, romsRoot);
-		{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4b] appendCfg=%s\n", appendCfg.c_str()); fflush(f); fclose(f); } }
 		if (!appendCfg.empty())
 		{
-			{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4c] before replace\n"); fflush(f); fclose(f); } }
-			command = Utils::String::replace(command, "%ROM%",
-				"--appendconfig \"" + appendCfg + "\" %ROM%");
-			{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4d] after replace\n"); fflush(f); fclose(f); } }
+			size_t romPos = command.find("%ROM%");
+			if (romPos != std::string::npos)
+				command.insert(romPos, "--appendconfig \"" + appendCfg + "\" ");
 		}
 	}
-
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[5] buildAppendConfig done\n"); fflush(f); fclose(f); } }
 
 	command = Utils::String::replace(command, "%ROM%", rom);
 	command = Utils::String::replace(command, "%BASENAME%", basename);
@@ -702,7 +682,6 @@ void FileData::launchGame(Window* window)
 
 	Scripting::fireEvent("game-start", rom, basename, name);
 
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[6] command: %s\n", command.c_str()); fflush(f); fclose(f); } }
 	LOG(LogInfo) << "	" << command;
 	int exitCode = runSystemCommand(command);
 
