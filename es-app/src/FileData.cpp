@@ -684,11 +684,13 @@ void FileData::launchGame(Window* window)
 		}
 		std::string romsRoot = sharePath + "/roms";
 		std::string appendCfg = buildAppendConfig(rom_raw, romsRoot);
+		{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4b] appendCfg=%s\n", appendCfg.c_str()); fflush(f); fclose(f); } }
 		if (!appendCfg.empty())
 		{
-			LOG(LogInfo) << "Config override chain: " << appendCfg;
+			{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4c] before replace\n"); fflush(f); fclose(f); } }
 			command = Utils::String::replace(command, "%ROM%",
 				"--appendconfig \"" + appendCfg + "\" %ROM%");
+			{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4d] after replace\n"); fflush(f); fclose(f); } }
 		}
 	}
 
