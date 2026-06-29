@@ -539,16 +539,20 @@ static std::string buildAppendConfig(const std::string& romPath, const std::stri
 
 void FileData::launchGame(Window* window)
 {
-	{ FILE* f = fopen("/tmp/es_launch.txt", "w"); if (f) { fprintf(f, "launchGame called\n"); fflush(f); fclose(f); } }
+	{ FILE* f = fopen("/tmp/es_launch.txt", "w"); if (f) { fprintf(f, "[1] launchGame called\n"); fflush(f); fclose(f); } }
 	LOG(LogInfo) << "Attempting to launch game...";
 
-	MusicManager::getInstance()->stop(); // 게임 중에는 BGM 정지
+	MusicManager::getInstance()->stop();
 	AudioManager::getInstance()->deinit();
 	VolumeControl::getInstance()->deinit();
 	InputManager::getInstance()->deinit();
 	window->deinit();
 
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[2] window deinit done\n"); fflush(f); fclose(f); } }
+
 	std::string command = mEnvData->mLaunchCommand;
+
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[3] command template: %s\n", command.c_str()); fflush(f); fclose(f); } }
 
 	// RetroPangui: Handle %CORE% and %CONFIG% variables
 	if (command.find("%CORE%") != std::string::npos || command.find("%CONFIG%") != std::string::npos)
@@ -649,6 +653,8 @@ void FileData::launchGame(Window* window)
 		command = Utils::String::replace(command, "%CONFIG%", configPath);
 	}
 
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[4] core resolved: %s\n", command.c_str()); fflush(f); fclose(f); } }
+
 	const std::string rom      = Utils::FileSystem::getEscapedPath(getPath());
 	const std::string basename = Utils::FileSystem::getStem(getPath());
 	const std::string rom_raw  = Utils::FileSystem::getPreferredPath(getPath());
@@ -677,13 +683,15 @@ void FileData::launchGame(Window* window)
 		}
 	}
 
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[5] buildAppendConfig done\n"); fflush(f); fclose(f); } }
+
 	command = Utils::String::replace(command, "%ROM%", rom);
 	command = Utils::String::replace(command, "%BASENAME%", basename);
 	command = Utils::String::replace(command, "%ROM_RAW%", rom_raw);
 
 	Scripting::fireEvent("game-start", rom, basename, name);
 
-	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "command: %s\n", command.c_str()); fflush(f); fclose(f); } }
+	{ FILE* f = fopen("/tmp/es_launch.txt", "a"); if (f) { fprintf(f, "[6] command: %s\n", command.c_str()); fflush(f); fclose(f); } }
 	LOG(LogInfo) << "	" << command;
 	int exitCode = runSystemCommand(command);
 
