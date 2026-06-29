@@ -668,6 +668,13 @@ void FileData::launchGame(Window* window)
 		}
 		std::string romsRoot = sharePath + "/roms";
 		std::string appendCfg = buildAppendConfig(rom_raw, romsRoot);
+
+		// /etc/retroarch.cfg를 항상 첫 번째로 포함 (핫키 등 시스템 공통 설정)
+		std::string sysConfig = "/etc/retroarch.cfg";
+		struct stat sst;
+		if (stat(sysConfig.c_str(), &sst) == 0)
+			appendCfg = appendCfg.empty() ? sysConfig : sysConfig + "|" + appendCfg;
+
 		if (!appendCfg.empty())
 		{
 			size_t romPos = command.find("%ROM%");
