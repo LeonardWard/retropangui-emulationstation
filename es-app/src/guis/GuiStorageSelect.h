@@ -5,22 +5,23 @@
 #include "guis/GuiSettings.h"
 #include <string>
 #include <vector>
-#include <cstdint>
 
 class GuiStorageSelect : public GuiSettings
 {
 public:
-	struct StoragePartInfo {
-		std::string devname;
-		std::string uuid;
+	struct DeviceInfo {
+		std::string id;       // "INTERNAL" | "DEV UUID=xxxx"
 		std::string label;
-		uint64_t    sizeBytes;
+		std::string dev;
+		int         size_gb;
+		std::string type;
+		std::string uuid;
 	};
 
-	static std::vector<StoragePartInfo> collectExternalParts();
-
 	GuiStorageSelect(Window* window);
-	GuiStorageSelect(Window* window, const std::vector<StoragePartInfo>& parts);
+
+private:
+	static std::vector<DeviceInfo> readDevicesJson();
 };
 
 #endif // ES_APP_GUIS_GUI_STORAGE_SELECT_H

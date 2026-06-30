@@ -481,23 +481,15 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	// RetroPangui: 외부 저장장치 감지 콜백 등록
-	window.setStorageDetectedCallback([&window]() {
-		auto parts = GuiStorageSelect::collectExternalParts();
+	// RetroPangui: 외부 저장장치 감지 콜백 등록 (storage-mgr IPC 기반)
+	window.setStorageDetectedCallback([&window](const std::string& label, const std::string& /*id*/) {
+		std::string msg = label.empty()
+			? "외부 저장장치가 감지됐습니다.\n게임과 세이브 파일을 여기에 저장하시겠습니까?"
+			: label + " 이(가) 감지됐습니다.\n게임과 세이브 파일을 여기에 저장하시겠습니까?";
 
-		if (parts.empty()) {
-			::remove("/tmp/retropangui-new-storage");
-			return;
-		}
-
-		window.pushGui(new GuiMsgBox(&window,
-			"외부 저장장치가 감지됐습니다.\n게임과 세이브 파일을 여기에 저장하시겠습니까?",
-			"예", [&window, parts]() {
-				window.pushGui(new GuiStorageSelect(&window, parts));
-			},
-			"아니오", []() {
-				::remove("/tmp/retropangui-new-storage");
-			}));
+		window.pushGui(new GuiMsgBox(&window, msg,
+			"예",     [&window]() { window.pushGui(new GuiStorageSelect(&window)); },
+			"아니오", nullptr));
 	});
 
 	// RetroPangui: 배경 음악 시작 (BackgroundMusic=false거나 <share>/music 비어 있으면 no-op)

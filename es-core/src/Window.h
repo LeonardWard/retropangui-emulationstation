@@ -74,7 +74,7 @@ public:
 	void setInfoPopup(InfoPopup* infoPopup) { delete mInfoPopup; mInfoPopup = infoPopup; }
 	inline void stopInfoPopup() { if (mInfoPopup) mInfoPopup->stop(); };
 
-	void setStorageDetectedCallback(std::function<void()> cb) { mStorageDetectedCallback = cb; }
+	void setStorageDetectedCallback(std::function<void(const std::string& label, const std::string& id)> cb) { mStorageDetectedCallback = cb; }
 
 	void startScreenSaver(SystemData* system=NULL);
 	bool cancelScreenSaver();
@@ -112,8 +112,7 @@ private:
 	bool mRenderedHelpPrompts;
 
 	int  mStorageCheckTimer;
-	bool mStoragePopupShown;
-	std::function<void()> mStorageDetectedCallback;
+	std::function<void(const std::string& label, const std::string& id)> mStorageDetectedCallback;
 	void checkNewStorage();
 };
 

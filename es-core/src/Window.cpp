@@ -7,6 +7,7 @@
 #include "Log.h"
 #include "Scripting.h"
 #include <algorithm>
+#include <fstream>
 #include <iomanip>
 #include <sys/stat.h>
 
@@ -16,7 +17,7 @@
 
 Window::Window() : mNormalizeNextUpdate(false), mFrameTimeElapsed(0), mFrameCountElapsed(0), mAverageDeltaTime(10),
 	mAllowSleep(true), mSleeping(false), mTimeSinceLastInput(0), mScreenSaver(NULL), mRenderScreenSaver(false), mInfoPopup(NULL),
-	mStorageCheckTimer(0), mStoragePopupShown(false)
+	mStorageCheckTimer(0)
 {
 	mHelp = new HelpComponent(this);
 	mBackgroundOverlay = new ImageComponent(this);
@@ -206,7 +207,7 @@ void Window::update(int deltaTime)
 		mScreenSaver->update(deltaTime);
 
 	// 외부 저장장치 감지 — 5초마다 체크, GuiStack이 준비된 후에만
-	if (!mGuiStack.empty() && !mStoragePopupShown) {
+	if (!mGuiStack.empty()) {
 		mStorageCheckTimer += deltaTime;
 		if (mStorageCheckTimer >= 5000) {
 			mStorageCheckTimer = 0;
@@ -469,12 +470,37 @@ void Window::renderScreenSaver()
 
 void Window::checkNewStorage()
 {
-	struct stat st;
-	if (stat("/tmp/retropangui-new-storage", &st) != 0 || st.st_size == 0)
-		return;
-	if (!mStorageDetectedCallback)
-		return;
+	if (!mStorageDetectedCallback) return;
 
-	mStoragePopupShown = true;
-	mStorageDetectedCallback();
+	// storage-mgr가 기록한 이벤트 파일에서 첫 번째 "added" 이벤트 읽기
+	static const char* EVT = "/tmp/retropangui-storage-event";
+	struct stat st;
+	if (stat(EVT, &st) != 0 || st.st_size == 0) return;
+
+	std::string label, id;
+	{
+		std::ifstream f(EVT);
+		std::string line;
+		while (std::getline(f, line)) {
+			if (line.find("\"action\":\"added\"") == std::string::npos) continue;
+			// 단순 파싱: "key":"value" 추출
+			auto extract = [&](const std::string& key) -> std::string {
+				std::string needle = "\"" + key + "\":\"";
+				size_t pos = line.find(needle);
+				if (pos == std::string::npos) return {};
+				pos += needle.size();
+				size_t end = line.find('"', pos);
+				return end == std::string::npos ? std::string() : line.substr(pos, end - pos);
+			};
+			label = extract("label");
+			id    = extract("id");
+			break;
+		}
+	}
+
+	if (id.empty()) return;
+
+	// 이벤트 파일 삭제 (다음 폴링에서 중복 처리 방지)
+	::remove(EVT);
+	mStorageDetectedCallback(label, id);
 }
