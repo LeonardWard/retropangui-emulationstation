@@ -105,6 +105,29 @@ std::vector<GuiStorageSelect::StoragePartInfo> GuiStorageSelect::collectExternal
 		}
 		// 신호 파일 없으면 /proc/partitions에서 외부 장치 전체 스캔
 		if (deviceNames.empty()) {
+			// 부트 디바이스 결정 (/boot → / 순으로 fallback)
+			std::string bootDev;
+			{
+				std::ifstream mf("/proc/mounts");
+				std::string ml;
+				while (std::getline(mf, ml)) {
+					std::istringstream iss(ml);
+					std::string dev, mp;
+					iss >> dev >> mp;
+					if ((mp == "/boot" || (bootDev.empty() && mp == "/")) &&
+					    dev.substr(0, 5) == "/dev/") {
+						bootDev = dev.substr(5); // "/dev/mmcblk1p1" → "mmcblk1p1"
+						// 파티션 번호 제거: mmcblk1p1 → mmcblk1, sda1 → sda
+						while (!bootDev.empty() && isdigit((unsigned char)bootDev.back()))
+							bootDev.pop_back();
+						if (!bootDev.empty() && bootDev.back() == 'p')
+							bootDev.pop_back();
+						if (mp == "/boot") break; // /boot 찾으면 확정
+					}
+				}
+				if (bootDev.empty()) bootDev = "mmcblk0"; // 판단 불가 fallback
+			}
+
 			std::ifstream pp("/proc/partitions");
 			std::string line;
 			std::getline(pp, line); std::getline(pp, line); // 헤더 2줄 건너뜀
@@ -113,7 +136,7 @@ std::vector<GuiStorageSelect::StoragePartInfo> GuiStorageSelect::collectExternal
 				unsigned int major, minor; uint64_t blocks; std::string name;
 				iss >> major >> minor >> blocks >> name;
 				if (name.empty()) continue;
-				if (name.substr(0,7) == "mmcblk0") continue;
+				if (name.substr(0, bootDev.size()) == bootDev) continue;
 				if (name.substr(0,4) == "loop") continue;
 				if (name.substr(0,3) == "ram") continue;
 				// 숫자로 끝나지 않으면 디스크(파티션 아님)
