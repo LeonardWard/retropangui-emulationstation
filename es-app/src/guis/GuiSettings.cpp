@@ -40,6 +40,9 @@ void GuiSettings::executeSaveFuncs()
 
 bool GuiSettings::input(InputConfig* config, Input input)
 {
+	if(GuiComponent::input(config, input))
+		return true;
+
 	if(config->isMappedToAction("back", input) && input.value != 0)
 	{
 		delete this;
@@ -55,7 +58,7 @@ bool GuiSettings::input(InputConfig* config, Input input)
 		return true;
 	}
 
-	return GuiComponent::input(config, input);
+	return false;
 }
 
 HelpStyle GuiSettings::getHelpStyle()
