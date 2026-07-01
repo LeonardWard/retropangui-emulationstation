@@ -1,4 +1,5 @@
 #include "guis/GuiMenu.h"
+#include <unordered_map>
 
 #include "components/OptionListComponent.h"
 #include "components/SliderComponent.h"
@@ -710,6 +711,18 @@ static void cfgWriteKey(const std::string& filePath, const std::string& fullKey,
 // ── 공개 헬퍼 ────────────────────────────────────────────────────────────────
 
 // retropangui.conf 에서 읽기 (global.KEY 형식, 따옴표 없음)
+// PATH에서 바이너리 존재 여부 확인 (결과 캐시 — 프로세스 당 1회 체크)
+static bool isBinAvailable(const std::string& bin)
+{
+	static std::unordered_map<std::string, bool> sCache;
+	auto it = sCache.find(bin);
+	if (it != sCache.end()) return it->second;
+	FILE* f = popen(("which " + bin + " 2>/dev/null").c_str(), "r");
+	char buf[4] = {};
+	if (f) { fgets(buf, sizeof(buf), f); pclose(f); }
+	return sCache[bin] = (buf[0] != '\0');
+}
+
 static std::string raCfgGet(const std::string& key, const std::string& def = "")
 {
 	return cfgReadKey(rpConfPath(), "global." + key, def);
@@ -866,6 +879,22 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		if (item.restart != "none")
 			checks.push_back({ [sl, orig]{ return (int)sl->getValue() != (int)orig; },
 			                   item.restart });
+	}
+	else if (item.type == "command")
+	{
+		if (item.exec.empty()) return;
+		// exec의 첫 번째 단어(바이너리)가 PATH에 존재하는지 확인
+		std::string bin = item.exec.substr(0, item.exec.find(' '));
+		if (!isBinAvailable(bin)) return;
+		std::string exec = item.exec;
+		ComponentListRow row;
+		row.makeAcceptInputHandler([this, exec] {
+			::system((exec + " &").c_str());
+		});
+		auto lbl = std::make_shared<TextComponent>(mWindow, _(item.label.c_str()),
+		                                           Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
+		row.addElement(lbl, true);
+		s->addRow(row);
 	}
 }
 
@@ -1029,7 +1058,8 @@ void GuiMenu::openSystemSettings()
 	});
 
 	addSubmenuEntry(s, _("UPDATES & DOWNLOADS"), [this] { openUpdatesAndDownloads(); });
-	addSubmenuEntry(s, _("STORAGE DEVICE"),      [this] { openStorageSettings(); });
+	if (isBinAvailable("storage-mgr"))
+		addSubmenuEntry(s, _("STORAGE DEVICE"), [this] { openStorageSettings(); });
 	addSubmenuEntry(s, _("ADVANCED SETTINGS"),   [this] { openAdvancedSettings(); });
 
 	setSaveWithRestartChecks(s, checks);

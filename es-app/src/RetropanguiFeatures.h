@@ -13,8 +13,9 @@ struct FeatureOption {
 struct FeatureItem {
 	std::string id;
 	std::string label;
-	std::string type;       // "toggle" | "list" | "slider" | "input"
+	std::string type;       // "toggle" | "list" | "slider" | "input" | "command"
 	std::string conf_key;   // retropangui.conf 키 (예: "global.video_smooth", "system.ssh")
+	std::string exec;       // type=command 일 때 실행할 셸 커맨드
 	std::string restart     = "none";  // "none" | "es" | "system"
 	std::string default_val = "";      // conf 키 없을 때 기본값
 	std::vector<FeatureOption> options;
