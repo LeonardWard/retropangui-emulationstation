@@ -18,8 +18,6 @@
 #include "VolumeControl.h"
 #include "Window.h"
 #include <assert.h>
-#include <fstream>
-#include <sys/stat.h>
 #include <set>
 #include <algorithm>
 #include <functional>
@@ -498,44 +496,6 @@ void FileData::sort(const SortType& type)
 	mSortDesc = type.description;
 }
 
-static std::string buildAppendConfig(const std::string& romPath, const std::string& romsRoot)
-{
-	std::vector<std::string> dirs;
-	std::string dir = Utils::FileSystem::getParent(romPath);
-
-	while (dir.size() >= romsRoot.size())
-	{
-		dirs.push_back(dir);
-		if (dir == romsRoot) break;
-		std::string parent = Utils::FileSystem::getParent(dir);
-		if (parent == dir) break;
-		dir = parent;
-	}
-
-	std::reverse(dirs.begin(), dirs.end());
-
-	std::vector<std::string> chain;
-	for (const auto& d : dirs)
-	{
-		std::string candidate = d + "/.retroarch.cfg";
-		if (Utils::FileSystem::exists(candidate))
-			chain.push_back(candidate);
-	}
-
-	std::string gameOverride = romPath + ".retroarch.cfg";
-	if (Utils::FileSystem::exists(gameOverride))
-		chain.push_back(gameOverride);
-
-	if (chain.empty()) return "";
-
-	std::string result;
-	for (size_t i = 0; i < chain.size(); ++i)
-	{
-		if (i > 0) result += "|";
-		result += chain[i];
-	}
-	return result;
-}
 
 void FileData::launchGame(Window* window)
 {
@@ -549,103 +509,44 @@ void FileData::launchGame(Window* window)
 
 	std::string command = mEnvData->mLaunchCommand;
 
-	// RetroPangui: Handle %CORE% and %CONFIG% variables
-	if (command.find("%CORE%") != std::string::npos || command.find("%CONFIG%") != std::string::npos)
+	// %CORE%를 module_id로 치환 — .so 경로 결정은 retropangui-launcher가 담당
+	if (command.find("%CORE%") != std::string::npos)
 	{
 		const CoreInfo* selectedCoreInfo = nullptr;
 
-		// Check if user has selected a specific emulator in metadata
 		std::string userSelectedCore = metadata.get("core");
 		if (!userSelectedCore.empty())
 		{
-			// Find the core with matching name
 			for (const auto& core : mEnvData->mCores)
 			{
 				if (core.name == userSelectedCore)
 				{
 					selectedCoreInfo = &core;
-					LOG(LogInfo) << "Using user-selected core: " << core.fullname << " (" << core.name << ")";
 					break;
 				}
 			}
-
-			if (selectedCoreInfo == nullptr)
-			{
-				LOG(LogWarning) << "User-selected core '" << userSelectedCore << "' not found, falling back to auto selection";
-			}
 		}
 
-		// If no user selection or not found, auto-select based on extension
 		if (selectedCoreInfo == nullptr)
 		{
-			// Get the file extension
 			std::string gameExt = Utils::FileSystem::getExtension(getPath());
-
-			// Find the best matching core for this extension
 			for (const auto& core : mEnvData->mCores)
 			{
-				// Check if this core supports the game's extension
 				for (const auto& ext : core.extensions)
 				{
-					if (ext == gameExt)
-					{
-						selectedCoreInfo = &core;
-						LOG(LogInfo) << "Auto-selected core: " << core.fullname << " (" << core.name << ", priority: " << core.priority << ")";
-						break;
-					}
+					if (ext == gameExt) { selectedCoreInfo = &core; break; }
 				}
-				if (selectedCoreInfo != nullptr) break;
-			}
-
-			// If no matching core found, use the first (highest priority) core
-			if (selectedCoreInfo == nullptr && !mEnvData->mCores.empty())
-			{
-				selectedCoreInfo = &mEnvData->mCores[0];
-				LOG(LogInfo) << "Using default core: " << selectedCoreInfo->fullname << " (" << selectedCoreInfo->name << ")";
+				if (selectedCoreInfo) break;
 			}
 		}
 
-		// Replace %CORE% with full core path
-		if (selectedCoreInfo != nullptr)
-		{
-			std::string coresPath = Settings::getInstance()->getString("LibretroCoresPath");
+		if (selectedCoreInfo == nullptr && !mEnvData->mCores.empty())
+			selectedCoreInfo = &mEnvData->mCores[0];
 
-			// Use module_id if available, otherwise fall back to old behavior
-			std::string coreDir;
-			if (!selectedCoreInfo->module_id.empty())
-			{
-				// Use module_id directly (e.g., "lr-pcsx-rearmed")
-				coreDir = coresPath + "/" + selectedCoreInfo->module_id;
-				LOG(LogInfo) << "Using module_id for core directory: " << selectedCoreInfo->module_id;
-			}
-			else
-			{
-				// Fallback: old hardcoded conversion (for backward compatibility)
-				std::string coreName = selectedCoreInfo->name;
-				std::replace(coreName.begin(), coreName.end(), '_', '-');
-				coreDir = coresPath + "/lr-" + coreName;
-				LOG(LogWarning) << "module_id not found, using fallback conversion: " << coreDir;
-			}
-
-			// Read actual .so filename from .installed_so_name
-			std::string installedSoPath = coreDir + "/.installed_so_name";
-			std::string soName = selectedCoreInfo->name + "_libretro.so"; // fallback
-
-			std::ifstream soFile(installedSoPath);
-			if (soFile.is_open())
-			{
-				std::getline(soFile, soName);
-				soFile.close();
-			}
-
-			std::string corePath = coreDir + "/" + soName;
-			command = Utils::String::replace(command, "%CORE%", corePath);
-		}
-
-		// Replace %CONFIG% with system-specific config path
-		std::string configBasePath = Settings::getInstance()->getString("CoreConfigPath");
-		std::string configPath = configBasePath + "/" + mSystem->getName() + "/retroarch.cfg";
-		command = Utils::String::replace(command, "%CONFIG%", configPath);
+		std::string moduleId = selectedCoreInfo ? selectedCoreInfo->module_id : "default";
+		if (moduleId.empty()) moduleId = "default";
+		LOG(LogInfo) << "Core module_id: " << moduleId;
+		command = Utils::String::replace(command, "%CORE%", moduleId);
 	}
 
 	const std::string rom      = Utils::FileSystem::getEscapedPath(getPath());
@@ -653,36 +554,7 @@ void FileData::launchGame(Window* window)
 	const std::string rom_raw  = Utils::FileSystem::getPreferredPath(getPath());
 	const std::string name     = getName();
 
-	// Config override: romsRoot 아래 .retroarch.cfg 체인을 --appendconfig로 전달
-	{
-		struct stat st;
-		std::string sharePath;
-		const char* shareEnv = getenv("RETROPANGUI_SHARE");
-		if (shareEnv && shareEnv[0] != '\0')
-			sharePath = shareEnv;
-		else if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
-			sharePath = "/share";
-		else {
-			const char* home = getenv("HOME");
-			sharePath = home ? std::string(home) + "/share" : "/share";
-		}
-		std::string romsRoot = sharePath + "/roms";
-		std::string appendCfg = buildAppendConfig(rom_raw, romsRoot);
-
-		// /etc/retroarch.cfg를 항상 첫 번째로 포함 (핫키 등 시스템 공통 설정)
-		std::string sysConfig = "/etc/retroarch.cfg";
-		struct stat sst;
-		if (stat(sysConfig.c_str(), &sst) == 0)
-			appendCfg = appendCfg.empty() ? sysConfig : sysConfig + "|" + appendCfg;
-
-		if (!appendCfg.empty())
-		{
-			size_t romPos = command.find("%ROM%");
-			if (romPos != std::string::npos)
-				command.insert(romPos, "--appendconfig \"" + appendCfg + "\" ");
-		}
-	}
-
+	command = Utils::String::replace(command, "%SYSTEM%", mSystem->getName());
 	command = Utils::String::replace(command, "%ROM%", rom);
 	command = Utils::String::replace(command, "%BASENAME%", basename);
 	command = Utils::String::replace(command, "%ROM_RAW%", rom_raw);
