@@ -632,14 +632,19 @@ namespace
 			mText.applyTheme(theme, view, element, properties ^ (POSITION | ThemeFlags::SIZE | ORIGIN | ROTATION | Z_INDEX | VISIBLE));
 		}
 
+		// 내부 TextComponent로 위임 — 호출부가 TextComponent인지 ScrollableTextExtra인지
+		// 몰라도 setValue()만으로 텍스트를 갱신할 수 있게 함 (bgmTitle 등 동적 텍스트 extra용)
+		void setValue(const std::string& value) override { mText.setValue(value); }
+		std::string getValue() const override { return mText.getValue(); }
+
 	private:
 		TextComponent mText;
 	};
 }
 
-std::vector<GuiComponent*> ThemeData::makeExtras(const std::shared_ptr<ThemeData>& theme, const std::string& view, Window* window)
+std::vector<std::pair<std::string, GuiComponent*>> ThemeData::makeExtras(const std::shared_ptr<ThemeData>& theme, const std::string& view, Window* window)
 {
-	std::vector<GuiComponent*> comps;
+	std::vector<std::pair<std::string, GuiComponent*>> comps;
 
 	auto viewIt = theme->mViews.find(view);
 	if(viewIt == theme->mViews.cend())
@@ -664,7 +669,7 @@ std::vector<GuiComponent*> ThemeData::makeExtras(const std::shared_ptr<ThemeData
 
 			comp->setDefaultZIndex(10);
 			comp->applyTheme(theme, view, *it, ThemeFlags::ALL);
-			comps.push_back(comp);
+			comps.push_back({ *it, comp });
 		}
 	}
 

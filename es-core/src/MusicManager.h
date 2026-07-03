@@ -25,6 +25,7 @@ public:
 	void stop();    // 재생 중지 + media player 해제 (libvlc 인스턴스는 유지)
 	void update();  // 매 프레임 호출: 트랙 종료(libvlc_Ended) 감지 시 다음 곡 재생
 	bool isPlaying() const;
+	std::string getCurrentTrackTitle() const; // 재생 중 아니거나 playlist 비었으면 빈 문자열
 
 	virtual ~MusicManager(); // stop + libvlc 인스턴스 해제
 

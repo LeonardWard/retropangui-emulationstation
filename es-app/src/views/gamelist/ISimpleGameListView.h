@@ -7,6 +7,7 @@
 #include "components/TextComponent.h"
 #include "views/gamelist/IGameListView.h"
 #include <stack>
+#include <utility>
 
 class ISimpleGameListView : public IGameListView
 {
@@ -30,6 +31,9 @@ public:
 	virtual bool input(InputConfig* config, Input input) override;
 	virtual void launch(FileData* game) override = 0;
 
+	// bgmTitle 등 이름 있는 extra에 매 프레임 현재 재생 트랙 제목을 반영
+	virtual void update(int deltaTime) override;
+
 protected:
 	static const int DESCRIPTION_SCROLL_DELAY = 5 * 1000; // five secs
 
@@ -37,11 +41,14 @@ protected:
 	virtual std::string getQuickSystemSelectLeftButton() = 0;
 	virtual void populateList(const std::vector<FileData*>& files) = 0;
 
+	// 이름으로 theme extra 조회 (없으면 nullptr) — bgmTitle처럼 동적으로 값을 갱신할 extra를 찾을 때 사용
+	GuiComponent* findThemeExtraByName(const std::string& name) const;
+
 	TextComponent mHeaderText;
 	ImageComponent mHeaderImage;
 	ImageComponent mBackground;
 
-	std::vector<GuiComponent*> mThemeExtras;
+	std::vector<std::pair<std::string, GuiComponent*>> mThemeExtras;
 
 	std::stack<FileData*> mCursorStack;
 };

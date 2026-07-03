@@ -3,6 +3,7 @@
 #include "views/UIModeController.h"
 #include "views/ViewController.h"
 #include "CollectionSystemManager.h"
+#include "MusicManager.h"
 #include "Scripting.h"
 #include "Settings.h"
 #include "Sound.h"
@@ -37,18 +38,18 @@ void ISimpleGameListView::onThemeChanged(const std::shared_ptr<ThemeData>& theme
 	mHeaderText.applyTheme(theme, getName(), "logoText", ALL);
 
 	// Remove old theme extras
-	for (auto extra : mThemeExtras)
+	for (auto& extra : mThemeExtras)
 	{
-		removeChild(extra);
-		delete extra;
+		removeChild(extra.second);
+		delete extra.second;
 	}
 	mThemeExtras.clear();
 
 	// Add new theme extras
 	mThemeExtras = ThemeData::makeExtras(theme, getName(), mWindow);
-	for (auto extra : mThemeExtras)
+	for (auto& extra : mThemeExtras)
 	{
-		addChild(extra);
+		addChild(extra.second);
 	}
 
 	if(mHeaderImage.hasImage())
@@ -169,4 +170,25 @@ bool ISimpleGameListView::input(InputConfig* config, Input input)
 	    Scripting::fireEvent("game-select", "NULL", "NULL", "NULL", "input");
 	}
 	return IGameListView::input(config, input);
+}
+
+GuiComponent* ISimpleGameListView::findThemeExtraByName(const std::string& name) const
+{
+	for (auto& extra : mThemeExtras)
+		if (extra.first == name)
+			return extra.second;
+	return nullptr;
+}
+
+void ISimpleGameListView::update(int deltaTime)
+{
+	IGameListView::update(deltaTime);
+
+	GuiComponent* bgmTitleExtra = findThemeExtraByName("bgmTitle");
+	if (bgmTitleExtra != nullptr)
+	{
+		auto& music = MusicManager::getInstance();
+		std::string title = music->isPlaying() ? music->getCurrentTrackTitle() : "";
+		bgmTitleExtra->setValue(title);
+	}
 }

@@ -110,7 +110,9 @@ void SystemView::populate()
 			e.data.backgroundExtras.clear();
 
 			// make background extras
-			e.data.backgroundExtras = ThemeData::makeExtras((*it)->getTheme(), "system", mWindow);
+			// SystemView는 이름으로 extra를 조회할 필요가 없으므로 GuiComponent*만 추림
+			for (auto& kv : ThemeData::makeExtras((*it)->getTheme(), "system", mWindow))
+				e.data.backgroundExtras.push_back(kv.second);
 
 			// sort the extras by z-index
 			std::stable_sort(e.data.backgroundExtras.begin(), e.data.backgroundExtras.end(),  [](GuiComponent* a, GuiComponent* b) {

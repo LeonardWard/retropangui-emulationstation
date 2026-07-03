@@ -187,6 +187,14 @@ bool MusicManager::isPlaying() const
 	return mPlaying;
 }
 
+std::string MusicManager::getCurrentTrackTitle() const
+{
+	if (!mPlaying || mPlaylist.empty() || mCurrentIndex >= mPlaylist.size())
+		return "";
+
+	return Utils::FileSystem::getStem(mPlaylist[mCurrentIndex]);
+}
+
 void MusicManager::shufflePlaylist()
 {
 	std::random_device rd;
