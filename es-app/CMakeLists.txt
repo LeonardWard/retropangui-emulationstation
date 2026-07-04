@@ -42,6 +42,7 @@ set(ES_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiStorageSelect.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiWifiSelect.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBtDevices.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBtPairing.h
 
     # Scrapers
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scrapers/Scraper.h
@@ -107,6 +108,7 @@ set(ES_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiStorageSelect.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiWifiSelect.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBtDevices.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBtPairing.cpp
 
     # Scrapers
     ${CMAKE_CURRENT_SOURCE_DIR}/src/scrapers/Scraper.cpp
