@@ -10,6 +10,7 @@
 #include <SDL.h>
 #include <iostream>
 #include <assert.h>
+#include <strings.h>
 
 #define KEYBOARD_GUID_STRING "-1"
 #define CEC_GUID_STRING      "-2"
@@ -82,6 +83,24 @@ void InputManager::init()
 	loadInputConfig(mCECInputConfig);
 }
 
+// RetroPangui: 8BitDo 패드가 Xbox 호환 모드로 접속하면 진짜 Xbox 컨트롤러와
+// 동일한 GUID(vendor 0x045e)를 보고해서 es_input.cfg의 GUID 매칭만으로는
+// 구분이 안 됨. 8BitDo는 물리적으로 Nintendo식 배치(B가 남쪽/A가 동쪽)라
+// "ButtonLayout=xbox면 남쪽이 accept" 원칙을 지키려면 a/b를 바꿔줘야 하는데,
+// 진짜 Xbox 컨트롤러는 절대 건드리면 안 됨 — 블루투스 HID의 uniq(=MAC 주소,
+// SDL_JoystickGetSerial로 노출됨) OUI로 8BitDo만 골라내서 로드 직후 보정한다
+// (2026-07-04, SN30 Pro 실기기 MAC E4:17:D8:xx:xx:xx로 확인).
+static bool isEightBitDoXboxMasquerade(SDL_Joystick* joy)
+{
+	if (SDL_JoystickGetVendor(joy) != 0x045e) // Microsoft
+		return false;
+
+	const char* serial = SDL_JoystickGetSerial(joy);
+	if (!serial) return false;
+
+	return strncasecmp(serial, "e4:17:d8", 8) == 0;
+}
+
 void InputManager::addJoystickByDeviceIndex(int id, Window* window)
 {
 	assert(id > -1);
@@ -114,6 +133,17 @@ void InputManager::addJoystickByDeviceIndex(int id, Window* window)
 			window->onUnconfiguredJoystick(mInputConfigs[joyId]);
 	}else{
 		LOG(LogInfo) << "Added known joystick '" << SDL_JoystickName(joy) << "' (instance ID: " << joyId << ", device index: " << id << ")";
+
+		if (isEightBitDoXboxMasquerade(joy)) {
+			Input aInput, bInput;
+			bool hasA = mInputConfigs[joyId]->getInputByName("a", &aInput);
+			bool hasB = mInputConfigs[joyId]->getInputByName("b", &bInput);
+			if (hasA && hasB) {
+				mInputConfigs[joyId]->mapInput("a", bInput);
+				mInputConfigs[joyId]->mapInput("b", aInput);
+				LOG(LogInfo) << "8BitDo Xbox 위장 모드 감지 — a/b 버튼 보정 적용 (" << SDL_JoystickName(joy) << ")";
+			}
+		}
 	}
 
 	// set up the prevAxisValues
