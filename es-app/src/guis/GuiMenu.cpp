@@ -43,6 +43,18 @@
 #include <sys/wait.h>
 #include <SDL_timer.h>
 
+// fork+execlp로 직접 실행 — 쉘을 거치지 않아 안전 (GuiWifiSelect/GuiBtDevices와 동일 패턴)
+static void removeAllBtPairings()
+{
+	pid_t pid = fork();
+	if (pid == 0) {
+		execlp("rpui-bt", "rpui-bt", "remove-all", (char*)nullptr);
+		_exit(127);
+	} else if (pid > 0) {
+		waitpid(pid, nullptr, 0);
+	}
+}
+
 // forward declarations — 정의는 YAML 엔진 블록에 있음
 static std::string rpConfPath();
 static std::string cfgReadKey(const std::string& filePath, const std::string& fullKey,
@@ -137,6 +149,13 @@ void GuiMenu::openSoundSettings()
 
 	// 페어링된 블루투스 오디오 기기 목록 — 실시간 데이터라 YAML로 표현 불가
 	addSubmenuEntry(s, _("BLUETOOTH DEVICES"), [this] { mWindow->pushGui(new GuiBtDevices(mWindow)); });
+
+	// 목록에서 골라 지우는 게 아니라 전체 초기화 — 확인 팝업이 필요해 YAML로 표현 불가
+	addSubmenuEntry(s, _("REMOVE ALL BLUETOOTH PAIRINGS"), [this] {
+		mWindow->pushGui(new GuiMsgBox(mWindow, _("REMOVE ALL BLUETOOTH PAIRINGS?"),
+			_("YES"), [] { removeAllBtPairings(); },
+			"아니오", nullptr));
+	});
 
 #ifdef _OMX_
 	if (UIModeController::getInstance()->isUIModeFull())
@@ -494,7 +513,7 @@ void GuiMenu::openAdvancedSettings()
 					Scripting::fireEvent("reboot");
 					quitES(QuitMode::REBOOT);
 				},
-				_("NO"), nullptr));
+				"아니오", nullptr));
 		});
 		row.addElement(std::make_shared<TextComponent>(window, _("공장 초기화"), Font::get(FONT_SIZE_MEDIUM), 0xFF5555FF), true);
 		s->addRow(row);
@@ -536,7 +555,7 @@ void GuiMenu::openQuitMenu()
 
 		if (confirm_quit) {
 			row.makeAcceptInputHandler([window] {
-				window->pushGui(new GuiMsgBox(window, _("REALLY RESTART?"), _("YES"), restart_es_fx, _("NO"), nullptr));
+				window->pushGui(new GuiMsgBox(window, _("REALLY RESTART?"), _("YES"), restart_es_fx, "아니오", nullptr));
 			});
 		} else {
 			row.makeAcceptInputHandler(restart_es_fx);
@@ -554,7 +573,7 @@ void GuiMenu::openQuitMenu()
 			row.elements.clear();
 			if (confirm_quit) {
 				row.makeAcceptInputHandler([window] {
-					window->pushGui(new GuiMsgBox(window, _("REALLY QUIT?"), _("YES"), quit_es_fx, _("NO"), nullptr));
+					window->pushGui(new GuiMsgBox(window, _("REALLY QUIT?"), _("YES"), quit_es_fx, "아니오", nullptr));
 				});
 			} else {
 				row.makeAcceptInputHandler(quit_es_fx);
@@ -576,7 +595,7 @@ void GuiMenu::openQuitMenu()
 	row.elements.clear();
 	if (confirm_quit) {
 		row.makeAcceptInputHandler([window] {
-			window->pushGui(new GuiMsgBox(window, _("REALLY RESTART?"), _("YES"), {reboot_sys_fx}, _("NO"), nullptr));
+			window->pushGui(new GuiMsgBox(window, _("REALLY RESTART?"), _("YES"), {reboot_sys_fx}, "아니오", nullptr));
 		});
 	} else {
 		row.makeAcceptInputHandler(reboot_sys_fx);
@@ -595,7 +614,7 @@ void GuiMenu::openQuitMenu()
 	row.elements.clear();
 	if (confirm_quit) {
 		row.makeAcceptInputHandler([window] {
-			window->pushGui(new GuiMsgBox(window, _("REALLY SHUTDOWN?"), _("YES"), shutdown_sys_fx, _("NO"), nullptr));
+			window->pushGui(new GuiMsgBox(window, _("REALLY SHUTDOWN?"), _("YES"), shutdown_sys_fx, "아니오", nullptr));
 		});
 	} else {
 		row.makeAcceptInputHandler(shutdown_sys_fx);
@@ -1040,6 +1059,13 @@ void GuiMenu::openControllerSettings()
 
 	// 페어링된 블루투스 컨트롤러 목록 — 실시간 데이터라 YAML로 표현 불가
 	addSubmenuEntry(s, _("BLUETOOTH DEVICES"), [this] { mWindow->pushGui(new GuiBtDevices(mWindow)); });
+
+	// 목록에서 골라 지우는 게 아니라 전체 초기화 — 확인 팝업이 필요해 YAML로 표현 불가
+	addSubmenuEntry(s, _("REMOVE ALL BLUETOOTH PAIRINGS"), [this] {
+		mWindow->pushGui(new GuiMsgBox(mWindow, _("REMOVE ALL BLUETOOTH PAIRINGS?"),
+			_("YES"), [] { removeAllBtPairings(); },
+			"아니오", nullptr));
+	});
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);

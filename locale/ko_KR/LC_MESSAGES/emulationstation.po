@@ -105,6 +105,12 @@ msgstr "블루투스 오디오 기기 페어링"
 msgid "BLUETOOTH DEVICES"
 msgstr "블루투스 기기 목록"
 
+msgid "REMOVE ALL BLUETOOTH PAIRINGS"
+msgstr "블루투스 페어링 기록 전체 삭제"
+
+msgid "REMOVE ALL BLUETOOTH PAIRINGS?"
+msgstr "블루투스 페어링 기록을 전부 삭제하시겠습니까?"
+
 msgid "OTHER SETTINGS"
 msgstr "기타 설정"
 
