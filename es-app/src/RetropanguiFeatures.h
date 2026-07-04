@@ -16,6 +16,7 @@ struct FeatureItem {
 	std::string type;       // "toggle" | "list" | "slider" | "input" | "command"
 	std::string conf_key;   // retropangui.conf 키 (예: "global.video_smooth", "system.ssh")
 	std::string exec;       // type=command 일 때 실행할 셸 커맨드
+	std::string feedback_msg; // type=command 실행 직후 보여줄 확인 팝업 문구 (없으면 무반응)
 	std::string restart     = "none";  // "none" | "es" | "system"
 	std::string default_val = "";      // conf 키 없을 때 기본값
 	std::vector<FeatureOption> options;

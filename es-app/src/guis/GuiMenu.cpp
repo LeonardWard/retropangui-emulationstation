@@ -892,9 +892,12 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		std::string bin = item.exec.substr(0, item.exec.find(' '));
 		if (!isBinAvailable(bin)) return;
 		std::string exec = item.exec;
+		std::string feedbackMsg = item.feedback_msg;
 		ComponentListRow row;
-		row.makeAcceptInputHandler([this, exec] {
+		row.makeAcceptInputHandler([this, exec, feedbackMsg] {
 			::system((exec + " &").c_str());
+			if (!feedbackMsg.empty())
+				mWindow->pushGui(new GuiMsgBox(mWindow, _(feedbackMsg.c_str())));
 		});
 		auto lbl = std::make_shared<TextComponent>(mWindow, _(item.label.c_str()),
 		                                           Font::get(FONT_SIZE_MEDIUM), 0x777777FF);

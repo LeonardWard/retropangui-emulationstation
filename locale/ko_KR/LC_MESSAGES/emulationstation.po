@@ -96,6 +96,15 @@ msgstr "업데이트 & 다운로드는 아직 구현되지 않았습니다."
 msgid "SYSTEM SETTINGS"
 msgstr "시스템 설정"
 
+msgid "PAIR A BLUETOOTH CONTROLLER"
+msgstr "블루투스 컨트롤러 페어링"
+
+msgid "PAIR A BLUETOOTH AUDIO DEVICE"
+msgstr "블루투스 오디오 기기 페어링"
+
+msgid "BLUETOOTH DEVICES"
+msgstr "블루투스 기기 목록"
+
 msgid "OTHER SETTINGS"
 msgstr "기타 설정"
 
