@@ -7,6 +7,7 @@
 #include "guis/GuiCollectionSystemsOptions.h"
 #include "guis/GuiStorageSelect.h"
 #include "guis/GuiWifiSelect.h"
+#include "guis/GuiBtDevices.h"
 #include "guis/GuiDetectDevice.h"
 #include "guis/GuiGeneralScreensaverOptions.h"
 #include "guis/GuiMsgBox.h"
@@ -127,6 +128,9 @@ void GuiMenu::openSoundSettings()
 	auto s = new GuiSettings(mWindow, _("SOUND SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 	addFeatureItemsTo(s, "sound", *checks);
+
+	// 페어링된 블루투스 오디오 기기 목록 — 실시간 데이터라 YAML로 표현 불가
+	addSubmenuEntry(s, _("BLUETOOTH DEVICES"), [this] { mWindow->pushGui(new GuiBtDevices(mWindow)); });
 
 #ifdef _OMX_
 	if (UIModeController::getInstance()->isUIModeFull())
@@ -1019,6 +1023,9 @@ void GuiMenu::openControllerSettings()
 
 	// YAML: 조이패드 드라이버 / 통합 컨트롤 설정 (구 ADVANCED SETTINGS)
 	addFeatureItemsTo(s, "controller", *checks);
+
+	// 페어링된 블루투스 컨트롤러 목록 — 실시간 데이터라 YAML로 표현 불가
+	addSubmenuEntry(s, _("BLUETOOTH DEVICES"), [this] { mWindow->pushGui(new GuiBtDevices(mWindow)); });
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
