@@ -105,7 +105,7 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 	detailGrid->setEntry(mDetailVendor,  Vector2i(0, 2), false, true);
 	detailGrid->setEntry(mDetailBattery, Vector2i(0, 3), false, true);
 	detailGrid->setEntry(mDetailStatus,  Vector2i(0, 4), false, true);
-	mGrid.setEntry(detailGrid, Vector2i(1, 1), false, false, Vector2i(1, 1));
+	mGrid.setEntry(detailGrid, Vector2i(1, 1), false, true, Vector2i(1, 1));
 
 	addChild(&mBackground);
 	addChild(&mGrid);
