@@ -76,6 +76,10 @@ public:
 
 	void setStorageDetectedCallback(std::function<void(const std::string& label, const std::string& id)> cb) { mStorageDetectedCallback = cb; }
 
+	// 런타임 중 핫플러그된 미매핑 컨트롤러 알림 (InputManager::addJoystickByDeviceIndex에서 호출)
+	void setUnconfiguredJoystickCallback(std::function<void(InputConfig*)> cb) { mUnconfiguredJoystickCallback = cb; }
+	void onUnconfiguredJoystick(InputConfig* config) { if (mUnconfiguredJoystickCallback) mUnconfiguredJoystickCallback(config); }
+
 	void startScreenSaver(SystemData* system=NULL);
 	bool cancelScreenSaver();
 	void renderScreenSaver();
@@ -114,6 +118,8 @@ private:
 	int  mStorageCheckTimer;
 	std::function<void(const std::string& label, const std::string& id)> mStorageDetectedCallback;
 	void checkNewStorage();
+
+	std::function<void(InputConfig*)> mUnconfiguredJoystickCallback;
 };
 
 #endif // ES_CORE_WINDOW_H

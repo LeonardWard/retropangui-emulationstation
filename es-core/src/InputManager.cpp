@@ -82,7 +82,7 @@ void InputManager::init()
 	loadInputConfig(mCECInputConfig);
 }
 
-void InputManager::addJoystickByDeviceIndex(int id)
+void InputManager::addJoystickByDeviceIndex(int id, Window* window)
 {
 	assert(id > -1);
 	assert(id < SDL_NumJoysticks());
@@ -108,6 +108,10 @@ void InputManager::addJoystickByDeviceIndex(int id)
 	if(!loadInputConfig(mInputConfigs[joyId]))
 	{
 		LOG(LogInfo) << "Added unconfigured joystick '" << SDL_JoystickName(joy) << "' (GUID: " << guid << ", instance ID: " << joyId << ", device index: " << id << ").";
+		// window가 있을 때만(= 부팅 시 최초 enumerate가 아니라 런타임 핫플러그일 때만) 알림 —
+		// init()의 최초 스캔은 window 없이 호출되므로 부팅 시엔 트리거되지 않음(첫 실행 위자드와 중복 방지).
+		if (window)
+			window->onUnconfiguredJoystick(mInputConfigs[joyId]);
 	}else{
 		LOG(LogInfo) << "Added known joystick '" << SDL_JoystickName(joy) << "' (instance ID: " << joyId << ", device index: " << id << ")";
 	}
@@ -274,7 +278,7 @@ bool InputManager::parseEvent(const SDL_Event& ev, Window* window)
 		break;
 
 	case SDL_JOYDEVICEADDED:
-		addJoystickByDeviceIndex(ev.jdevice.which); // ev.jdevice.which is a device index
+		addJoystickByDeviceIndex(ev.jdevice.which, window); // ev.jdevice.which is a device index
 		return true;
 
 	case SDL_JOYDEVICEREMOVED:
