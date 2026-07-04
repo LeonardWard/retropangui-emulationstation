@@ -105,6 +105,11 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 	detailGrid->setEntry(mDetailVendor,  Vector2i(0, 2), false, true);
 	detailGrid->setEntry(mDetailBattery, Vector2i(0, 3), false, true);
 	detailGrid->setEntry(mDetailStatus,  Vector2i(0, 4), false, true);
+	// 행 높이를 명시적으로 지정 안 하면 미설정 행끼리 남는 공간을 균등 분배해서
+	// (ComponentGrid::getRowHeight) 5줄이 패널 전체 높이에 넓게 퍼져 보임 —
+	// 한 줄당 좁게 고정해서 위쪽에 모아 붙임.
+	for (int i = 0; i < 5; i++)
+		detailGrid->setRowHeightPerc(i, 0.09f, false);
 	mGrid.setEntry(detailGrid, Vector2i(1, 1), false, true, Vector2i(1, 1));
 
 	addChild(&mBackground);
