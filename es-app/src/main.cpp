@@ -496,7 +496,7 @@ int main(int argc, char* argv[])
 
 	// RetroPangui: 런타임 중 핫플러그된 미매핑 컨트롤러 알림 (부팅 시 최초 스캔은 트리거 안 됨)
 	window.setUnconfiguredJoystickCallback([&window](InputConfig* config) {
-		std::string msg = config->getDeviceName() + " 컨트롤러가 감지됐습니다.\n지금 설정하시겠습니까?";
+		std::string msg = "새 컨트롤러 감지: " + config->getDeviceName() + "\n지금 설정하시겠습니까?";
 		window.pushGui(new GuiMsgBox(&window, msg,
 			"예",     [&window, config]() { window.pushGui(new GuiInputConfig(&window, config, true, nullptr)); },
 			"아니오", nullptr));
