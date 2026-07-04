@@ -6,6 +6,7 @@
 #include "components/SwitchComponent.h"
 #include "guis/GuiCollectionSystemsOptions.h"
 #include "guis/GuiStorageSelect.h"
+#include "guis/GuiWifiSelect.h"
 #include "guis/GuiDetectDevice.h"
 #include "guis/GuiGeneralScreensaverOptions.h"
 #include "guis/GuiMsgBox.h"
@@ -1034,8 +1035,11 @@ void GuiMenu::openSystemSettings()
 	auto s = new GuiSettings(mWindow, _("SYSTEM SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
-	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH(구 NETWORK SETTINGS)
+	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH/WIFI 시작·끄기(구 NETWORK SETTINGS)
 	addFeatureItemsTo(s, "system", *checks);
+
+	// WiFi 스캔·연결 — 실시간 데이터라 YAML로 표현 불가, GuiStorageSelect와 동일 패턴의 커스텀 화면
+	addSubmenuEntry(s, _("WIFI 네트워크 선택"), [this] { mWindow->pushGui(new GuiWifiSelect(mWindow)); });
 
 	// power saver
 	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);
