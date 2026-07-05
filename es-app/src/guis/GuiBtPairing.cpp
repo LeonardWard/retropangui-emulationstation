@@ -5,6 +5,7 @@
 #include "components/AnimatedImageComponent.h"
 #include "resources/Font.h"
 #include "renderers/Renderer.h"
+#include "math/Misc.h"
 #include <cctype>
 #include <cstdlib>
 #include <fstream>
@@ -92,9 +93,10 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 	auto font = Font::get(FONT_SIZE_SMALL);
 	const unsigned int textColor = 0x777777FF;
 
-	// 상단 상태 텍스트 (탐색 중.../연결됨.../실패 등) — 헤더 행, 두 컬럼에 걸침
-	mHeaderStatus = std::make_shared<TextComponent>(mWindow, "탐색 중...", Font::get(FONT_SIZE_MEDIUM), textColor, ALIGN_CENTER);
-	mGrid.setEntry(mHeaderStatus, Vector2i(0, 0), false, false, Vector2i(2, 1), GridFlags::BORDER_BOTTOM);
+	// 헤더: 창 제목(고정) — iconFilter로 컨트롤러/오디오 구분
+	std::string title = (iconFilter == "input-gaming") ? "블루투스 컨트롤러 페어링" : "블루투스 오디오 기기 페어링";
+	mTitleText = std::make_shared<TextComponent>(mWindow, title, Font::get(FONT_SIZE_MEDIUM), textColor, ALIGN_CENTER);
+	mGrid.setEntry(mTitleText, Vector2i(0, 0), false, false, Vector2i(2, 1), GridFlags::BORDER_BOTTOM);
 
 	// 좌측: 실시간 발견 목록
 	mList = std::make_shared<ComponentList>(mWindow);
@@ -122,15 +124,19 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 		detailGrid->setRowHeightPerc(i, 0.09f, false);
 	mGrid.setEntry(detailGrid, Vector2i(1, 1), false, true, Vector2i(1, 1));
 
-	// 좌상단 회전 스피너 — 스캔 세션 진행 중일 때만 표시(pollPairingStatus에서 토글)
+	// 푸터: 좌측에 회전 스피너 + 실시간 상태 텍스트(마퀴). 그리드 밖에서 직접
+	// 배치·렌더링(render() 오버라이드에서 클리핑+마퀴 오프셋 적용해야 하므로).
 	mSpinner = std::make_shared<AnimatedImageComponent>(mWindow);
 	mSpinner->load(&BT_SCAN_ANIM_DEF);
+	mFooterStatus = std::make_shared<TextComponent>(mWindow, "탐색 중...", font, textColor, ALIGN_LEFT);
 
 	addChild(&mBackground);
 	addChild(&mGrid);
 	addChild(mSpinner.get());
+	addChild(mFooterStatus.get());
 
-	setSize(Renderer::getScreenWidth() * 0.75f, Renderer::getScreenHeight() * 0.75f);
+	// 요청 반영: 기존 크기(화면의 75%)에서 15% 축소
+	setSize(Renderer::getScreenWidth() * 0.75f * 0.85f, Renderer::getScreenHeight() * 0.75f * 0.85f);
 	setPosition((Renderer::getScreenWidth() - mSize.x()) / 2.0f, (Renderer::getScreenHeight() - mSize.y()) / 2.0f);
 
 	// 화면이 뜨자마자 스캔 시작 + 초기 상태 한 번 표시
@@ -147,17 +153,29 @@ GuiBtPairing::~GuiBtPairing()
 
 void GuiBtPairing::onSizeChanged()
 {
-	mGrid.setSize(mSize);
 	if (mSize.x() == 0 || mSize.y() == 0) return;
 
-	mGrid.setColWidthPerc(0, 0.55f);
-	mGrid.setRowHeightPerc(0, 0.1f);
+	// 하단에 푸터(스피너+상태 텍스트) 높이만큼 미리 빼두고, 그 위 영역만 그리드로 사용
+	const float footerHeight = mFooterStatus->getFont()->getLetterHeight() * 1.8f;
+	Vector2f gridSize(mSize.x(), mSize.y() - footerHeight);
+	mGrid.setSize(gridSize);
+
+	mGrid.setColWidthPerc(0, 0.5f); // 좌우 정보창 경계를 창 중앙에 맞춤
+	mGrid.setRowHeightPerc(0, 0.12f);
 	mGrid.onSizeChanged();
 
-	// 좌상단 코너에 작은 정사각형 스피너 — 헤더 행 높이에 맞춰 크기 결정
-	float spinnerSize = mGrid.getRowHeight(0) * 0.6f;
+	// 푸터 좌측: 정사각형 스피너
+	float spinnerSize = footerHeight * 0.6f;
+	float margin = spinnerSize * 0.4f;
 	mSpinner->setSize(spinnerSize, spinnerSize);
-	mSpinner->setPosition(spinnerSize * 0.3f, mGrid.getRowHeight(0) * 0.2f);
+	mSpinner->setPosition(margin, gridSize.y() + (footerHeight - spinnerSize) / 2.0f);
+
+	// 푸터 스피너 오른쪽: 상태 텍스트(넘치면 update()에서 마퀴로 스크롤)
+	mFooterTextBaseX = margin * 2.0f + spinnerSize;
+	mFooterTextBaseY = gridSize.y() + (footerHeight - mFooterStatus->getFont()->getLetterHeight()) / 2.0f;
+	mFooterTextWidth = mSize.x() - mFooterTextBaseX - margin;
+	mFooterStatus->setSize(mFooterTextWidth, mFooterStatus->getFont()->getLetterHeight());
+	mFooterStatus->setPosition(mFooterTextBaseX, mFooterTextBaseY);
 
 	mBackground.fitTo(mSize, Vector3f::Zero(), Vector2f(-32, -32));
 }
@@ -179,7 +197,53 @@ void GuiBtPairing::update(int deltaTime)
 		pollDiscoveryList();
 		pollPairingStatus();
 	}
+
+	// 푸터 상태 텍스트 마퀴 — TextListComponent::update()와 동일한 계산식
+	// (넘치는 텍스트를 지연 후 좌로 흐르다가 되감아 반복)
+	const std::string text = mFooterStatus->getValue();
+	const float textLength = mFooterStatus->getFont()->sizeText(text).x();
+	if (textLength > mFooterTextWidth && mFooterTextWidth > 0.f) {
+		const float speed = mFooterStatus->getFont()->sizeText("ABCDEFGHIJKLMNOPQRSTUVWXYZ").x() * 0.247f;
+		const float delay = 3000;
+		const float scrollLength = textLength;
+		const float returnLength = speed * 1.5f;
+		const float scrollTime = (scrollLength * 1000) / speed;
+		const float returnTime = (returnLength * 1000) / speed;
+		const int maxTime = (int)(delay + scrollTime + returnTime);
+
+		mMarqueeTime += (float)deltaTime;
+		while (mMarqueeTime > maxTime)
+			mMarqueeTime -= maxTime;
+
+		mMarqueeOffset = Math::Scroll::loop(delay, scrollTime + returnTime, mMarqueeTime, scrollLength + returnLength);
+	} else {
+		mMarqueeOffset = 0.f;
+		mMarqueeTime = 0.f;
+	}
+
 	GuiComponent::update(deltaTime);
+}
+
+void GuiBtPairing::render(const Transform4x4f& parentTrans)
+{
+	Transform4x4f trans = parentTrans * getTransform();
+
+	mBackground.render(trans);
+	mGrid.render(trans);
+	mSpinner->render(trans);
+
+	// 푸터 텍스트만 별도로 클리핑 + 마퀴 오프셋을 적용해서 렌더링 —
+	// 넘치는 부분은 잘리고, 넘치지 않으면 오프셋이 0이라 그냥 제자리에 그려짐.
+	Vector2i clipPos((int)(trans.translation().x() + mFooterTextBaseX),
+	                  (int)(trans.translation().y() + mFooterTextBaseY));
+	Vector2i clipSize((int)mFooterTextWidth, (int)mFooterStatus->getSize().y() + 4);
+	Renderer::pushClipRect(clipPos, clipSize);
+
+	Transform4x4f textTrans = trans;
+	textTrans.translate(Vector3f(-mMarqueeOffset, 0, 0));
+	mFooterStatus->render(textTrans);
+
+	Renderer::popClipRect();
 }
 
 std::vector<HelpPrompt> GuiBtPairing::getHelpPrompts()
@@ -272,8 +336,8 @@ void GuiBtPairing::pollPairingStatus()
 	else
 		text = line; // "실패: ..." 등은 이미 한글이므로 그대로 표시
 
-	if (mHeaderStatus)
-		mHeaderStatus->setText(text);
+	if (mFooterStatus)
+		mFooterStatus->setText(text);
 
 	// TIMEOUT/STOPPED/CONNECTED/실패면 세션이 끝난 상태 — 스피너 숨김
 	mScanning = !(line == "TIMEOUT" || line == "STOPPED"
