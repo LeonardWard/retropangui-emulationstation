@@ -2,6 +2,7 @@
 
 #include "components/ComponentList.h"
 #include "components/TextComponent.h"
+#include "components/AnimatedImageComponent.h"
 #include "resources/Font.h"
 #include "renderers/Renderer.h"
 #include <cctype>
@@ -13,6 +14,15 @@
 
 static const char* DISCOVERY_JSON_PATH = "/tmp/retropangui-bt-discovery.json";
 static const char* PAIRING_STATUS_PATH = "/tmp/retropangui-bt-pairing-status";
+
+// BusyComponent와 동일한 회전 애니메이션 프레임 재사용 — 좌상단 스캔 표시용
+static AnimationFrame BT_SCAN_ANIM_FRAMES[] = {
+	{":/busy_0.svg", 300},
+	{":/busy_1.svg", 300},
+	{":/busy_2.svg", 300},
+	{":/busy_3.svg", 300},
+};
+static const AnimationDef BT_SCAN_ANIM_DEF = { BT_SCAN_ANIM_FRAMES, 4, true };
 
 // 손으로 짠 최소 JSON 값 추출 — 외부 JSON 라이브러리 없음 (GuiWifiSelect.cpp의
 // jsonVal() 스타일을 "한 줄" 대신 "한 기기 레코드 조각"에 적용).
@@ -112,8 +122,13 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 		detailGrid->setRowHeightPerc(i, 0.09f, false);
 	mGrid.setEntry(detailGrid, Vector2i(1, 1), false, true, Vector2i(1, 1));
 
+	// 좌상단 회전 스피너 — 스캔 세션 진행 중일 때만 표시(pollPairingStatus에서 토글)
+	mSpinner = std::make_shared<AnimatedImageComponent>(mWindow);
+	mSpinner->load(&BT_SCAN_ANIM_DEF);
+
 	addChild(&mBackground);
 	addChild(&mGrid);
+	addChild(mSpinner.get());
 
 	setSize(Renderer::getScreenWidth() * 0.75f, Renderer::getScreenHeight() * 0.75f);
 	setPosition((Renderer::getScreenWidth() - mSize.x()) / 2.0f, (Renderer::getScreenHeight() - mSize.y()) / 2.0f);
@@ -138,6 +153,11 @@ void GuiBtPairing::onSizeChanged()
 	mGrid.setColWidthPerc(0, 0.55f);
 	mGrid.setRowHeightPerc(0, 0.1f);
 	mGrid.onSizeChanged();
+
+	// 좌상단 코너에 작은 정사각형 스피너 — 헤더 행 높이에 맞춰 크기 결정
+	float spinnerSize = mGrid.getRowHeight(0) * 0.6f;
+	mSpinner->setSize(spinnerSize, spinnerSize);
+	mSpinner->setPosition(spinnerSize * 0.3f, mGrid.getRowHeight(0) * 0.2f);
 
 	mBackground.fitTo(mSize, Vector3f::Zero(), Vector2f(-32, -32));
 }
@@ -254,6 +274,12 @@ void GuiBtPairing::pollPairingStatus()
 
 	if (mHeaderStatus)
 		mHeaderStatus->setText(text);
+
+	// TIMEOUT/STOPPED/CONNECTED/실패면 세션이 끝난 상태 — 스피너 숨김
+	mScanning = !(line == "TIMEOUT" || line == "STOPPED"
+	              || line.rfind("CONNECTED", 0) == 0 || line.rfind("실패", 0) == 0);
+	if (mSpinner)
+		mSpinner->setVisible(mScanning);
 }
 
 void GuiBtPairing::rebuildList()

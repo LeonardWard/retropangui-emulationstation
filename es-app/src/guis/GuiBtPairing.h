@@ -10,6 +10,7 @@
 
 class ComponentList;
 class TextComponent;
+class AnimatedImageComponent;
 
 // 실시간 블루투스 검색/선택 화면 — 좌측 발견된 기기 목록, 우측 선택된 기기의
 // 상세 정보(MAC/신호세기/제조사/배터리/상태)를 보여준다.
@@ -51,11 +52,14 @@ private:
 	float mPollAccum = 0.f;
 	std::string mKeepSelectedMac; // rebuildList() 호출 전에 pollDiscoveryList()가 채워서 커서 유지에 사용
 
+	bool mScanning = true; // 스캔 세션 진행 중일 때만 좌상단 스피너 표시
+
 	NinePatchComponent mBackground;
 	ComponentGrid mGrid;
 	std::shared_ptr<ComponentList> mList;
 	std::shared_ptr<TextComponent> mHeaderStatus; // 상단 "탐색 중..." 등
 	std::shared_ptr<TextComponent> mDetailMac, mDetailRssi, mDetailVendor, mDetailBattery, mDetailStatus;
+	std::shared_ptr<AnimatedImageComponent> mSpinner; // 좌상단 회전 스캔 표시
 };
 
 #endif // ES_APP_GUIS_GUI_BT_PAIRING_H
