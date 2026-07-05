@@ -1441,7 +1441,7 @@ void GuiMenu::openEmulatorSettings()
 
 		// Create emulator selection list for this system
 		auto emulatorList = std::make_shared<OptionListComponent<std::string>>(mWindow,
-			system->getFullName() + " DEFAULT EMULATOR", false);
+			"DEFAULT EMULATOR", false);
 
 		// Add all available emulators sorted by priority
 		std::string currentDefault = "";
