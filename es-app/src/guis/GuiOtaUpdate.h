@@ -18,7 +18,8 @@ class GuiOtaDownload : public GuiComponent
 public:
 	GuiOtaDownload(Window* window,
 	               std::function<int()> download_fn,
-	               std::function<void(bool)> done_fn);
+	               std::function<void(bool)> done_fn,
+	               const std::string& message = "업데이트 다운로드 중...\n잠시 기다려주세요.");
 
 	void update(int dt) override;
 	void onSizeChanged() override;

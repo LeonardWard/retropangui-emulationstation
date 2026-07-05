@@ -1296,17 +1296,16 @@ void GuiMenu::openUpdatesAndDownloads()
 				};
 				auto done_fn = [this](bool success) {
 					if (success) {
-						mWindow->pushGui(new GuiMsgBox(mWindow,
-							"USB 업데이트 설치 완료!\n재부팅하면 적용됩니다.\n\n지금 재부팅하시겠습니까?",
-							"재부팅", []() { ::system("reboot"); },
-							"나중에", nullptr));
+						// 재부팅 여부를 묻지 않고 바로 재부팅
+						::system("reboot");
 					} else {
 						mWindow->pushGui(new GuiMsgBox(mWindow,
 							"USB 업데이트 실패.\n파일을 확인하세요.",
 							"확인", nullptr));
 					}
 				};
-				mWindow->pushGui(new GuiOtaDownload(mWindow, install_fn, done_fn));
+				std::string installMsg = "USB 업데이트 설치 중...\n\n설치가 완료되면 바로 재부팅됩니다.\n기기의 전원을 끄지 마세요.";
+				mWindow->pushGui(new GuiOtaDownload(mWindow, install_fn, done_fn, installMsg));
 			},
 			"취소", nullptr));
 		return;
@@ -1373,18 +1372,18 @@ void GuiMenu::openUpdatesAndDownloads()
 				};
 				auto done_fn = [this, serverVer](bool success) {
 					if (success) {
-						mWindow->pushGui(new GuiMsgBox(mWindow,
-							"업데이트 준비 완료!\n새 버전: " + serverVer +
-							"\n\n지금 재부팅하시겠습니까?",
-							"재부팅", []() { ::system("reboot"); },
-							"나중에", nullptr));
+						// 재부팅 여부를 묻지 않고 바로 재부팅 — 다운로드 중 메시지에
+						// 이미 "완료되면 바로 재부팅됩니다"라고 안내했으므로 확인 절차 불필요
+						::system("reboot");
 					} else {
 						mWindow->pushGui(new GuiMsgBox(mWindow,
 							"업데이트 실패.\n다운로드 또는 검증 오류입니다.",
 							"확인", nullptr));
 					}
 				};
-				mWindow->pushGui(new GuiOtaDownload(mWindow, download_fn, done_fn));
+				std::string downloadMsg = "새 버전 다운로드 중: " + serverVer +
+					"\n\n다운로드가 완료되면 바로 재부팅됩니다.\n기기의 전원을 끄지 마세요.";
+				mWindow->pushGui(new GuiOtaDownload(mWindow, download_fn, done_fn, downloadMsg));
 			},
 			"취소", nullptr));
 	};

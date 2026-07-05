@@ -4,11 +4,12 @@
 
 GuiOtaDownload::GuiOtaDownload(Window* window,
                                std::function<int()> download_fn,
-                               std::function<void(bool)> done_fn)
+                               std::function<void(bool)> done_fn,
+                               const std::string& message)
 	: GuiComponent(window),
 	  mBackground(window, ":/frame.png"),
 	  mMsg(std::make_shared<TextComponent>(window,
-	       "업데이트 다운로드 중...\n잠시 기다려주세요.",
+	       message,
 	       Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_CENTER)),
 	  mFuture(std::async(std::launch::async, download_fn)),
 	  mDoneFn(done_fn)
