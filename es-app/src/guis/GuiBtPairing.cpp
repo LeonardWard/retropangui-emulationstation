@@ -107,11 +107,11 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 
 	// 우측: 선택된 기기의 상세 정보
 	auto detailGrid = std::make_shared<ComponentGrid>(mWindow, Vector2i(1, 5));
-	mDetailMac     = std::make_shared<TextComponent>(mWindow, "MAC: -", font, textColor);
-	mDetailRssi    = std::make_shared<TextComponent>(mWindow, "신호 세기: -", font, textColor);
-	mDetailVendor  = std::make_shared<TextComponent>(mWindow, "제조사: -", font, textColor);
-	mDetailBattery = std::make_shared<TextComponent>(mWindow, "배터리: 정보 없음", font, textColor);
-	mDetailStatus  = std::make_shared<TextComponent>(mWindow, "상태: -", font, textColor);
+	mDetailMac     = std::make_shared<TextComponent>(mWindow, "  MAC: -", font, textColor);
+	mDetailRssi    = std::make_shared<TextComponent>(mWindow, "  신호 세기: -", font, textColor);
+	mDetailVendor  = std::make_shared<TextComponent>(mWindow, "  제조사: -", font, textColor);
+	mDetailBattery = std::make_shared<TextComponent>(mWindow, "  배터리: 정보 없음", font, textColor);
+	mDetailStatus  = std::make_shared<TextComponent>(mWindow, "  상태: -", font, textColor);
 	detailGrid->setEntry(mDetailMac,     Vector2i(0, 0), false, true);
 	detailGrid->setEntry(mDetailRssi,    Vector2i(0, 1), false, true);
 	detailGrid->setEntry(mDetailVendor,  Vector2i(0, 2), false, true);
@@ -155,25 +155,29 @@ void GuiBtPairing::onSizeChanged()
 {
 	if (mSize.x() == 0 || mSize.y() == 0) return;
 
-	// 하단에 푸터(스피너+상태 텍스트) 높이만큼 미리 빼두고, 그 위 영역만 그리드로 사용
+	// 하단에 푸터(스피너+상태 텍스트) 높이만큼 미리 빼두고, 그 위 영역만 그리드로 사용.
+	// 좌우로도 살짝 안쪽 여백을 둬서 목록/정보 패널 글자가 창 가장자리에 바로
+	// 붙어 보이지 않게 함.
 	const float footerHeight = mFooterStatus->getFont()->getLetterHeight() * 1.8f;
-	Vector2f gridSize(mSize.x(), mSize.y() - footerHeight);
+	const float sidePadding = mSize.x() * 0.02f;
+	Vector2f gridSize(mSize.x() - sidePadding * 2.0f, mSize.y() - footerHeight);
 	mGrid.setSize(gridSize);
+	mGrid.setPosition(sidePadding, 0);
 
 	mGrid.setColWidthPerc(0, 0.5f); // 좌우 정보창 경계를 창 중앙에 맞춤
 	mGrid.setRowHeightPerc(0, 0.12f);
 	mGrid.onSizeChanged();
 
-	// 푸터 좌측: 정사각형 스피너
+	// 푸터 좌측: 정사각형 스피너 (그리드와 동일하게 좌측 여백부터 시작)
 	float spinnerSize = footerHeight * 0.6f;
 	float margin = spinnerSize * 0.4f;
 	mSpinner->setSize(spinnerSize, spinnerSize);
-	mSpinner->setPosition(margin, gridSize.y() + (footerHeight - spinnerSize) / 2.0f);
+	mSpinner->setPosition(sidePadding, gridSize.y() + (footerHeight - spinnerSize) / 2.0f);
 
 	// 푸터 스피너 오른쪽: 상태 텍스트(넘치면 update()에서 마퀴로 스크롤)
-	mFooterTextBaseX = margin * 2.0f + spinnerSize;
+	mFooterTextBaseX = sidePadding + spinnerSize + margin;
 	mFooterTextBaseY = gridSize.y() + (footerHeight - mFooterStatus->getFont()->getLetterHeight()) / 2.0f;
-	mFooterTextWidth = mSize.x() - mFooterTextBaseX - margin;
+	mFooterTextWidth = mSize.x() - mFooterTextBaseX - sidePadding;
 	mFooterStatus->setSize(mFooterTextWidth, mFooterStatus->getFont()->getLetterHeight());
 	mFooterStatus->setPosition(mFooterTextBaseX, mFooterTextBaseY);
 
@@ -354,7 +358,7 @@ void GuiBtPairing::rebuildList()
 	mList->clear();
 
 	if (mDevices.empty()) {
-		auto placeholder = std::make_shared<TextComponent>(mWindow, "검색된 기기 없음", Font::get(FONT_SIZE_SMALL), 0x999999FF);
+		auto placeholder = std::make_shared<TextComponent>(mWindow, "  검색된 기기 없음", Font::get(FONT_SIZE_SMALL), 0x999999FF);
 		ComponentListRow row;
 		row.addElement(placeholder, true);
 		mList->addRow(row, true);
@@ -366,8 +370,8 @@ void GuiBtPairing::rebuildList()
 		const DiscoveredDevice& d = mDevices[i];
 
 		std::string label;
-		if (d.connected)     label = "[연결됨] ";
-		else if (d.paired)   label = "[등록됨] ";
+		if (d.connected)     label = "  [연결됨] ";
+		else if (d.paired)   label = "  [등록됨] ";
 		label += d.name.empty() ? d.mac : d.name;
 
 		auto text = std::make_shared<TextComponent>(mWindow, label, Font::get(FONT_SIZE_SMALL), 0x777777FF);
@@ -390,11 +394,11 @@ void GuiBtPairing::updateDetailPane()
 		return;
 
 	if (mDevices.empty() || !mList || mList->size() == 0) {
-		mDetailMac->setText("MAC: -");
-		mDetailRssi->setText("신호 세기: -");
-		mDetailVendor->setText("제조사: -");
-		mDetailBattery->setText("배터리: 정보 없음");
-		mDetailStatus->setText("상태: -");
+		mDetailMac->setText("  MAC: -");
+		mDetailRssi->setText("  신호 세기: -");
+		mDetailVendor->setText("  제조사: -");
+		mDetailBattery->setText("  배터리: 정보 없음");
+		mDetailStatus->setText("  상태: -");
 		return;
 	}
 
@@ -402,12 +406,12 @@ void GuiBtPairing::updateDetailPane()
 	if (idx < 0 || idx >= (int)mDevices.size()) return;
 	const DiscoveredDevice& d = mDevices[idx];
 
-	mDetailMac->setText("MAC: " + d.mac);
-	mDetailRssi->setText(d.hasRssi ? ("신호 세기: " + std::to_string(d.rssi) + " dBm") : "신호 세기: 정보 없음");
-	mDetailVendor->setText(d.vendor.empty() ? "제조사: 제조사 불명" : ("제조사: " + d.vendor));
+	mDetailMac->setText("  MAC: " + d.mac);
+	mDetailRssi->setText(d.hasRssi ? ("  신호 세기: " + std::to_string(d.rssi) + " dBm") : "  신호 세기: 정보 없음");
+	mDetailVendor->setText(d.vendor.empty() ? "  제조사: 제조사 불명" : ("  제조사: " + d.vendor));
 	// Battery1 D-Bus 인터페이스 지원 기기가 나오면 추후 rpui-bt 데몬에 필드 추가 필요 (현재 범위 밖) — 항상 "정보 없음"
-	mDetailBattery->setText("배터리: 정보 없음");
-	mDetailStatus->setText(d.connected ? "상태: 연결됨" : (d.paired ? "상태: 등록됨(연결 안 됨)" : "상태: 미등록"));
+	mDetailBattery->setText("  배터리: 정보 없음");
+	mDetailStatus->setText(d.connected ? "  상태: 연결됨" : (d.paired ? "  상태: 등록됨(연결 안 됨)" : "  상태: 미등록"));
 }
 
 void GuiBtPairing::selectDevice(const std::string& mac)
