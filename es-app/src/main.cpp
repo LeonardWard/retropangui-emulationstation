@@ -522,7 +522,13 @@ int main(int argc, char* argv[])
 				InputManager::getInstance()->parseEvent(event, &window);
 
 				if(event.type == SDL_QUIT)
+				{
+					// 디버깅용 임시 로그(2026-07-05) — 메뉴 진입/퇴장만으로 종료되는 원인 추적.
+					// quitMode가 quitES()에서 이미 로그되지 않았다면(기본값 QUIT) quitES()를
+					// 거치지 않고 SDL_QUIT이 직접 큐에 들어온 경우(예: 외부 시그널)임을 알 수 있음.
+					LOG(LogWarning) << "main loop: received SDL_QUIT, current quitMode=" << (int)quitMode;
 					running = false;
+				}
 			} while(SDL_PollEvent(&event));
 
 			// triggered if exiting from SDL_WaitEvent due to event

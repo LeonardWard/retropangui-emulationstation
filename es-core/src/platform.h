@@ -22,4 +22,6 @@ int runSystemCommand(const std::string& cmd_utf8); // run a utf-8 encoded in the
 int quitES(QuitMode mode = QuitMode::QUIT);
 void processQuitMode();
 
+extern QuitMode quitMode; // 디버깅용 임시 노출(2026-07-05) — main.cpp에서 SDL_QUIT 수신 시 참고
+
 #endif // ES_CORE_PLATFORM_H

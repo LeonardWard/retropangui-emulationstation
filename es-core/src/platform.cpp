@@ -46,6 +46,9 @@ QuitMode quitMode = QuitMode::QUIT;
 
 int quitES(QuitMode mode)
 {
+	// 디버깅용 임시 로그(2026-07-05) — 메뉴 진입/퇴장만으로 종료되는 원인 추적
+	LOG(LogWarning) << "quitES() called with mode=" << (int)mode;
+
 	quitMode = mode;
 
 	SDL_Event *quit = new SDL_Event();
