@@ -28,6 +28,10 @@ public:
 
 	void reset(); // set to frame 0
 
+	// 애니메이션을 그 자리에서 멈추거나(현재 프레임 유지, 화면에서 안 사라짐)
+	// 다시 재생. load()는 내부적으로 mEnabled=true로 시작하므로 기본은 재생 중.
+	void setAnimating(bool animating) { mEnabled = animating; }
+
 	void update(int deltaTime) override;
 	void render(const Transform4x4f& trans) override;
 

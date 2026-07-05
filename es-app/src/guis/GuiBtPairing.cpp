@@ -278,8 +278,9 @@ void GuiBtPairing::pollPairingStatus()
 	// TIMEOUT/STOPPED/CONNECTED/실패면 세션이 끝난 상태 — 스피너 숨김
 	mScanning = !(line == "TIMEOUT" || line == "STOPPED"
 	              || line.rfind("CONNECTED", 0) == 0 || line.rfind("실패", 0) == 0);
+	// 사라지지 않고 그 자리에 멈춰서 "탐색이 끝났다"는 걸 보여줌
 	if (mSpinner)
-		mSpinner->setVisible(mScanning);
+		mSpinner->setAnimating(mScanning);
 }
 
 void GuiBtPairing::rebuildList()
