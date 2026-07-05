@@ -21,23 +21,45 @@ SliderComponent::SliderComponent(Window* window, float min, float max, float inc
 
 bool SliderComponent::input(InputConfig* config, Input input)
 {
+	// 조이패드 hat은 4방향이 전부 같은 hat 번호를 공유해서, InputConfig::
+	// isMappedTo()가 hat 중립(놓음, value==0) 이벤트를 그 hat에 매핑된
+	// "모든" 방향에 대해 true로 판정함(release를 각 방향에 전파하기 위한
+	// 의도된 설계) — 그래서 위/아래를 놓는 이벤트도 isMappedLike("left"/
+	// "right")에 걸려 여기서 소비돼버림. 이 슬라이더가 실제로 좌우로
+	// 움직이는 중이 아니었으면(mMoveRate == 0) 그 release는 이 슬라이더와
+	// 무관한(위/아래) 것이니 소비하지 말고 그대로 통과시켜야 함 — 안 그러면
+	// ComponentList까지 release가 전달 안 돼 리스트 스크롤이 멈추지 않고
+	// 계속 미끄러지는 버그가 생김(2026-07-05, 패드에서만 재현·키보드는
+	// 방향키가 서로 다른 keycode라 무관해서 재현 안 됐음).
 	if(config->isMappedLike("left", input))
 	{
 		if(input.value)
+		{
 			setValue(mValue - mSingleIncrement);
-
-		mMoveRate = input.value ? -mSingleIncrement : 0;
-		mMoveAccumulator = -MOVE_REPEAT_DELAY;
-		return true;
+			mMoveRate = -mSingleIncrement;
+			mMoveAccumulator = -MOVE_REPEAT_DELAY;
+			return true;
+		}
+		if(mMoveRate != 0)
+		{
+			mMoveRate = 0;
+			return true;
+		}
 	}
 	if(config->isMappedLike("right", input))
 	{
 		if(input.value)
+		{
 			setValue(mValue + mSingleIncrement);
-
-		mMoveRate = input.value ? mSingleIncrement : 0;
-		mMoveAccumulator = -MOVE_REPEAT_DELAY;
-		return true;
+			mMoveRate = mSingleIncrement;
+			mMoveAccumulator = -MOVE_REPEAT_DELAY;
+			return true;
+		}
+		if(mMoveRate != 0)
+		{
+			mMoveRate = 0;
+			return true;
+		}
 	}
 
 	return GuiComponent::input(config, input);
