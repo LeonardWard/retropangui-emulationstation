@@ -1043,18 +1043,13 @@ void GuiMenu::openControllerSettings()
 
 	addSubmenuEntry(s, _("CONFIGURE INPUT"), [this] { openConfigInput(); });
 
-	// 버튼 방식 (UI SETTINGS에서 이동)
-	auto button_layout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("BUTTON LAYOUT"), false);
-	std::vector<std::string> layouts;
-	layouts.push_back("nintendo");
-	layouts.push_back("sony");
-	layouts.push_back("xbox");
-	std::string currentLayout = Settings::getInstance()->getString("ButtonLayout");
-	for(auto it = layouts.cbegin(); it != layouts.cend(); it++)
-		button_layout->add(*it, *it, *it == currentLayout);
-	s->addWithLabel(_("BUTTON LAYOUT"), button_layout);
-	s->addSaveFunc([button_layout] {
-		Settings::getInstance()->setString("ButtonLayout", button_layout->getSelected());
+	// 버튼 방식 — nintendo(A/B 전환)와 sony/xbox(전환 안 함, 코드상 완전히 동일)
+	// 두 상태밖에 없어서 3개짜리 OptionList 대신 간단한 토글로 단순화
+	auto button_ab_swap = std::make_shared<SwitchComponent>(mWindow);
+	button_ab_swap->setState(Settings::getInstance()->getString("ButtonLayout") == "nintendo");
+	s->addWithLabel("버튼 A/B 전환", button_ab_swap);
+	s->addSaveFunc([button_ab_swap] {
+		Settings::getInstance()->setString("ButtonLayout", button_ab_swap->getState() ? "nintendo" : "xbox");
 		InputConfig::initActionMapping();
 	});
 
