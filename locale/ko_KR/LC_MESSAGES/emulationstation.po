@@ -454,3 +454,22 @@ msgstr "배지 표시"
 
 msgid "ENCORE MODE"
 msgstr "앙코르 모드"
+
+# 2026-07-05 추가 — 한글 번역 미완성 점검(todo-20260703-es-menu-cleanup)
+msgid "REALLY QUIT?"
+msgstr "정말로 종료하시겠습니까?"
+
+msgid "STORAGE DEVICE"
+msgstr "저장장치"
+
+msgid "VERSION"
+msgstr "버전"
+
+msgid "You are changing the UI to a restricted mode:\n"
+msgstr "제한된 모드로 UI를 전환하려고 합니다:\n"
+
+msgid "This will hide most menu-options to prevent changes to the system.\n"
+msgstr "시스템 변경을 막기 위해 대부분의 메뉴 항목이 숨겨집니다.\n"
+
+msgid "To unlock and return to the full UI, enter this code: \n"
+msgstr "잠금을 해제하고 전체 UI로 돌아가려면 다음 코드를 입력하세요: \n"

@@ -907,13 +907,28 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		auto sl = std::make_shared<SliderComponent>(mWindow, item.min, item.max, item.step, item.unit);
 		sl->setValue(orig);
 		if (item.conf_key == "system.volume") {
-			sl->setChangedCallback([](float val) {
+			// 슬라이더는 좌우 입력을 누르고 있으면 40ms(MOVE_REPEAT_RATE)마다
+			// setValue()를 호출해 이 콜백을 매번 실행함 — VolumeControl::setVolume()은
+			// ALSA 믹서 호출(snd_mixer_selem_*)이라 매번 정확히 얼마나 걸릴지 예측 불가.
+			// 백그라운드 음악 재생 중 등 조건에 따라 지연되면, 메인 스레드가 그동안
+			// 막혀서 큐에 쌓인 입력 이벤트가 한꺼번에 재생되어 "커서가 미끄러지듯
+			// 계속 이동"하는 것처럼 보임(2026-07-05, 다른 슬라이더(VRAM 제한)는
+			// 이런 콜백 자체가 없어서 재현 안 됨 — 볼륨 슬라이더 전용 문제로 확인).
+			// 실제 ALSA 반영 빈도를 제한(스로틀)해서 연타로 인한 블로킹 누적을 방지.
+			auto lastCallTick = std::make_shared<Uint32>(0);
+			sl->setChangedCallback([lastCallTick](float val) {
+				Uint32 now = SDL_GetTicks();
+				if (now - *lastCallTick < 80) return;
+				*lastCallTick = now;
 				VolumeControl::getInstance()->setVolume((int)Math::round(val));
 			});
 		}
 		s->addWithLabel(_(item.label.c_str()), sl);
 		s->addSaveFunc([item, sl] {
 			cfgWriteKey(rpConfPath(), item.conf_key, std::to_string((int)sl->getValue()), false);
+			// 스로틀 때문에 조작 중 마지막 값이 ALSA에 반영 안 됐을 수 있어 나갈 때 최종 동기화
+			if (item.conf_key == "system.volume")
+				VolumeControl::getInstance()->setVolume((int)Math::round(sl->getValue()));
 		});
 		if (item.restart != "none")
 			checks.push_back({ [sl, orig]{ return (int)sl->getValue() != (int)orig; },
