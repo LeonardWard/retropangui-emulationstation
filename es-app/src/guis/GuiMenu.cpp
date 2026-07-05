@@ -841,14 +841,23 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		// 화면에 실제 표시된 초기값 기준으로 비교 (conf 없을 때도 정확히 동작)
 		std::string effectiveOrig = list->getSelected();
 		s->addWithLabel(_(item.label.c_str()), list);
-		s->addSaveFunc([item, list] {
-			cfgWriteKey(rpConfPath(), item.conf_key, list->getSelected(), false);
+		s->addSaveFunc([item, list, effectiveOrig] {
+			std::string newVal = list->getSelected();
+			cfgWriteKey(rpConfPath(), item.conf_key, newVal, false);
+			// 값이 실제로 안 바뀌었으면 ALSA 믹서 재초기화(deinit+init)를 스킵 —
+			// 이 메뉴를 나가기만 해도 매번 무조건 재초기화(무거운 작업, 카드
+			// 재검색 등)가 실행돼서 메인 스레드가 블로킹되고, 그 사이 쌓인
+			// 입력 이벤트가 한꺼번에 재생되어 "커서가 미끄러지듯 계속 이동"하는
+			// 것처럼 보이는 버그의 원인이었음(2026-07-05 실기기 로그로 확인 —
+			// SOUND SETTINGS를 나갈 때마다 VolumeControl::init()이 AUDIO CARD/
+			// AUDIO DEVICE 두 항목 분량 연달아 2번 호출됨).
+			if (newVal == effectiveOrig) return;
 			if (item.conf_key == "global.audio_device") {
-				Settings::getInstance()->setString("AudioCard", list->getSelected());
+				Settings::getInstance()->setString("AudioCard", newVal);
 				VolumeControl::getInstance()->deinit();
 				VolumeControl::getInstance()->init();
 			} else if (item.conf_key == "emulationstation.AudioDevice") {
-				Settings::getInstance()->setString("AudioDevice", list->getSelected());
+				Settings::getInstance()->setString("AudioDevice", newVal);
 				VolumeControl::getInstance()->deinit();
 				VolumeControl::getInstance()->init();
 			}
