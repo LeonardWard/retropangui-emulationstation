@@ -16,10 +16,13 @@ std::shared_ptr<ImageComponent> makeArrow(Window* window);
 
 #define TITLE_VERT_PADDING (Renderer::getScreenHeight()*0.0637f)
 
+// 메뉴 제목 글자 크기 — 기존 FONT_SIZE_LARGE에서 15% 축소(2026-07-05)
+#define MENU_TITLE_FONT_SIZE ((unsigned int)(FONT_SIZE_LARGE * 0.85f))
+
 class MenuComponent : public GuiComponent
 {
 public:
-	MenuComponent(Window* window, const char* title, const std::shared_ptr<Font>& titleFont = Font::get(FONT_SIZE_LARGE));
+	MenuComponent(Window* window, const char* title, const std::shared_ptr<Font>& titleFont = Font::get(MENU_TITLE_FONT_SIZE));
 
 	void onSizeChanged() override;
 

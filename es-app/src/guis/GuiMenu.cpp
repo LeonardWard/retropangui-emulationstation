@@ -1086,6 +1086,20 @@ void GuiMenu::openSystemSettings()
 	auto s = new GuiSettings(mWindow, _("SYSTEM SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
+	// 최상단: 현재 버전 표시(클릭 동작 없음, 정보 표시 전용)
+	{
+		std::string curVer;
+		std::ifstream f("/etc/retropangui-version");
+		if (f.good()) {
+			std::getline(f, curVer);
+			curVer.erase(curVer.find_last_not_of(" \t\r\n") + 1);
+		}
+		if (curVer.empty())
+			curVer = "-";
+		auto verText = std::make_shared<TextComponent>(mWindow, curVer, Font::get(FONT_SIZE_SMALL), 0x777777FF);
+		s->addWithLabel(_("VERSION"), verText);
+	}
+
 	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH/WIFI 시작·끄기(구 NETWORK SETTINGS)
 	addFeatureItemsTo(s, "system", *checks);
 
