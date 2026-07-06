@@ -192,7 +192,7 @@ std::string MusicManager::getCurrentTrackTitle() const
 	if (!mPlaying || mPlaylist.empty() || mCurrentIndex >= mPlaylist.size())
 		return "";
 
-	return Utils::FileSystem::getStem(mPlaylist[mCurrentIndex]);
+	return mCurrentTitle;
 }
 
 void MusicManager::shufflePlaylist()
@@ -226,6 +226,16 @@ void MusicManager::playCurrent()
 		mPlaying = false;
 		return;
 	}
+
+	// ID3/Vorbis 태그 등에서 실제 곡 제목 파싱 시도 (동기 호출 - deprecated API지만
+	// 로컬 파일은 즉시 반환됨). MIDI는 표준 메타데이터가 없어 libvlc가 파일명을
+	// 그대로 Title로 돌려주는데, 그 경우엔 태그가 "없는" 것으로 보고 stem으로 대체.
+	libvlc_media_parse(media);
+	const char* tagTitle = libvlc_media_get_meta(media, libvlc_meta_Title);
+	if (tagTitle != nullptr && tagTitle[0] != '\0' && Utils::FileSystem::getFileName(path) != tagTitle)
+		mCurrentTitle = tagTitle;
+	else
+		mCurrentTitle = Utils::FileSystem::getStem(path);
 
 	// media 는 player 에 연결된 뒤 release 가능
 	mPlayer = libvlc_media_player_new_from_media(media);

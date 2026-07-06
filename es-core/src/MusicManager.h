@@ -39,6 +39,7 @@ private:
 	size_t mCurrentIndex;
 	bool mPlaying;
 	bool mSoundfontActive; // --soundfont 적용 성공 여부 (MIDI 재생 가능)
+	std::string mCurrentTitle; // 태그(ID3 등)에서 읽은 제목, 없으면 파일명(stem)
 };
 
 #endif // ES_CORE_MUSIC_MANAGER_H
