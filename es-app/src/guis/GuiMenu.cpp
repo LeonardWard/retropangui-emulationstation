@@ -231,12 +231,6 @@ void GuiMenu::openUISettings()
 	// 컬렉션 설정 (메인에서 이동)
 	addSubmenuEntry(s, _("GAME COLLECTION SETTINGS"), [this] { openCollectionSystemSettings(); });
 
-	// quick system select (left/right in game list view)
-	auto quick_sys_select = std::make_shared<SwitchComponent>(mWindow);
-	quick_sys_select->setState(Settings::getInstance()->getBool("QuickSystemSelect"));
-	s->addWithLabel(_("QUICK SYSTEM SELECT"), quick_sys_select);
-	s->addSaveFunc([quick_sys_select] { Settings::getInstance()->setBool("QuickSystemSelect", quick_sys_select->getState()); });
-
 	// carousel transition option
 	auto move_carousel = std::make_shared<SwitchComponent>(mWindow);
 	move_carousel->setState(Settings::getInstance()->getBool("MoveCarousel"));
@@ -359,34 +353,6 @@ void GuiMenu::openUISettings()
 			ViewController::get()->reloadAll();
 	});
 
-	// 게임목록 관련 항목 (OTHER SETTINGS에서 이동)
-	auto gamelistsSaveMode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("SAVE METADATA"), false);
-	std::vector<std::string> saveModes;
-	saveModes.push_back("on exit");
-	saveModes.push_back("always");
-	saveModes.push_back("never");
-	for(auto it = saveModes.cbegin(); it != saveModes.cend(); it++)
-		gamelistsSaveMode->add(*it, *it, Settings::getInstance()->getString("SaveGamelistsMode") == *it);
-	s->addWithLabel(_("SAVE METADATA"), gamelistsSaveMode);
-	s->addSaveFunc([gamelistsSaveMode] {
-		Settings::getInstance()->setString("SaveGamelistsMode", gamelistsSaveMode->getSelected());
-	});
-
-	auto parse_gamelists = std::make_shared<SwitchComponent>(mWindow);
-	parse_gamelists->setState(Settings::getInstance()->getBool("ParseGamelistOnly"));
-	s->addWithLabel(_("PARSE GAMESLISTS ONLY"), parse_gamelists);
-	s->addSaveFunc([parse_gamelists] { Settings::getInstance()->setBool("ParseGamelistOnly", parse_gamelists->getState()); });
-
-	auto local_art = std::make_shared<SwitchComponent>(mWindow);
-	local_art->setState(Settings::getInstance()->getBool("LocalArt"));
-	s->addWithLabel(_("SEARCH FOR LOCAL ART"), local_art);
-	s->addSaveFunc([local_art] { Settings::getInstance()->setBool("LocalArt", local_art->getState()); });
-
-	auto hidden_files = std::make_shared<SwitchComponent>(mWindow);
-	hidden_files->setState(Settings::getInstance()->getBool("ShowHiddenFiles"));
-	s->addWithLabel(_("SHOW HIDDEN FILES"), hidden_files);
-	s->addSaveFunc([hidden_files] { Settings::getInstance()->setBool("ShowHiddenFiles", hidden_files->getState()); });
-
 	// Optionally ignore leading articles when sorting game titles
 	auto ignore_articles = std::make_shared<SwitchComponent>(mWindow);
 	ignore_articles->setState(Settings::getInstance()->getBool("IgnoreLeadingArticles"));
@@ -413,14 +379,6 @@ void GuiMenu::openUISettings()
 		}
 	});
 
-	// lb/rb uses full screen size paging instead of -10/+10 steps
-	auto use_fullscreen_paging = std::make_shared<SwitchComponent>(mWindow);
-	use_fullscreen_paging->setState(Settings::getInstance()->getBool("UseFullscreenPaging"));
-	s->addWithLabel(_("USE FULL SCREEN PAGING FOR LB/RB"), use_fullscreen_paging);
-	s->addSaveFunc([use_fullscreen_paging] {
-		Settings::getInstance()->setBool("UseFullscreenPaging", use_fullscreen_paging->getState());
-	});
-
 	// Optionally start in selected system
 	auto systemfocus_list = std::make_shared< OptionListComponent<std::string> >(mWindow, _("START ON SYSTEM"), false);
 	systemfocus_list->add(_("NONE"), "", Settings::getInstance()->getString("StartupSystem") == "");
@@ -435,12 +393,6 @@ void GuiMenu::openUISettings()
 	s->addSaveFunc([systemfocus_list] {
 		Settings::getInstance()->setString("StartupSystem", systemfocus_list->getSelected());
 	});
-
-	// show help
-	auto show_help = std::make_shared<SwitchComponent>(mWindow);
-	show_help->setState(Settings::getInstance()->getBool("ShowHelpPrompts"));
-	s->addWithLabel(_("ON-SCREEN HELP"), show_help);
-	s->addSaveFunc([show_help] { Settings::getInstance()->setBool("ShowHelpPrompts", show_help->getState()); });
 
 	// enable filters (ForceDisableFilters)
 	auto enable_filter = std::make_shared<SwitchComponent>(mWindow);
