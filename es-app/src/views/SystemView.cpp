@@ -249,8 +249,9 @@ static GuiComponent* findNamedExtra(SystemViewData& data, const std::string& nam
 
 void SystemView::updateRecentlyPlayed(SystemViewData& data)
 {
-	// 테마의 rp-card-1..5(현재 5장)에 맞춤 - 카드가 더 늘어나면 여기 숫자도 같이 조정
-	static const int MAX_RECENT_CARDS = 5;
+	// 테마(retropangui-slate)의 rp-card-1..6(디자인 목업 System View.png 기준 6장)에 맞춤
+	// - 카드 수가 바뀌면 여기 숫자도 같이 조정
+	static const int MAX_RECENT_CARDS = 6;
 
 	SystemData* recentSystem = nullptr;
 	for (auto system : SystemData::sSystemVector)
