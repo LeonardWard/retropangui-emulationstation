@@ -83,6 +83,16 @@ const std::string FileData::getThumbnailPath() const
 		}
 	}
 
+	// RetroPangui: 스크래핑 메타데이터/로컬 아트가 없고 "롬" 자체가 이미지 파일이면
+	// 그 파일 자체를 썸네일로 사용 - 스크린샷 뷰어 시스템처럼 게임 파일 자체가
+	// 곧 이미지인 경우를 위함(2026-07-06)
+	if(thumbnail.empty() && mType == GAME)
+	{
+		std::string ext = Utils::String::toLower(Utils::FileSystem::getExtension(mPath));
+		if(ext == ".png" || ext == ".jpg" || ext == ".jpeg")
+			thumbnail = mPath;
+	}
+
 	return thumbnail;
 }
 

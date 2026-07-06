@@ -17,6 +17,8 @@
 #include "Settings.h"
 #include "SystemData.h"
 #include "Window.h"
+#include "utils/FileSystemUtil.h"
+#include "utils/StringUtil.h"
 
 ViewController* ViewController::sInstance = NULL;
 
@@ -261,6 +263,14 @@ void ViewController::launch(FileData* game, Vector3f center)
 		LOG(LogError) << "tried to launch something that isn't a game";
 		return;
 	}
+
+	// RetroPangui: 스크린샷 뷰어 시스템처럼 "롬"이 실행 파일이 아니라 이미지
+	// 자체인 경우 - 실행할 게 없으니 화면 전환/오디오·입력 deinit 없이 조용히 무시
+	// (system()에 그대로 넘기면 실행권한 없는 이미지라 논제로 종료코드만 남고
+	// 화면 깜빡임 낭비가 생김, 2026-07-06)
+	std::string ext = Utils::String::toLower(Utils::FileSystem::getExtension(game->getPath()));
+	if(ext == ".png" || ext == ".jpg" || ext == ".jpeg")
+		return;
 
 	// Hide the current view
 	if (mCurrentView)
