@@ -85,6 +85,9 @@ private:
 	// RetroPangui: RECENTLY PLAYED 카드(rp-card-1..N) 이미지/이름을 매 프레임 최신 상태로 갱신
 	void updateRecentlyPlayed(SystemViewData& data);
 
+	// RetroPangui: 하단 푸터 우측 bgmTitle 텍스트에 현재 재생 트랙 제목을 매 프레임 반영
+	void updateBgmTitle(SystemViewData& data);
+
 
 	SystemViewCarousel mCarousel;
 	TextComponent mSystemInfo;

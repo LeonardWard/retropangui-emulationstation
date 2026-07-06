@@ -3,7 +3,6 @@
 #include "views/UIModeController.h"
 #include "views/ViewController.h"
 #include "CollectionSystemManager.h"
-#include "MusicManager.h"
 #include "Scripting.h"
 #include "Settings.h"
 #include "Sound.h"
@@ -178,17 +177,4 @@ GuiComponent* ISimpleGameListView::findThemeExtraByName(const std::string& name)
 		if (extra.first == name)
 			return extra.second;
 	return nullptr;
-}
-
-void ISimpleGameListView::update(int deltaTime)
-{
-	IGameListView::update(deltaTime);
-
-	GuiComponent* bgmTitleExtra = findThemeExtraByName("bgmTitle");
-	if (bgmTitleExtra != nullptr)
-	{
-		auto& music = MusicManager::getInstance();
-		std::string title = music->isPlaying() ? music->getCurrentTrackTitle() : "";
-		bgmTitleExtra->setValue(title);
-	}
 }

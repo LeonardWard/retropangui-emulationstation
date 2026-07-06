@@ -31,9 +31,6 @@ public:
 	virtual bool input(InputConfig* config, Input input) override;
 	virtual void launch(FileData* game) override = 0;
 
-	// bgmTitle 등 이름 있는 extra에 매 프레임 현재 재생 트랙 제목을 반영
-	virtual void update(int deltaTime) override;
-
 protected:
 	static const int DESCRIPTION_SCROLL_DELAY = 5 * 1000; // five secs
 

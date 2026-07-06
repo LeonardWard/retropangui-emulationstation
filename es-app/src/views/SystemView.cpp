@@ -8,6 +8,7 @@
 #include "views/ViewController.h"
 #include "LocaleES.h"
 #include "Log.h"
+#include "MusicManager.h"
 #include "Scripting.h"
 #include "Settings.h"
 #include "SystemData.h"
@@ -231,6 +232,7 @@ void SystemView::update(int deltaTime)
 		for(auto extra : mEntries.at(mCursor).data.backgroundExtras)
 			extra->update(deltaTime);
 		updateRecentlyPlayed(mEntries.at(mCursor).data);
+		updateBgmTitle(mEntries.at(mCursor).data);
 	}
 	GuiComponent::update(deltaTime);
 }
@@ -245,6 +247,20 @@ static GuiComponent* findNamedExtra(SystemViewData& data, const std::string& nam
 		if (kv.first == name)
 			return kv.second;
 	return nullptr;
+}
+
+// RetroPangui: 하단 푸터 우측 bgmTitle 텍스트에 현재 재생 트랙 제목 반영
+// (2026-07-06, 게임리스트 사이드바에서 메인 화면 푸터로 이동 - 게임리스트에선
+// 더 이상 표시 안 함, ES는 값만 넘겨주고 표시 위치/스타일은 테마 책임 원칙 동일)
+void SystemView::updateBgmTitle(SystemViewData& data)
+{
+	GuiComponent* bgmTitleExtra = findNamedExtra(data, "bgmTitle");
+	if (bgmTitleExtra == nullptr)
+		return;
+
+	auto& music = MusicManager::getInstance();
+	std::string title = music->isPlaying() ? music->getCurrentTrackTitle() : "";
+	bgmTitleExtra->setValue(title);
 }
 
 void SystemView::updateRecentlyPlayed(SystemViewData& data)
