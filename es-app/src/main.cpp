@@ -3,6 +3,7 @@
 
 #include "guis/GuiChangelog.h"
 #include "guis/GuiDetectDevice.h"
+#include "guis/GuiInfoPopup.h"
 #include "guis/GuiInputConfig.h"
 #include "guis/GuiMsgBox.h"
 #include "guis/GuiStorageSelect.h"
@@ -500,6 +501,13 @@ int main(int argc, char* argv[])
 		window.pushGui(new GuiMsgBox(&window, msg,
 			"예",     [&window, config]() { window.pushGui(new GuiInputConfig(&window, config, true, nullptr)); },
 			"아니오", nullptr));
+	});
+
+	// RetroPangui: 이미 매핑된 패드가 런타임 중 연결/해제될 때 짧은 OSD 알림
+	// (부팅 시 이미 꽂혀 있던 패드나 미매핑 패드는 InputManager에서 걸러짐)
+	window.setJoystickNotificationCallback([&window](const std::string& name, bool connected) {
+		std::string msg = name + (connected ? " 연결됨" : " 연결 해제됨");
+		window.setInfoPopup(new GuiInfoPopup(&window, msg, 3000));
 	});
 
 	// RetroPangui: 배경 음악 시작 (BackgroundMusic=false거나 <share>/music 비어 있으면 no-op)

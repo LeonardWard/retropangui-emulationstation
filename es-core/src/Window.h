@@ -80,6 +80,11 @@ public:
 	void setUnconfiguredJoystickCallback(std::function<void(InputConfig*)> cb) { mUnconfiguredJoystickCallback = cb; }
 	void onUnconfiguredJoystick(InputConfig* config) { if (mUnconfiguredJoystickCallback) mUnconfiguredJoystickCallback(config); }
 
+	// 이미 매핑된(es_input.cfg에 등록된) 패드가 런타임 중 연결/해제될 때 OSD 알림
+	// (InputManager::addJoystickByDeviceIndex/removeJoystickByJoystickID에서 호출)
+	void setJoystickNotificationCallback(std::function<void(const std::string& name, bool connected)> cb) { mJoystickNotificationCallback = cb; }
+	void onJoystickNotification(const std::string& name, bool connected) { if (mJoystickNotificationCallback) mJoystickNotificationCallback(name, connected); }
+
 	void startScreenSaver(SystemData* system=NULL);
 	bool cancelScreenSaver();
 	void renderScreenSaver();
@@ -120,6 +125,7 @@ private:
 	void checkNewStorage();
 
 	std::function<void(InputConfig*)> mUnconfiguredJoystickCallback;
+	std::function<void(const std::string& name, bool connected)> mJoystickNotificationCallback;
 };
 
 #endif // ES_CORE_WINDOW_H

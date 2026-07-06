@@ -31,7 +31,7 @@ int SDL_USER_CECBUTTONUP   = -1;
 
 InputManager* InputManager::mInstance = NULL;
 
-InputManager::InputManager() : mKeyboardInputConfig(NULL)
+InputManager::InputManager() : mKeyboardInputConfig(NULL), mBootGraceUntil(0)
 {
 }
 
@@ -71,6 +71,10 @@ void InputManager::init()
 	{
 		addJoystickByDeviceIndex(i);
 	}
+
+	// 위 스캔에서 열어놓은 장치들에 대해 SDL이 지연된 SDL_JOYDEVICEADDED를 메인 루프
+	// 진입 후에야 큐에서 내보내는 경우를 대비한 유예 시간 - 그 안에는 연결 알림 스킵
+	mBootGraceUntil = SDL_GetTicks() + 2000;
 
 	mKeyboardInputConfig = new InputConfig(DEVICE_KEYBOARD, "Keyboard", KEYBOARD_GUID_STRING);
 	loadInputConfig(mKeyboardInputConfig);
@@ -114,6 +118,8 @@ void InputManager::addJoystickByDeviceIndex(int id, Window* window)
 			window->onUnconfiguredJoystick(mInputConfigs[joyId]);
 	}else{
 		LOG(LogInfo) << "Added known joystick '" << SDL_JoystickName(joy) << "' (instance ID: " << joyId << ", device index: " << id << ")";
+		if (window && SDL_GetTicks() > mBootGraceUntil)
+			window->onJoystickNotification(mInputConfigs[joyId]->getDeviceName(), true);
 	}
 
 	// set up the prevAxisValues
@@ -122,7 +128,7 @@ void InputManager::addJoystickByDeviceIndex(int id, Window* window)
 	std::fill(mPrevAxisValues[joyId], mPrevAxisValues[joyId] + numAxes, 0); //initialize array to 0
 }
 
-void InputManager::removeJoystickByJoystickID(SDL_JoystickID joyId)
+void InputManager::removeJoystickByJoystickID(SDL_JoystickID joyId, Window* window)
 {
 	assert(joyId != -1);
 
@@ -131,8 +137,10 @@ void InputManager::removeJoystickByJoystickID(SDL_JoystickID joyId)
 	delete[] axisIt->second;
 	mPrevAxisValues.erase(axisIt);
 
-	// delete old InputConfig
+	// delete old InputConfig (매핑돼 있었는지, 알림에 쓸 이름은 erase 전에 확보)
 	auto it = mInputConfigs.find(joyId);
+	bool wasConfigured = it->second->isConfigured();
+	std::string deviceName = it->second->getDeviceName();
 	delete it->second;
 	mInputConfigs.erase(it);
 
@@ -141,6 +149,9 @@ void InputManager::removeJoystickByJoystickID(SDL_JoystickID joyId)
 	LOG(LogInfo) << "Removed joystick '" << SDL_JoystickName(joyIt->second) << "' (instance ID: " << joyId << ")";
 	SDL_JoystickClose(joyIt->second);
 	mJoysticks.erase(joyIt);
+
+	if (window && wasConfigured && SDL_GetTicks() > mBootGraceUntil)
+		window->onJoystickNotification(deviceName, false);
 }
 
 void InputManager::deinit()
@@ -282,7 +293,7 @@ bool InputManager::parseEvent(const SDL_Event& ev, Window* window)
 		return true;
 
 	case SDL_JOYDEVICEREMOVED:
-		removeJoystickByJoystickID(ev.jdevice.which); // ev.jdevice.which is an SDL_JoystickID (instance ID)
+		removeJoystickByJoystickID(ev.jdevice.which, window); // ev.jdevice.which is an SDL_JoystickID (instance ID)
 		return false;
 	}
 
