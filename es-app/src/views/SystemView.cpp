@@ -292,16 +292,8 @@ void SystemView::updateRecentlyPlayed(SystemViewData& data)
 				nameExtra->setValue(games[i]->getDisplayName());
 		}
 	}
-
-	// 플레이 이력이 하나도 없으면 헤더/구분선/페이지네이션 점까지 통째로 숨김
-	// (빈 "RECENTLY PLAYED" 제목만 덩그러니 남는 걸 방지 - 첫 부팅 직후 등)
-	bool hasAnyGame = !games.empty();
-	if (auto header = findNamedExtra(data, "rp-header"))
-		header->setVisible(hasAnyGame);
-	if (auto divider = findNamedExtra(data, "content-divider-2"))
-		divider->setVisible(hasAnyGame);
-	if (auto dots = findNamedExtra(data, "rp-dots"))
-		dots->setVisible(hasAnyGame);
+	// 플레이 이력이 하나도 없어도 rp-header("RECENTLY PLAYED" 제목)는 그대로 둠 -
+	// 카드만 하나도 없이 제목만 남는 게 의도된 동작(사용자 확인, 2026-07-06).
 }
 
 void SystemView::onCursorChanged(const CursorState& /*state*/)
