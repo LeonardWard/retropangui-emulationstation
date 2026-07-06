@@ -271,16 +271,37 @@ void SystemView::updateRecentlyPlayed(SystemViewData& data)
 			games.resize(MAX_RECENT_CARDS);
 	}
 
+	// 최근 플레이한 게임 수만큼만 카드를 보여줌 - 빈 슬롯을 놔두지 않고 아예 숨김
 	for (int i = 0; i < MAX_RECENT_CARDS; ++i)
 	{
+		bool hasGame = i < (int)games.size();
 		std::string cardName = "rp-card-" + std::to_string(i + 1);
+
 		if (auto img = dynamic_cast<ImageComponent*>(findNamedExtra(data, cardName)))
-			img->setImage(i < (int)games.size() ? games[i]->getThumbnailPath() : "");
+		{
+			img->setVisible(hasGame);
+			if (hasGame)
+				img->setImage(games[i]->getThumbnailPath());
+		}
 
 		// 테마가 카드별 이름 텍스트(예: rp-card-1-name)를 아직 안 뒀으면 nullptr - 안전하게 스킵
 		if (auto nameExtra = findNamedExtra(data, cardName + "-name"))
-			nameExtra->setValue(i < (int)games.size() ? games[i]->getDisplayName() : "");
+		{
+			nameExtra->setVisible(hasGame);
+			if (hasGame)
+				nameExtra->setValue(games[i]->getDisplayName());
+		}
 	}
+
+	// 플레이 이력이 하나도 없으면 헤더/구분선/페이지네이션 점까지 통째로 숨김
+	// (빈 "RECENTLY PLAYED" 제목만 덩그러니 남는 걸 방지 - 첫 부팅 직후 등)
+	bool hasAnyGame = !games.empty();
+	if (auto header = findNamedExtra(data, "rp-header"))
+		header->setVisible(hasAnyGame);
+	if (auto divider = findNamedExtra(data, "content-divider-2"))
+		divider->setVisible(hasAnyGame);
+	if (auto dots = findNamedExtra(data, "rp-dots"))
+		dots->setVisible(hasAnyGame);
 }
 
 void SystemView::onCursorChanged(const CursorState& /*state*/)
