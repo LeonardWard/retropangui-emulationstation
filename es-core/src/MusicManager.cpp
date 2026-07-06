@@ -8,9 +8,160 @@
 #include <vlc/vlc.h>
 #include <algorithm>
 #include <cstdlib>
+#include <cstring>
+#include <fstream>
 #include <random>
 
 std::shared_ptr<MusicManager> MusicManager::sInstance = nullptr;
+
+// libvlc는 MIDI(SMF)의 표준 태그를 못 읽어 파일명을 그대로 Title로 돌려주므로,
+// 트랙 안에 들어있는 메타 이벤트(FF 03=트랙명, FF 06=마커, FF 01=텍스트)를 직접
+// 파싱해 실제 제목을 얻는다 - 이러면 파일명을 손으로 바꿀 필요 없이 새 MIDI를
+// 넣기만 해도 제목이 자동으로 뜬다.
+static uint32_t readMidiVarLen(const std::vector<uint8_t>& buf, size_t& p, size_t end)
+{
+	uint32_t val = 0;
+	while (p < end)
+	{
+		uint8_t b = buf[p++];
+		val = (val << 7) | (b & 0x7F);
+		if (!(b & 0x80))
+			break;
+	}
+	return val;
+}
+
+static bool isValidUtf8(const std::string& s)
+{
+	size_t i = 0, n = s.size();
+	while (i < n)
+	{
+		unsigned char c = s[i];
+		size_t extra;
+		if ((c & 0x80) == 0) extra = 0;
+		else if ((c & 0xE0) == 0xC0) extra = 1;
+		else if ((c & 0xF0) == 0xE0) extra = 2;
+		else if ((c & 0xF8) == 0xF0) extra = 3;
+		else return false;
+		if (i + extra >= n)
+			return false;
+		for (size_t j = 1; j <= extra; ++j)
+			if ((static_cast<unsigned char>(s[i + j]) & 0xC0) != 0x80)
+				return false;
+		i += extra + 1;
+	}
+	return true;
+}
+
+// FF 03(트랙명)은 다중 트랙 MIDI에서 흔히 악기 이름("piano", "drums" 등)이나
+// "untitled"로 채워져 있어 곡 제목으로 부적합한 경우가 많음 - 그런 값은 버림.
+static bool looksLikeGenericTrackLabel(const std::string& s)
+{
+	static const char* generic[] = { "untitled", "piano", "drums", "drum", "bass",
+		"guitar", "organ", "track", "midi", "strings", "synth", "voice" };
+	std::string lower = Utils::String::toLower(s);
+	for (const char* g : generic)
+		if (lower == g)
+			return true;
+	return false;
+}
+
+static std::string trimTrailing(std::string s)
+{
+	while (!s.empty() && (s.back() == '\0' || s.back() == '\r' || s.back() == '\n' || s.back() == ' '))
+		s.pop_back();
+	return s;
+}
+
+static std::string readSmfTitle(const std::string& path)
+{
+	std::ifstream f(path, std::ios::binary);
+	if (!f)
+		return "";
+
+	std::vector<uint8_t> buf((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	if (buf.size() < 14 || memcmp(buf.data(), "MThd", 4) != 0)
+		return "";
+
+	uint16_t numTracks = (static_cast<uint16_t>(buf[10]) << 8) | buf[11];
+	size_t pos = 14;
+
+	std::string trackName, marker, text;
+
+	for (uint16_t t = 0; t < numTracks && pos + 8 <= buf.size(); ++t)
+	{
+		if (memcmp(&buf[pos], "MTrk", 4) != 0)
+			break;
+		uint32_t trackLen = (static_cast<uint32_t>(buf[pos + 4]) << 24) | (static_cast<uint32_t>(buf[pos + 5]) << 16) |
+			(static_cast<uint32_t>(buf[pos + 6]) << 8) | buf[pos + 7];
+		size_t trackStart = pos + 8;
+		size_t trackEnd = trackStart + trackLen;
+		if (trackEnd > buf.size())
+			break;
+
+		size_t p = trackStart;
+		uint8_t runningStatus = 0;
+		while (p < trackEnd)
+		{
+			readMidiVarLen(buf, p, trackEnd); // delta time, 사용 안 함
+			if (p >= trackEnd)
+				break;
+
+			uint8_t status = buf[p];
+			if (status == 0xFF) // 메타 이벤트
+			{
+				++p;
+				if (p >= trackEnd)
+					break;
+				uint8_t metaType = buf[p++];
+				uint32_t len = readMidiVarLen(buf, p, trackEnd);
+				if (p + len > trackEnd)
+					break;
+				std::string s(reinterpret_cast<const char*>(&buf[p]), len);
+				p += len;
+
+				if (metaType == 0x03 && trackName.empty()) trackName = s;
+				else if (metaType == 0x06 && marker.empty()) marker = s;
+				else if (metaType == 0x01 && text.empty()) text = s;
+				else if (metaType == 0x2F)
+					break; // end of track
+			}
+			else if (status == 0xF0 || status == 0xF7) // sysex
+			{
+				++p;
+				uint32_t len = readMidiVarLen(buf, p, trackEnd);
+				p += len;
+			}
+			else
+			{
+				if (status & 0x80)
+				{
+					runningStatus = status;
+					++p;
+				}
+				else
+				{
+					status = runningStatus; // running status - 데이터 바이트가 이미 p에 있음
+				}
+				uint8_t hi = status & 0xF0;
+				p += (hi == 0xC0 || hi == 0xD0) ? 1 : 2;
+			}
+		}
+		pos = trackEnd;
+	}
+
+	marker = trimTrailing(marker);
+	trackName = trimTrailing(trackName);
+	text = trimTrailing(text);
+
+	if (!marker.empty() && isValidUtf8(marker))
+		return marker;
+	if (!trackName.empty() && isValidUtf8(trackName) && !looksLikeGenericTrackLabel(trackName))
+		return trackName;
+	if (!text.empty() && isValidUtf8(text))
+		return text;
+	return "";
+}
 
 std::shared_ptr<MusicManager>& MusicManager::getInstance()
 {
@@ -229,13 +380,20 @@ void MusicManager::playCurrent()
 
 	// ID3/Vorbis 태그 등에서 실제 곡 제목 파싱 시도 (동기 호출 - deprecated API지만
 	// 로컬 파일은 즉시 반환됨). MIDI는 표준 메타데이터가 없어 libvlc가 파일명을
-	// 그대로 Title로 돌려주는데, 그 경우엔 태그가 "없는" 것으로 보고 stem으로 대체.
+	// 그대로 Title로 돌려주므로, 그 경우엔 태그가 "없는" 것으로 보고 아래에서
+	// SMF 내부 메타 텍스트(트랙명/마커)를 직접 읽어보고, 그것도 없으면 stem으로 대체.
 	libvlc_media_parse(media);
 	const char* tagTitle = libvlc_media_get_meta(media, libvlc_meta_Title);
 	if (tagTitle != nullptr && tagTitle[0] != '\0' && Utils::FileSystem::getFileName(path) != tagTitle)
+	{
 		mCurrentTitle = tagTitle;
+	}
 	else
-		mCurrentTitle = Utils::FileSystem::getStem(path);
+	{
+		std::string ext = Utils::String::toLower(Utils::FileSystem::getExtension(path));
+		std::string smfTitle = (ext == ".mid" || ext == ".midi") ? readSmfTitle(path) : "";
+		mCurrentTitle = !smfTitle.empty() ? smfTitle : Utils::FileSystem::getStem(path);
+	}
 
 	// media 는 player 에 연결된 뒤 release 가능
 	mPlayer = libvlc_media_player_new_from_media(media);
