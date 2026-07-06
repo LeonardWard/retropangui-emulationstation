@@ -1,6 +1,7 @@
 #include "views/SystemView.h"
 
 #include "animations/LambdaAnimation.h"
+#include "components/ImageComponent.h"
 #include "components/ScrollableContainer.h"
 #include "guis/GuiMsgBox.h"
 #include "views/UIModeController.h"
@@ -108,11 +109,17 @@ void SystemView::populate()
 			for (auto extra : e.data.backgroundExtras)
 				delete extra;
 			e.data.backgroundExtras.clear();
+			e.data.namedExtras.clear();
 
 			// make background extras
-			// SystemView는 이름으로 extra를 조회할 필요가 없으므로 GuiComponent*만 추림
+			// RetroPangui: RECENTLY PLAYED 카드(rp-card-N)처럼 이름으로 다시 찾아야 하는
+			// extra가 생겨서 이름도 같이 보관(namedExtras) - backgroundExtras는 기존처럼
+			// z-index 정렬/렌더/삭제용 GuiComponent* 목록 그대로 유지.
 			for (auto& kv : ThemeData::makeExtras((*it)->getTheme(), "system", mWindow))
+			{
 				e.data.backgroundExtras.push_back(kv.second);
+				e.data.namedExtras.push_back(kv);
+			}
 
 			// sort the extras by z-index
 			std::stable_sort(e.data.backgroundExtras.begin(), e.data.backgroundExtras.end(),  [](GuiComponent* a, GuiComponent* b) {
@@ -223,8 +230,56 @@ void SystemView::update(int deltaTime)
 	{
 		for(auto extra : mEntries.at(mCursor).data.backgroundExtras)
 			extra->update(deltaTime);
+		updateRecentlyPlayed(mEntries.at(mCursor).data);
 	}
 	GuiComponent::update(deltaTime);
+}
+
+// RetroPangui: RECENTLY PLAYED 카드(rp-card-1..N, 테마 쪽 이름 있는 extra)에 최근 플레이한
+// 게임의 썸네일/이름을 채워줌 - 몇 장을 보여줄지/배치/스타일은 테마(retropangui-slate)
+// 책임이고, ES는 데이터(경로/이름)만 이름으로 조회 가능한 extra에 넘겨줌(bgmTitle과 동일 원칙).
+// 이름 있는 extra를 못 찾으면(테마가 아직 rp-card-N을 안 뒀으면) 조용히 스킵.
+static GuiComponent* findNamedExtra(SystemViewData& data, const std::string& name)
+{
+	for (auto& kv : data.namedExtras)
+		if (kv.first == name)
+			return kv.second;
+	return nullptr;
+}
+
+void SystemView::updateRecentlyPlayed(SystemViewData& data)
+{
+	// 테마의 rp-card-1..5(현재 5장)에 맞춤 - 카드가 더 늘어나면 여기 숫자도 같이 조정
+	static const int MAX_RECENT_CARDS = 5;
+
+	SystemData* recentSystem = nullptr;
+	for (auto system : SystemData::sSystemVector)
+	{
+		if (system->getName() == "recent")
+		{
+			recentSystem = system;
+			break;
+		}
+	}
+
+	std::vector<FileData*> games;
+	if (recentSystem != nullptr)
+	{
+		games = recentSystem->getRootFolder()->getFilesRecursive(GAME, true);
+		if ((int)games.size() > MAX_RECENT_CARDS)
+			games.resize(MAX_RECENT_CARDS);
+	}
+
+	for (int i = 0; i < MAX_RECENT_CARDS; ++i)
+	{
+		std::string cardName = "rp-card-" + std::to_string(i + 1);
+		if (auto img = dynamic_cast<ImageComponent*>(findNamedExtra(data, cardName)))
+			img->setImage(i < (int)games.size() ? games[i]->getThumbnailPath() : "");
+
+		// 테마가 카드별 이름 텍스트(예: rp-card-1-name)를 아직 안 뒀으면 nullptr - 안전하게 스킵
+		if (auto nameExtra = findNamedExtra(data, cardName + "-name"))
+			nameExtra->setValue(i < (int)games.size() ? games[i]->getDisplayName() : "");
+	}
 }
 
 void SystemView::onCursorChanged(const CursorState& /*state*/)

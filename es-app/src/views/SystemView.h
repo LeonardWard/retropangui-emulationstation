@@ -9,6 +9,7 @@
 #include <memory>
 
 class AnimatedImageComponent;
+class FileData;
 class SystemData;
 
 enum CarouselType : unsigned int
@@ -23,6 +24,11 @@ struct SystemViewData
 {
 	std::shared_ptr<GuiComponent> logo;
 	std::vector<GuiComponent*> backgroundExtras;
+
+	// RetroPangui: RECENTLY PLAYED 카드(rp-card-N)처럼 이름으로 찾아서 값을 갱신해야
+	// 하는 extra만 별도 보관 - backgroundExtras와 같은 포인터를 가리키므로 소유권/삭제는
+	// backgroundExtras 쪽에서만 수행(여긴 조회용 raw pointer만 들고 있음).
+	std::vector<std::pair<std::string, GuiComponent*>> namedExtras;
 };
 
 struct SystemViewCarousel
@@ -75,6 +81,9 @@ private:
 	void renderExtras(const Transform4x4f& parentTrans, float lower, float upper);
 	void renderInfoBar(const Transform4x4f& trans);
 	void renderFade(const Transform4x4f& trans);
+
+	// RetroPangui: RECENTLY PLAYED 카드(rp-card-1..N) 이미지/이름을 매 프레임 최신 상태로 갱신
+	void updateRecentlyPlayed(SystemViewData& data);
 
 
 	SystemViewCarousel mCarousel;
