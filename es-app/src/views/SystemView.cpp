@@ -231,7 +231,7 @@ void SystemView::update(int deltaTime)
 	{
 		for(auto extra : mEntries.at(mCursor).data.backgroundExtras)
 			extra->update(deltaTime);
-		updateRecentlyPlayed(mEntries.at(mCursor).data);
+		updateRecentlyPlayed(mEntries.at(mCursor).data, mEntries.at(mCursor).object);
 		updateBgmTitle(mEntries.at(mCursor).data);
 	}
 	GuiComponent::update(deltaTime);
@@ -263,26 +263,36 @@ void SystemView::updateBgmTitle(SystemViewData& data)
 	bgmTitleExtra->setValue(title);
 }
 
-void SystemView::updateRecentlyPlayed(SystemViewData& data)
+void SystemView::updateRecentlyPlayed(SystemViewData& data, SystemData* system)
 {
 	// 테마(retropangui-slate)의 rp-card-1..6(디자인 목업 System View.png 기준 6장)에 맞춤
 	// - 카드 수가 바뀌면 여기 숫자도 같이 조정
 	static const int MAX_RECENT_CARDS = 6;
 
 	SystemData* recentSystem = nullptr;
-	for (auto system : SystemData::sSystemVector)
+	for (auto sys : SystemData::sSystemVector)
 	{
-		if (system->getName() == "recent")
+		if (sys->getName() == "recent")
 		{
-			recentSystem = system;
+			recentSystem = sys;
 			break;
 		}
 	}
 
+	// 2026-07-06: "recent"는 전체 시스템을 합친 자동 컬렉션이라 필터링 없이 쓰면
+	// 지금 보고 있는 시스템과 무관하게 항상 똑같은 목록이 보임("모든 시스템에
+	// 동일하게 나타난다" 피드백으로 발견) - 컬렉션 안의 각 항목은 원본 게임을
+	// 감싸는 래퍼(CollectionFileData)라 getSourceFileData()로 원래 게임을 찾아
+	// 그 게임이 지금 보고 있는 시스템 소속인 것만 남김.
 	std::vector<FileData*> games;
-	if (recentSystem != nullptr)
+	if (recentSystem != nullptr && system != nullptr)
 	{
-		games = recentSystem->getRootFolder()->getFilesRecursive(GAME, true);
+		std::vector<FileData*> allRecent = recentSystem->getRootFolder()->getFilesRecursive(GAME, true);
+		for (FileData* game : allRecent)
+		{
+			if (game->getSourceFileData()->getSystem() == system)
+				games.push_back(game);
+		}
 		if ((int)games.size() > MAX_RECENT_CARDS)
 			games.resize(MAX_RECENT_CARDS);
 	}

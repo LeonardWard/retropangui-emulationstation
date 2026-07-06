@@ -83,7 +83,8 @@ private:
 	void renderFade(const Transform4x4f& trans);
 
 	// RetroPangui: RECENTLY PLAYED 카드(rp-card-1..N) 이미지/이름을 매 프레임 최신 상태로 갱신
-	void updateRecentlyPlayed(SystemViewData& data);
+	// system: 지금 보고 있는 시스템 - 이 시스템 소속 게임만 필터링하기 위함(2026-07-06)
+	void updateRecentlyPlayed(SystemViewData& data, SystemData* system);
 
 	// RetroPangui: 하단 푸터 우측 bgmTitle 텍스트에 현재 재생 트랙 제목을 매 프레임 반영
 	void updateBgmTitle(SystemViewData& data);
