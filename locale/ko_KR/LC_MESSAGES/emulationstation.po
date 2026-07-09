@@ -465,11 +465,26 @@ msgstr "저장장치"
 msgid "VERSION"
 msgstr "버전"
 
-msgid "You are changing the UI to a restricted mode:\n"
-msgstr "제한된 모드로 UI를 전환하려고 합니다:\n"
+msgid "ES VRAM LIMIT"
+msgstr "ES VRAM 제한"
 
-msgid "This will hide most menu-options to prevent changes to the system.\n"
-msgstr "시스템 변경을 막기 위해 대부분의 메뉴 항목이 숨겨집니다.\n"
+msgid "ES SHOW FRAMERATE"
+msgstr "ES 프레임 표시"
 
-msgid "To unlock and return to the full UI, enter this code: \n"
-msgstr "잠금을 해제하고 전체 UI로 돌아가려면 다음 코드를 입력하세요: \n"
+msgid "FACTORY RESET"
+msgstr "공장 초기화"
+
+msgid "THIS WILL RESET SYSTEM SETTINGS.\nROMS AND SAVE FILES WILL BE KEPT.\n\nARE YOU SURE YOU WANT TO RESET?"
+msgstr "시스템 설정을 초기화합니다.\nROMs와 세이브 파일은 유지됩니다.\n\n정말 초기화하시겠습니까?"
+
+msgid "SWAP BUTTONS A/B"
+msgstr "버튼 A/B 전환"
+
+msgid "SELECT WIFI NETWORK"
+msgstr "WIFI 네트워크 선택"
+
+msgid "BACKGROUND MUSIC"
+msgstr "배경음악"
+
+msgid "SHOW BUNDLED GAMES"
+msgstr "번들 게임 표시"

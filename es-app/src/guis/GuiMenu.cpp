@@ -413,13 +413,13 @@ void GuiMenu::openUISettings()
 	// maximum vram (ES UI 텍스처 한도)
 	auto max_vram = std::make_shared<SliderComponent>(mWindow, 0.f, 1000.f, 10.f, "Mb");
 	max_vram->setValue((float)(Settings::getInstance()->getInt("MaxVRAM")));
-	s->addWithLabel(_("ES VRAM 제한"), max_vram);
+	s->addWithLabel(_("ES VRAM LIMIT"), max_vram);
 	s->addSaveFunc([max_vram] { Settings::getInstance()->setInt("MaxVRAM", (int)Math::round(max_vram->getValue())); });
 
 	// framerate
 	auto framerate = std::make_shared<SwitchComponent>(mWindow);
 	framerate->setState(Settings::getInstance()->getBool("DrawFramerate"));
-	s->addWithLabel(_("ES 프레임 표시"), framerate);
+	s->addWithLabel(_("ES SHOW FRAMERATE"), framerate);
 	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
 
 	// YAML: UI 관련 항목 (LANGUAGE 등)
@@ -458,16 +458,16 @@ void GuiMenu::openAdvancedSettings()
 		Window* window = mWindow;
 		row.makeAcceptInputHandler([window] {
 			window->pushGui(new GuiMsgBox(window,
-				_("시스템 설정을 초기화합니다.\nROMs와 세이브 파일은 유지됩니다.\n\n정말 초기화하시겠습니까?"),
+				_("THIS WILL RESET SYSTEM SETTINGS.\nROMS AND SAVE FILES WILL BE KEPT.\n\nARE YOU SURE YOU WANT TO RESET?"),
 				_("YES"), [] {
 					system("mount -o remount,rw /boot 2>/dev/null; touch /boot/.factory-reset; sync");
 					Scripting::fireEvent("quit", "reboot");
 					Scripting::fireEvent("reboot");
 					quitES(QuitMode::REBOOT);
 				},
-				"아니오", nullptr));
+				_("NO"), nullptr));
 		});
-		row.addElement(std::make_shared<TextComponent>(window, _("공장 초기화"), Font::get(FONT_SIZE_MEDIUM), 0xFF5555FF), true);
+		row.addElement(std::make_shared<TextComponent>(window, _("FACTORY RESET"), Font::get(FONT_SIZE_MEDIUM), 0xFF5555FF), true);
 		s->addRow(row);
 	}
 
@@ -1014,7 +1014,7 @@ void GuiMenu::openControllerSettings()
 	// 두 상태밖에 없어서 3개짜리 OptionList 대신 간단한 토글로 단순화
 	auto button_ab_swap = std::make_shared<SwitchComponent>(mWindow);
 	button_ab_swap->setState(Settings::getInstance()->getString("ButtonLayout") == "nintendo");
-	s->addWithLabel("버튼 A/B 전환", button_ab_swap);
+	s->addWithLabel(_("SWAP BUTTONS A/B"), button_ab_swap);
 	s->addSaveFunc([button_ab_swap] {
 		Settings::getInstance()->setString("ButtonLayout", button_ab_swap->getState() ? "nintendo" : "xbox");
 		InputConfig::initActionMapping();
@@ -1071,7 +1071,7 @@ void GuiMenu::openSystemSettings()
 	addFeatureItemsTo(s, "system", *checks);
 
 	// WiFi 스캔·연결 — 실시간 데이터라 YAML로 표현 불가, GuiStorageSelect와 동일 패턴의 커스텀 화면
-	addSubmenuEntry(s, _("WIFI 네트워크 선택"), [this] { mWindow->pushGui(new GuiWifiSelect(mWindow)); });
+	addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this] { mWindow->pushGui(new GuiWifiSelect(mWindow)); });
 
 	// power saver
 	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);
