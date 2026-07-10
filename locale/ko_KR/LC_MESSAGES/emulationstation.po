@@ -489,6 +489,27 @@ msgstr "네트워크"
 msgid "CURRENT IP ADDRESS"
 msgstr "현재 IP 주소"
 
+msgid "TICKER SETTINGS"
+msgstr "티커 설정"
+
+msgid "NAVER CLIENT ID"
+msgstr "네이버 클라이언트 ID"
+
+msgid "NAVER CLIENT SECRET"
+msgstr "네이버 클라이언트 시크릿"
+
+msgid "KRX API KEY"
+msgstr "KRX API 키"
+
+msgid "WEATHER SERVICE KEY"
+msgstr "기상청 인증키"
+
+msgid "WEATHER NX"
+msgstr "기상청 격자 좌표 NX"
+
+msgid "WEATHER NY"
+msgstr "기상청 격자 좌표 NY"
+
 msgid "BACKGROUND MUSIC"
 msgstr "배경음악"
 
