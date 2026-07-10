@@ -30,6 +30,7 @@ private:
 	void openEmulatorSettings();
 	void openGameSettings();
 	void openKodiMediaCenter();
+	void openNetworkSettings();
 	void openQuitMenu();
 	void openRetroAchievements();
 	void openScraperSettings();

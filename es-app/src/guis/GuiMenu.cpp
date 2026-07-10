@@ -39,6 +39,9 @@
 #include <dirent.h>
 #include "utils/FileSystemUtil.h"
 #include "guis/GuiOtaUpdate.h"
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "HttpReq.h"
 #include <sys/wait.h>
 #include <SDL_timer.h>
@@ -710,6 +713,32 @@ static std::string raCfgGet(const std::string& key, const std::string& def = "")
 	return cfgReadKey(rpConfPath(), "global." + key, def);
 }
 
+// NETWORK 서브메뉴의 CURRENT IP ADDRESS 표시용 - 유선/무선 구분 없이 lo를 뺀
+// 첫 IPv4 주소 하나(멀티 인터페이스 동시 연결은 흔치 않은 임베디드 환경이라
+// "활성 인터페이스 대표 하나"로 충분하다고 판단, 2026-07-10).
+static std::string getCurrentIpAddress()
+{
+	struct ifaddrs* ifaddr = nullptr;
+	if (getifaddrs(&ifaddr) == -1)
+		return "-";
+
+	std::string result = "-";
+	for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next)
+	{
+		if (!ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET)
+			continue;
+		if (std::string(ifa->ifa_name) == "lo")
+			continue;
+		char buf[INET_ADDRSTRLEN] = {};
+		auto* sin = (struct sockaddr_in*)ifa->ifa_addr;
+		inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf));
+		result = buf;
+		break;
+	}
+	freeifaddrs(ifaddr);
+	return result;
+}
+
 // retropangui.conf 에 쓰고, retroarch.cfg 에도 즉시 반영 (부팅 대기 없이 효과)
 static void raCfgSet(const std::string& key, const std::string& value)
 {
@@ -1048,6 +1077,27 @@ void GuiMenu::openStorageSettings()
 	mWindow->pushGui(new GuiStorageSelect(mWindow));
 }
 
+// NETWORK — SYSTEM SETTINGS 안의 서브메뉴. IP 표시(네이티브) + SSH/SAMBA/WIFI
+// 토글(YAML network_settings, parent를 "network_settings"로 둬서 SYSTEM
+// SETTINGS 최상위엔 안 풀리고 여기서만 명시적으로 끌어옴) + WiFi 스캔·연결
+// 화면(실시간 데이터라 YAML로 표현 불가, 기존 GuiWifiSelect 재사용).
+void GuiMenu::openNetworkSettings()
+{
+	auto s = new GuiSettings(mWindow, _("NETWORK"));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
+
+	auto ipText = std::make_shared<TextComponent>(mWindow, getCurrentIpAddress(),
+		Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_RIGHT);
+	s->addWithLabel(_("CURRENT IP ADDRESS"), ipText);
+
+	addFeatureItemsTo(s, "network_settings", *checks);
+
+	addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this] { mWindow->pushGui(new GuiWifiSelect(mWindow)); });
+
+	setSaveWithRestartChecks(s, checks);
+	mWindow->pushGui(s);
+}
+
 void GuiMenu::openSystemSettings()
 {
 	auto s = new GuiSettings(mWindow, _("SYSTEM SETTINGS"));
@@ -1067,11 +1117,15 @@ void GuiMenu::openSystemSettings()
 		s->addWithLabel(_("VERSION"), verText);
 	}
 
-	// YAML: 시간대(구 SYSTEM SETTINGS) + SSH/WIFI 시작·끄기(구 NETWORK SETTINGS)
+	// YAML: 시간대 등 system 최상위 항목
 	addFeatureItemsTo(s, "system", *checks);
 
-	// WiFi 스캔·연결 — 실시간 데이터라 YAML로 표현 불가, GuiStorageSelect와 동일 패턴의 커스텀 화면
-	addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this] { mWindow->pushGui(new GuiWifiSelect(mWindow)); });
+	// NETWORK 서브메뉴 — SSH/SAMBA/WIFI 토글 + IP + WiFi 선택을 한 화면으로 묶음.
+	// 2026-07-10: 예전엔 이 항목들이 SYSTEM SETTINGS에 flat하게 다 풀려있었음
+	// ("구 NETWORK SETTINGS" 주석은 "예전엔 진짜 서브메뉴였다가 flat으로
+	// 합쳐졌다"는 뜻이었는데, 문서에서 반대로("이미 서브메뉴로 존재") 오독됐던
+	// 걸 재확인 과정에서 발견 - todo-20260704-wifi-menu-polish.html 참고.
+	addSubmenuEntry(s, _("NETWORK"), [this] { openNetworkSettings(); });
 
 	// power saver
 	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);

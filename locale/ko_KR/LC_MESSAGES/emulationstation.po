@@ -483,6 +483,12 @@ msgstr "버튼 A/B 전환"
 msgid "SELECT WIFI NETWORK"
 msgstr "WIFI 네트워크 선택"
 
+msgid "NETWORK"
+msgstr "네트워크"
+
+msgid "CURRENT IP ADDRESS"
+msgstr "현재 IP 주소"
+
 msgid "BACKGROUND MUSIC"
 msgstr "배경음악"
 
