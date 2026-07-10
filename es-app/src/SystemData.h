@@ -63,6 +63,7 @@ public:
 
 	unsigned int getGameCount() const;
 	unsigned int getDisplayedGameCount() const;
+	unsigned int getDisplayedFavoriteCount() const;
 
 	static void deleteSystems();
 	static bool loadConfig(Window* window); //Load the system config file at getConfigPath(). Returns true if no errors were encountered. An example will be written if the file doesn't exist.

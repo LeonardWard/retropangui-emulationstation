@@ -22,7 +22,9 @@ SystemView::SystemView(Window* window) : IList<SystemViewData, SystemData*>(wind
 										 mViewNeedsReload(true),
 										 mSystemInfo(window, "SYSTEM INFO", Font::get(FONT_SIZE_SMALL), 0x33333300, ALIGN_CENTER),
 										 mGameCountNumber(window, "", Font::get(FONT_SIZE_LARGE), 0x33333300, ALIGN_CENTER),
-										 mHasGameCountNumber(false)
+										 mHasGameCountNumber(false),
+										 mFavoriteCountNumber(window, "", Font::get(FONT_SIZE_LARGE), 0x33333300, ALIGN_CENTER),
+										 mHasFavoriteCountNumber(false)
 {
 	mCamOffset = 0;
 	mExtrasCamOffset = 0;
@@ -369,12 +371,14 @@ void SystemView::onCursorChanged(const CursorState& /*state*/)
 		const unsigned char op = (unsigned char)(Math::lerp(infoStartOpacity, 0.f, t) * 255);
 		mSystemInfo.setOpacity(op);
 		mGameCountNumber.setOpacity(op);
+		mFavoriteCountNumber.setOpacity(op);
 	}, (int)(infoStartOpacity * (goFast ? 10 : 150)));
 
 	unsigned int gameCount = getSelected()->getDisplayedGameCount();
+	unsigned int favoriteCount = getSelected()->getDisplayedFavoriteCount();
 
 	// also change the text after we've fully faded out
-	setAnimation(infoFadeOut, 0, [this, gameCount] {
+	setAnimation(infoFadeOut, 0, [this, gameCount, favoriteCount] {
 		std::stringstream ss;
 
 		if (!getSelected()->isGameSystem())
@@ -391,6 +395,9 @@ void SystemView::onCursorChanged(const CursorState& /*state*/)
 
 		// RetroPangui: 게임 수 숫자 요소 갱신 (레이블은 테마에서 직접 그림)
 		mGameCountNumber.setText(getSelected()->isGameSystem() ? std::to_string(gameCount) : "");
+
+		// RetroPangui: 즐겨찾기 수 숫자 요소 갱신 (레이블은 테마에서 직접 그림)
+		mFavoriteCountNumber.setText(getSelected()->isGameSystem() ? std::to_string(favoriteCount) : "");
 	}, false, 1);
 
 	Animation* infoFadeIn = new LambdaAnimation(
@@ -399,6 +406,7 @@ void SystemView::onCursorChanged(const CursorState& /*state*/)
 		const unsigned char op = (unsigned char)(Math::lerp(0.f, 1.f, t) * 255);
 		mSystemInfo.setOpacity(op);
 		mGameCountNumber.setOpacity(op);
+		mFavoriteCountNumber.setOpacity(op);
 	}, goFast ? 10 : 300);
 
 	// wait 600ms to fade in
@@ -560,6 +568,12 @@ void  SystemView::getViewElements(const std::shared_ptr<ThemeData>& theme)
 	if (countNumElem)
 		mGameCountNumber.applyTheme(theme, "system", "gameCountNumber", ThemeFlags::ALL);
 
+	// RetroPangui: 즐겨찾기 수 숫자 요소 (테마에 선언된 경우에만 표시)
+	const ThemeData::ThemeElement* favCountNumElem = theme->getElement("system", "favoriteCountNumber", "text");
+	mHasFavoriteCountNumber = (favCountNumElem != nullptr);
+	if (favCountNumElem)
+		mFavoriteCountNumber.applyTheme(theme, "system", "favoriteCountNumber", ThemeFlags::ALL);
+
 	mViewNeedsReload = false;
 }
 
@@ -678,6 +692,8 @@ void SystemView::renderInfoBar(const Transform4x4f& trans)
 	mSystemInfo.render(trans);
 	if (mHasGameCountNumber)
 		mGameCountNumber.render(trans);
+	if (mHasFavoriteCountNumber)
+		mFavoriteCountNumber.render(trans);
 }
 
 // Draw background extras

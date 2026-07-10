@@ -694,6 +694,38 @@ unsigned int SystemData::getDisplayedGameCount() const
 	return count;
 }
 
+// RetroPangui: Count favorited games among displayed games (mirrors getDisplayedGameCount)
+unsigned int SystemData::getDisplayedFavoriteCount() const
+{
+	const std::vector<FileData*>& displayedChildren = mRootFolder->getChildrenListToDisplay();
+
+	unsigned int count = 0;
+	for (FileData* child : displayedChildren)
+	{
+		if (child->getType() == GAME && child->metadata.get("favorite") == "true")
+			count++;
+	}
+
+	std::function<void(FileData*)> countRecursive = [&](FileData* folder) {
+		const std::vector<FileData*>& children = folder->getChildrenListToDisplay();
+		for (FileData* child : children)
+		{
+			if (child->getType() == GAME && child->metadata.get("favorite") == "true")
+				count++;
+			else if (child->getType() == FOLDER)
+				countRecursive(child);
+		}
+	};
+
+	for (FileData* child : displayedChildren)
+	{
+		if (child->getType() == FOLDER)
+			countRecursive(child);
+	}
+
+	return count;
+}
+
 void SystemData::loadTheme()
 {
 	mTheme = std::make_shared<ThemeData>();

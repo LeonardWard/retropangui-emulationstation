@@ -96,6 +96,10 @@ private:
 	// gameCountNumber를 선언한 경우에만 표시 (레이블은 테마에서 직접 그림)
 	TextComponent mGameCountNumber;
 	bool mHasGameCountNumber;
+	// RetroPangui: 즐겨찾기 수 숫자만 표시 — 테마가 text 요소
+	// favoriteCountNumber를 선언한 경우에만 표시 (레이블은 테마에서 직접 그림)
+	TextComponent mFavoriteCountNumber;
+	bool mHasFavoriteCountNumber;
 
 	// unit is list index
 	float mCamOffset;
