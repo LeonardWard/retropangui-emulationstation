@@ -579,7 +579,10 @@ void FileData::launchGame(Window* window)
 		LOG(LogWarning) << "...launch terminated with nonzero exit code " << exitCode << "!";
 	}
 
-	Scripting::fireEvent("game-end");
+	// system.getName()(롬/스크린샷 폴더명)과 getThemeFolder()(테마 에셋 파일명)가
+	// 다른 시스템이 있어서(msx1->msx, dos->pc, utility->ports) 둘 다 넘김 -
+	// 스크립트가 스크린샷은 name 폴더에서 찾고 테마 에셋은 theme 이름으로 써야 함.
+	Scripting::fireEvent("game-end", mSystem->getName(), mSystem->getThemeFolder());
 
 	window->init();
 	InputManager::getInstance()->init();
