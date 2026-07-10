@@ -89,7 +89,6 @@ GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN M
 				addEntry(_(fm.label.c_str()), 0x777777FF, true, [this, id] { openFeatureMenu(id); });
 			}
 		}
-		addEntry(_("SCRAPER"),              0x777777FF, true, [this] { openScraperSettings(); });
 	} else {
 		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
 	}
@@ -1025,6 +1024,9 @@ void GuiMenu::openGameSettings()
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
 	addSubmenuEntry(s, _("EMULATOR SETTINGS"), [this] { openEmulatorSettings(); });
+	// 2026-07-10: 최상위 메인 메뉴에서 이동(todo-scraper.html) - 자주 쓰는
+	// 기능이 아니라고 판단, GAME SETTINGS 하위로 편입.
+	addSubmenuEntry(s, _("SCRAPER"), [this] { openScraperSettings(); });
 
 	// YAML: 스무딩/정수 스케일(구 VIDEO SETTINGS) + 되감기/자동저장(구 GAME SETTINGS)
 	addFeatureItemsTo(s, "game", *checks);

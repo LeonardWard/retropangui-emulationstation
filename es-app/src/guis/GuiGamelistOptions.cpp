@@ -12,9 +12,10 @@
 #include "SystemData.h"
 #include "components/TextListComponent.h"
 #include "Gamelist.h"
+#include "LocaleES.h"
 
 GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : GuiComponent(window),
-	mSystem(system), mMenu(window, "OPTIONS"), mFromPlaceholder(false), mFiltersChanged(false),
+	mSystem(system), mMenu(window, _("OPTIONS")), mFromPlaceholder(false), mFiltersChanged(false),
 	mJumpToSelected(false)
 {
 	addChild(&mMenu);
@@ -44,7 +45,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 				outOfRange = true;
 			}
 
-			mJumpToLetterList = std::make_shared<LetterList>(mWindow, "JUMP TO ...", false);
+			mJumpToLetterList = std::make_shared<LetterList>(mWindow, _("JUMP TO ..."), false);
 			for (char c = startChar; c <= endChar; c++)
 			{
 				// check if c is a valid first letter in current list
@@ -61,7 +62,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 				}
 			}
 
-			row.addElement(std::make_shared<TextComponent>(mWindow, "JUMP TO ...", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+			row.addElement(std::make_shared<TextComponent>(mWindow, _("JUMP TO ..."), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 			row.addElement(mJumpToLetterList, false);
 			row.input_handler = [&](InputConfig* config, Input input) {
 				if(config->isMappedToAction("accept", input) && input.value)
@@ -86,20 +87,20 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 
 		if (!rpConfigSelected && useGamelistMedia && (!collectionsSelected || collectionsSelected && file->getType() == GAME)) {
 			row.elements.clear();
-			row.addElement(std::make_shared<TextComponent>(mWindow, "LAUNCH SYSTEM SCREENSAVER", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+			row.addElement(std::make_shared<TextComponent>(mWindow, _("LAUNCH SYSTEM SCREENSAVER"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 			row.makeAcceptInputHandler(std::bind(&GuiGamelistOptions::launchSystemScreenSaver, this));
 			mMenu.addRow(row);
 		}
 
 		// "sort list by" menuitem
-		mListSort = std::make_shared<SortList>(mWindow, "SORT GAMES BY", false);
+		mListSort = std::make_shared<SortList>(mWindow, _("SORT GAMES BY"), false);
 		for(unsigned int i = 0; i < FileSorts::SortTypes.size(); i++)
 		{
 			const FileData::SortType& sort = FileSorts::SortTypes.at(i);
 			mListSort->add(sort.description, &sort, sort.description == currentSort);
 		}
 
-		mMenu.addWithLabel("SORT GAMES BY", mListSort);
+		mMenu.addWithLabel(_("SORT GAMES BY"), mListSort);
 
 	}
 
@@ -107,7 +108,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 	if(!Settings::getInstance()->getBool("ForceDisableFilters"))
 	{
 		row.elements.clear();
-		row.addElement(std::make_shared<TextComponent>(mWindow, "FILTER GAMELIST", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		row.addElement(std::make_shared<TextComponent>(mWindow, _("FILTER GAMELIST"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 		row.addElement(makeArrow(mWindow), false);
 		row.makeAcceptInputHandler(std::bind(&GuiGamelistOptions::openGamelistFilter, this));
 		mMenu.addRow(row);
@@ -120,7 +121,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 		CollectionSystemManager::get()->getCustomCollectionsBundle()->getName() == system->getName()))
 	{
 		row.elements.clear();
-		row.addElement(std::make_shared<TextComponent>(mWindow, "ADD/REMOVE GAMES TO THIS GAME COLLECTION", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		row.addElement(std::make_shared<TextComponent>(mWindow, _("ADD/REMOVE GAMES TO THIS GAME COLLECTION"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 		row.makeAcceptInputHandler(std::bind(&GuiGamelistOptions::startEditMode, this));
 		mMenu.addRow(row);
 	}
@@ -128,7 +129,9 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 	if(UIModeController::getInstance()->isUIModeFull() && CollectionSystemManager::get()->isEditing())
 	{
 		row.elements.clear();
-		row.addElement(std::make_shared<TextComponent>(mWindow, "FINISH EDITING '" + Utils::String::toUpper(CollectionSystemManager::get()->getEditingCollection()) + "' COLLECTION", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		std::string finishEditingLbl = Utils::String::replace(_("FINISH EDITING '%COLLECTION%' COLLECTION"),
+			"%COLLECTION%", Utils::String::toUpper(CollectionSystemManager::get()->getEditingCollection()));
+		row.addElement(std::make_shared<TextComponent>(mWindow, finishEditingLbl, Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 		row.makeAcceptInputHandler(std::bind(&GuiGamelistOptions::exitEditMode, this));
 		mMenu.addRow(row);
 	}
@@ -136,7 +139,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 	if(UIModeController::getInstance()->isUIModeFull() && system == CollectionSystemManager::get()->getRandomCollection())
 	{
 		row.elements.clear();
-		row.addElement(std::make_shared<TextComponent>(mWindow, "GET NEW RANDOM GAMES", Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		row.addElement(std::make_shared<TextComponent>(mWindow, _("GET NEW RANDOM GAMES"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 		row.makeAcceptInputHandler(std::bind(&GuiGamelistOptions::recreateCollection, this));
 		mMenu.addRow(row);
 	}
@@ -144,9 +147,7 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 	if (UIModeController::getInstance()->isUIModeFull() && !mFromPlaceholder && !(mSystem->isCollection() && file->getType() == FOLDER))
 	{
 		row.elements.clear();
-		std::string lblTxt = std::string("EDIT THIS ");
-		lblTxt += std::string((file->getType() == FOLDER ? "FOLDER" : "GAME"));
-		lblTxt += std::string("'S METADATA");
+		std::string lblTxt = (file->getType() == FOLDER) ? _("EDIT THIS FOLDER'S METADATA") : _("EDIT THIS GAME'S METADATA");
 		row.addElement(std::make_shared<TextComponent>(mWindow, lblTxt, Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
 		row.addElement(makeArrow(mWindow), false);
 		row.makeAcceptInputHandler(std::bind(&GuiGamelistOptions::openMetaDataEd, this));

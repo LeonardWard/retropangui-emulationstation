@@ -483,6 +483,36 @@ msgstr "버튼 A/B 전환"
 msgid "SELECT WIFI NETWORK"
 msgstr "WIFI 네트워크 선택"
 
+msgid "OPTIONS"
+msgstr "옵션"
+
+msgid "JUMP TO ..."
+msgstr "이동..."
+
+msgid "SORT GAMES BY"
+msgstr "정렬 기준"
+
+msgid "FILTER GAMELIST"
+msgstr "목록 필터"
+
+msgid "LAUNCH SYSTEM SCREENSAVER"
+msgstr "시스템 화면보호기 실행"
+
+msgid "ADD/REMOVE GAMES TO THIS GAME COLLECTION"
+msgstr "이 컬렉션에 게임 추가/제거"
+
+msgid "FINISH EDITING '%COLLECTION%' COLLECTION"
+msgstr "'%COLLECTION%' 컬렉션 편집 완료"
+
+msgid "GET NEW RANDOM GAMES"
+msgstr "무작위 게임 새로 뽑기"
+
+msgid "EDIT THIS FOLDER'S METADATA"
+msgstr "이 폴더의 메타데이터 편집"
+
+msgid "EDIT THIS GAME'S METADATA"
+msgstr "이 게임의 메타데이터 편집"
+
 msgid "NETWORK"
 msgstr "네트워크"
 
