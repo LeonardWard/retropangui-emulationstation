@@ -126,6 +126,12 @@ void InputManager::addJoystickByDeviceIndex(int id, Window* window)
 	int numAxes = SDL_JoystickNumAxes(joy);
 	mPrevAxisValues[joyId] = new int[numAxes];
 	std::fill(mPrevAxisValues[joyId], mPrevAxisValues[joyId] + numAxes, 0); //initialize array to 0
+
+	// RetroPangui: 축별 쉬는 값 기준점 - 연결 시점에 실제 값을 읽어서 채움
+	// (스틱은 대개 0, 일부 컨트롤러의 트리거 축은 -32767 근처에서 쉼)
+	mAxisRestValues[joyId] = new int[numAxes];
+	for (int i = 0; i < numAxes; i++)
+		mAxisRestValues[joyId][i] = SDL_JoystickGetAxis(joy, i);
 }
 
 void InputManager::removeJoystickByJoystickID(SDL_JoystickID joyId, Window* window)
@@ -136,6 +142,11 @@ void InputManager::removeJoystickByJoystickID(SDL_JoystickID joyId, Window* wind
 	auto axisIt = mPrevAxisValues.find(joyId);
 	delete[] axisIt->second;
 	mPrevAxisValues.erase(axisIt);
+
+	// RetroPangui: delete old axisRestValues
+	auto restIt = mAxisRestValues.find(joyId);
+	delete[] restIt->second;
+	mAxisRestValues.erase(restIt);
 
 	// delete old InputConfig (매핑돼 있었는지, 알림에 쓸 이름은 erase 전에 확보)
 	auto it = mInputConfigs.find(joyId);
@@ -176,6 +187,13 @@ void InputManager::deinit()
 		delete[] iter->second;
 	}
 	mPrevAxisValues.clear();
+
+	// RetroPangui: delete axisRestValues
+	for(auto iter = mAxisRestValues.cbegin(); iter != mAxisRestValues.cend(); iter++)
+	{
+		delete[] iter->second;
+	}
+	mAxisRestValues.clear();
 
 	if(mKeyboardInputConfig != NULL)
 	{
@@ -232,14 +250,22 @@ bool InputManager::parseEvent(const SDL_Event& ev, Window* window)
 	switch(ev.type)
 	{
 	case SDL_JOYAXISMOTION:
+	{
+		// RetroPangui: 쉬는 값 기준점 대비 편차로 데드존 판정 - 스틱(기준점≈0)은
+		// 기존과 동일하게 동작하고, 쉬는 값이 극단(예: -32767)인 트리거 축만
+		// 실질적으로 달라짐(항상 "눌림"으로 오판되던 문제 수정)
+		int rest = mAxisRestValues[ev.jaxis.which][ev.jaxis.axis];
+		int delta = ev.jaxis.value - rest;
+		int prevDelta = mPrevAxisValues[ev.jaxis.which][ev.jaxis.axis] - rest;
+
 		//if it switched boundaries
-		if((abs(ev.jaxis.value) > DEADZONE) != (abs(mPrevAxisValues[ev.jaxis.which][ev.jaxis.axis]) > DEADZONE))
+		if((abs(delta) > DEADZONE) != (abs(prevDelta) > DEADZONE))
 		{
 			int normValue;
-			if(abs(ev.jaxis.value) <= DEADZONE)
+			if(abs(delta) <= DEADZONE)
 				normValue = 0;
 			else
-				if(ev.jaxis.value > 0)
+				if(delta > 0)
 					normValue = 1;
 				else
 					normValue = -1;
@@ -250,6 +276,7 @@ bool InputManager::parseEvent(const SDL_Event& ev, Window* window)
 
 		mPrevAxisValues[ev.jaxis.which][ev.jaxis.axis] = ev.jaxis.value;
 		return causedEvent;
+	}
 
 	case SDL_JOYBUTTONDOWN:
 	case SDL_JOYBUTTONUP:

@@ -28,6 +28,13 @@ private:
 	InputConfig* mCECInputConfig;
 
 	std::map<SDL_JoystickID, int*> mPrevAxisValues;
+	// RetroPangui: 축별 "쉬는 값" 기준점 - 연결 시점의 실제 축 값으로 채움.
+	// 아날로그 스틱은 보통 0으로 쉬지만, 일부 컨트롤러(예: 특정 Xbox 계열)의
+	// L2/R2 트리거 축은 raw joystick API에서 -32767 근처에서 쉬는 경우가 있어
+	// DEADZONE을 0 기준으로만 적용하면 항상 "눌린 상태"로 오판됨 - 이 기준점
+	// 대비 편차로 데드존을 계산해서 바로잡음(스틱류는 기준점이 이미 0이라
+	// 기존 동작과 동일, 트리거류만 실질적으로 바뀜).
+	std::map<SDL_JoystickID, int*> mAxisRestValues;
 
 	// init()의 최초 스캔 직후 잠깐 동안은 연결 알림을 띄우지 않음 - SDL이 부팅 시
 	// 이미 열려 있던 장치에 대한 지연된 SDL_JOYDEVICEADDED를 메인 루프 진입 후에야
