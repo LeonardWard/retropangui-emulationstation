@@ -915,6 +915,16 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 			checks.push_back({ [sl, orig]{ return (int)sl->getValue() != (int)orig; },
 			                   item.restart });
 	}
+	else if (item.type == "submenu")
+	{
+		// item.id가 다른 FeatureMenu 블록의 id를 그대로 가리킴 - 그 블록은
+		// parent를 6개 고정 카테고리가 아닌 값(관례상 자기 id)으로 둬서
+		// addFeatureItemsTo()의 자동 flatten 대상이 안 되게 하고, 여기서만
+		// 명시적으로 열림(2026-07-10, network_settings에서 처음 쓴 패턴을
+		// 재사용 가능한 일반 기능으로 승격 - ticker_settings에도 적용).
+		std::string targetId = item.id;
+		addSubmenuEntry(s, _(item.label.c_str()), [this, targetId] { openFeatureMenu(targetId); });
+	}
 	else if (item.type == "command")
 	{
 		if (item.exec.empty()) return;
