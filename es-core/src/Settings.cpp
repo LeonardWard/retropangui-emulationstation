@@ -224,6 +224,10 @@ void Settings::setDefaults()
 	#endif
 
 	mStringMap["AudioCard"] = "default";
+	// 2026-07-11: 배경음악 MIDI를 소프트 신디사이저 대신 실제 하드웨어
+	// MIDI 포트(예: MT-32 에뮬레이터)로 보낼 때 쓰는 aplaymidi 포트
+	// 문자열("클라이언트:포트"). 비어있으면 기존 libvlc/fluidsynth 경로.
+	mStringMap["MidiHardwareDevice"] = "";
 	mStringMap["UIMode"] = "Full";
 	mStringMap["UIMode_passkey"] = "uuddlrlrba";
 	mBoolMap["ForceKiosk"] = false;

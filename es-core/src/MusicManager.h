@@ -40,6 +40,12 @@ private:
 	bool mPlaying;
 	bool mSoundfontActive; // --soundfont 적용 성공 여부 (MIDI 재생 가능)
 	std::string mCurrentTitle; // 태그(ID3 등)에서 읽은 제목, 없으면 파일명(stem)
+
+	// 2026-07-11: MIDI 하드웨어 출력(예: MT-32 신디사이저) - 설정돼 있으면
+	// .mid/.midi 트랙은 libvlc/fluidsynth 대신 aplaymidi 서브프로세스로
+	// 하드웨어 포트에 그대로 원본 MIDI를 흘려보냄. mp3/ogg 등은 그대로 VLC.
+	int mMidiPid; // aplaymidi 자식 프로세스 PID, 없으면 -1
+	bool playCurrentViaHardwareMidi(const std::string& path);
 };
 
 #endif // ES_CORE_MUSIC_MANAGER_H

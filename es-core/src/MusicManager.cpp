@@ -11,6 +11,9 @@
 #include <cstring>
 #include <fstream>
 #include <random>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 std::shared_ptr<MusicManager> MusicManager::sInstance = nullptr;
 
@@ -207,7 +210,8 @@ MusicManager::MusicManager() :
 	mPlayer(nullptr),
 	mCurrentIndex(0),
 	mPlaying(false),
-	mSoundfontActive(false)
+	mSoundfontActive(false),
+	mMidiPid(-1)
 {
 }
 
@@ -271,7 +275,9 @@ void MusicManager::start()
 	mPlaylist.clear();
 	mCurrentIndex = 0;
 
-	const bool midiOk = mSoundfontActive;
+	// 2026-07-11: 하드웨어 MIDI 출력이 설정돼 있으면 소프트 사운드폰트
+	// 없이도(mSoundfontActive=false) MIDI 재생이 가능함(aplaymidi 경로).
+	const bool midiOk = mSoundfontActive || !Settings::getInstance()->getString("MidiHardwareDevice").empty();
 	Utils::FileSystem::stringList files = Utils::FileSystem::getDirContent(musicDir);
 	for (Utils::FileSystem::stringList::const_iterator it = files.cbegin(); it != files.cend(); ++it)
 	{
@@ -300,12 +306,19 @@ void MusicManager::stop()
 		libvlc_media_player_release(mPlayer);
 		mPlayer = nullptr;
 	}
+	if (mMidiPid > 0)
+	{
+		kill(mMidiPid, SIGTERM);
+		int status;
+		waitpid(mMidiPid, &status, 0);
+		mMidiPid = -1;
+	}
 	mPlaying = false;
 }
 
 void MusicManager::update()
 {
-	if (!mPlaying || mPlayer == nullptr)
+	if (!mPlaying || (mPlayer == nullptr && mMidiPid <= 0))
 		return;
 
 	// BackgroundMusic 설정이 꺼진 경우 즉시 정지 (어떤 경로로 재생이 시작됐더라도)
@@ -315,9 +328,28 @@ void MusicManager::update()
 		return;
 	}
 
-	// 이벤트 콜백 대신 폴링으로 종료 감지 (VideoVlcComponent::handleLooping 과 동일)
-	libvlc_state_t state = libvlc_media_player_get_state(mPlayer);
-	if (state == libvlc_Ended || state == libvlc_Error)
+	bool trackEnded = false;
+
+	if (mMidiPid > 0)
+	{
+		// aplaymidi 자식 프로세스가 스스로 종료했는지 논블로킹으로 확인
+		int status;
+		pid_t r = waitpid(mMidiPid, &status, WNOHANG);
+		if (r == mMidiPid)
+		{
+			mMidiPid = -1;
+			trackEnded = true;
+		}
+	}
+	else if (mPlayer != nullptr)
+	{
+		// 이벤트 콜백 대신 폴링으로 종료 감지 (VideoVlcComponent::handleLooping 과 동일)
+		libvlc_state_t state = libvlc_media_player_get_state(mPlayer);
+		if (state == libvlc_Ended || state == libvlc_Error)
+			trackEnded = true;
+	}
+
+	if (trackEnded)
 	{
 		++mCurrentIndex;
 		if (mCurrentIndex >= mPlaylist.size())
@@ -353,6 +385,40 @@ void MusicManager::shufflePlaylist()
 	std::shuffle(mPlaylist.begin(), mPlaylist.end(), gen);
 }
 
+// 2026-07-11: MIDI 하드웨어 출력(MT-32 신디사이저 등)이 설정돼 있으면
+// libvlc/fluidsynth로 소프트 합성하지 않고, aplaymidi로 원본 MIDI 이벤트를
+// 그대로 하드웨어 포트에 흘려보냄. system.midi_hardware_device가 비어있으면
+// 이 경로 자체를 안 씀(false 반환 → 기존 libvlc 경로로 폴백).
+bool MusicManager::playCurrentViaHardwareMidi(const std::string& path)
+{
+	std::string port = Settings::getInstance()->getString("MidiHardwareDevice");
+	if (port.empty())
+		return false;
+
+	std::string ext = Utils::String::toLower(Utils::FileSystem::getExtension(path));
+	if (ext != ".mid" && ext != ".midi")
+		return false;
+
+	pid_t pid = fork();
+	if (pid == 0)
+	{
+		execlp("aplaymidi", "aplaymidi", "-p", port.c_str(), path.c_str(), (char*)nullptr);
+		_exit(127);
+	}
+	else if (pid < 0)
+	{
+		LOG(LogError) << "MusicManager: aplaymidi fork 실패 - " << path;
+		return false;
+	}
+
+	mMidiPid = pid;
+	std::string smfTitle = readSmfTitle(path);
+	mCurrentTitle = !smfTitle.empty() ? smfTitle : Utils::FileSystem::getStem(path);
+	mPlaying = true;
+	LOG(LogInfo) << "MusicManager: 하드웨어 MIDI 재생 시작(포트 " << port << ") - " << path;
+	return true;
+}
+
 void MusicManager::playCurrent()
 {
 	// 기존 player 해제
@@ -362,14 +428,31 @@ void MusicManager::playCurrent()
 		libvlc_media_player_release(mPlayer);
 		mPlayer = nullptr;
 	}
+	if (mMidiPid > 0)
+	{
+		kill(mMidiPid, SIGTERM);
+		int status;
+		waitpid(mMidiPid, &status, 0);
+		mMidiPid = -1;
+	}
 
-	if (mVLC == nullptr || mCurrentIndex >= mPlaylist.size())
+	if (mCurrentIndex >= mPlaylist.size())
 	{
 		mPlaying = false;
 		return;
 	}
 
 	const std::string& path = mPlaylist[mCurrentIndex];
+
+	if (playCurrentViaHardwareMidi(path))
+		return;
+
+	if (mVLC == nullptr)
+	{
+		mPlaying = false;
+		return;
+	}
+
 	libvlc_media_t* media = libvlc_media_new_path(mVLC, path.c_str());
 	if (media == nullptr)
 	{

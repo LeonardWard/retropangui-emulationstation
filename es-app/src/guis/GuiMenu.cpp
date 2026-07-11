@@ -190,6 +190,62 @@ void GuiMenu::openSoundSettings()
 		});
 	}
 
+	// 2026-07-11: MIDI HARDWARE OUTPUT - 배경음악 MIDI를 소프트 신디사이저
+	// 대신 실제 연결된 MIDI 하드웨어(MT-32 에뮬레이터 등)로 직접 보냄.
+	// aplaymidi -l로 지금 붙어있는 시퀀서 포트를 실시간 스캔(YAML 정적
+	// 목록으로 표현 불가). "None"이면 기존 libvlc/fluidsynth 경로 그대로.
+	{
+		std::vector<std::pair<std::string, std::string>> ports; // (label, "client:port")
+		FILE* p = popen("aplaymidi -l 2>/dev/null", "r");
+		if (p)
+		{
+			char buf[256];
+			while (fgets(buf, sizeof(buf), p))
+			{
+				std::string line(buf);
+				size_t colon = line.find(':');
+				if (colon == std::string::npos || colon == 0) continue;
+				bool numeric = true;
+				for (size_t i = 0; i < colon; i++)
+					if (!isdigit((unsigned char)line[i])) { numeric = false; break; }
+				if (!numeric) continue; // 헤더 줄("Port  Client name  ...") 건너뜀
+
+				size_t sp = line.find_first_of(" \t", colon);
+				if (sp == std::string::npos) continue;
+				std::string port = line.substr(0, sp);
+				std::string label = line.substr(sp);
+				// 앞뒤 공백 정리
+				size_t b = label.find_first_not_of(" \t");
+				size_t e = label.find_last_not_of(" \t\r\n");
+				label = (b == std::string::npos) ? port : label.substr(b, e - b + 1) + " (" + port + ")";
+				ports.push_back({ label, port });
+			}
+			pclose(p);
+		}
+
+		std::string origMidi = Settings::getInstance()->getString("MidiHardwareDevice");
+		auto midi_hw = std::make_shared< OptionListComponent<std::string> >(mWindow, _("MIDI HARDWARE OUTPUT"), false);
+		bool anyMidiSel = (origMidi.empty());
+		midi_hw->add("None", "", origMidi.empty());
+		for (auto& port : ports)
+		{
+			bool sel = (port.second == origMidi);
+			if (sel) anyMidiSel = true;
+			midi_hw->add(port.first, port.second, sel);
+		}
+		if (!anyMidiSel)
+			midi_hw->add("None", "", true);
+		s->addWithLabel(_("MIDI HARDWARE OUTPUT"), midi_hw);
+		s->addSaveFunc([midi_hw, origMidi] {
+			std::string newVal = midi_hw->getSelected();
+			if (newVal == origMidi) return;
+			Settings::getInstance()->setString("MidiHardwareDevice", newVal);
+			// 2026-07-11: saveFile() 누락 버그(A/B 전환 때 겪은 것과 동일) 재발 방지 -
+			// 이 값은 retropangui.conf를 거치지 않는 순수 ES Settings라 여기서 직접 저장.
+			Settings::getInstance()->saveFile();
+		});
+	}
+
 	addFeatureItemsTo(s, "sound", *checks);
 
 	// 실시간 스캔 목록 표시가 필요해 YAML로 표현 불가 (BLUETOOTH DEVICES와 동일 이유)
