@@ -98,10 +98,16 @@ GuiStorageSelect::GuiStorageSelect(Window* window)
 		list->add("감지된 장치 없음", "", true);
 
 	addWithLabel("파티션", list);
+	// 2026-07-12: 위 크래시 수정으로 뭔가는 항상 selected가 되기 때문에,
+	// GuiWifiSelect와 동일한 이유로 "선택 안 됨=id.empty()"만으로는 더 이상
+	// "사용자가 실제로 다른 장치를 고름"을 판별할 수 없음 - 화면에 처음
+	// 표시된 기본 선택값과 달라진 경우에만 재부팅 확인창을 띄움(아무것도
+	// 안 바꾸고 그냥 나가도 재부팅 창이 뜨던 문제 방지).
+	std::string effectiveOrig = list->getSelected();
 
-	addSaveFunc([list, window]() {
+	addSaveFunc([list, window, effectiveOrig]() {
 		const std::string& id = list->getSelected();
-		if (id.empty()) return;
+		if (id.empty() || id == effectiveOrig) return;
 
 		// storage-mgr에 선택 명령 전달
 		std::ofstream cmd("/tmp/retropangui-storage-cmd");

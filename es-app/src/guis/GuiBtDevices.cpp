@@ -66,11 +66,15 @@ GuiBtDevices::GuiBtDevices(Window* window)
 	if (devices.empty())
 		list->add("페어링된 기기 없음", "", true);
 	addWithLabel("기기", list);
+	// 2026-07-12: GuiStorageSelect/GuiWifiSelect와 동일한 이유 - 뭔가는
+	// 항상 selected가 되므로, 기본 선택값과 달라진 경우에만 연결 해제
+	// 확인창을 띄움(아무것도 안 바꾸고 나가도 뜨던 문제 방지).
+	std::string effectiveOrig = list->getSelected();
 
 	Window* win = window;
-	addSaveFunc([list, win]() {
+	addSaveFunc([list, win, effectiveOrig]() {
 		const std::string mac = list->getSelected();
-		if (mac.empty()) return;
+		if (mac.empty() || mac == effectiveOrig) return;
 
 		win->pushGui(new GuiMsgBox(win,
 			"선택한 기기를 연결 해제하시겠습니까?\n" + mac,
