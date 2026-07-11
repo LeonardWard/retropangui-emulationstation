@@ -1295,13 +1295,22 @@ void GuiMenu::openControllerSettings()
 		std::string confKey = "input_player" + std::to_string(p) + "_joypad_index";
 		std::string origIdxStr = cfgReadKey(raCfgPath(), confKey, "");
 		int origIdx = -1;
-		if (!origIdxStr.empty()) { try { origIdx = std::stoi(origIdxStr); } catch (...) {} }
+		bool explicitlySet = !origIdxStr.empty();
+		if (explicitlySet) { try { origIdx = std::stoi(origIdxStr); } catch (...) {} }
+		int numJoy = SDL_NumJoysticks();
+		// 2026-07-12: retroarch.cfg에 input_playerN_joypad_index가 명시적으로
+		// 없으면(보통 그렇다 - RetroArch가 연결 순서대로 자동 배정하고 이
+		// 값을 파일에 쓰지 않음) 지금까지 항상 "None"으로 보이던 버그.
+		// RetroArch의 기본 배정 규칙(플레이어 N → SDL 조이스틱 인덱스 N-1)을
+		// 그대로 따라서, 그 인덱스에 실제로 패드가 꽂혀있으면 그걸 기본
+		// 선택값으로 보여줌.
+		if (!explicitlySet && (p - 1) < numJoy)
+			origIdx = p - 1;
 
 		std::string rowLabel = "PLAYER " + std::to_string(p) + " CONTROLLER";
 		auto padList = std::make_shared< OptionListComponent<std::string> >(mWindow, rowLabel, false);
 
 		padList->add("None", "-1", origIdx < 0);
-		int numJoy = SDL_NumJoysticks();
 		bool anySel = (origIdx < 0);
 		for (int j = 0; j < numJoy; j++)
 		{
@@ -1315,10 +1324,11 @@ void GuiMenu::openControllerSettings()
 		if (!anySel)
 			padList->add("None", "-1", true);
 
+		std::string effectiveOrig = std::to_string(origIdx);
 		s->addWithLabel(rowLabel, padList);
-		s->addSaveFunc([padList, confKey, origIdxStr] {
+		s->addSaveFunc([padList, confKey, effectiveOrig] {
 			std::string newVal = padList->getSelected();
-			if (newVal == origIdxStr || (origIdxStr.empty() && newVal == "-1"))
+			if (newVal == effectiveOrig)
 				return;
 			cfgWriteKey(raCfgPath(), confKey, newVal, false);
 		});
