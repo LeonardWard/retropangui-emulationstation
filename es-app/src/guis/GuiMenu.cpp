@@ -1406,14 +1406,24 @@ void GuiMenu::openSystemSettings()
 	addSubmenuEntry(s, _("NETWORK"), [this] { openNetworkSettings(); });
 
 	// power saver
+	// 2026-07-11: 예전엔 "disabled/default/enhanced/instant" 영어 단어를
+	// 번역도 없이 그대로 보여줘서 뭘 하는 옵션인지 전혀 알 수 없었음.
+	// PowerSaver.cpp 기준 실제 동작: 유휴 상태에서 화면을 얼마나 뜸하게
+	// 다시 그릴지(ms) 정하는 값이 커질수록 절전 효과가 큼(disabled=-1은
+	// 그 기능 자체를 끔 = 절전 없음, instant=200ms는 대기 간격은 가장
+	// 짧지만 대신 전환 애니메이션/캐러셀 이동/효과음을 아예 꺼서(아래
+	// addSaveFunc) 렌더링 자체를 줄이는 방식이라 종합적으로는 가장
+	// 공격적인 절전 모드).
+	struct PowerSaverOption { const char* value; const char* label; };
+	static const PowerSaverOption psOptions[] = {
+		{ "disabled", "사용 안 함 (절전 없음, 항상 즉시 반응)" },
+		{ "default",  "기본 (평소 정도 절전, 유휴 10초마다 갱신)" },
+		{ "enhanced", "절전 강화 (유휴 3초마다 갱신, 배터리 더 아낌)" },
+		{ "instant",  "최대 절전 (전환 애니메이션/효과음 꺼짐, 반응은 즉시)" },
+	};
 	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);
-	std::vector<std::string> modes;
-	modes.push_back("disabled");
-	modes.push_back("default");
-	modes.push_back("enhanced");
-	modes.push_back("instant");
-	for (auto it = modes.cbegin(); it != modes.cend(); it++)
-		power_saver->add(*it, *it, Settings::getInstance()->getString("PowerSaverMode") == *it);
+	for (auto& opt : psOptions)
+		power_saver->add(opt.label, opt.value, Settings::getInstance()->getString("PowerSaverMode") == opt.value);
 	s->addWithLabel(_("POWER SAVER MODES"), power_saver);
 	s->addSaveFunc([this, power_saver] {
 		if (Settings::getInstance()->getString("PowerSaverMode") != "instant" && power_saver->getSelected() == "instant") {
