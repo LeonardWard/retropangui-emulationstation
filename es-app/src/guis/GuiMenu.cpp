@@ -901,6 +901,32 @@ static std::string getCurrentIpAddressWithLink()
 	return ip + " (" + link + ")";
 }
 
+// 2026-07-12: OUTPUT RESOLUTION 목록에서 각 해상도가 16:9/16:10/4:3 중
+// 뭔지 바로 알아보게 라벨을 붙임 - 표준 비율에 충분히 가까우면(1% 이내)
+// 그 이름을, 아니면 계산된 비율 숫자를 그대로 보여줌.
+static std::string aspectLabel(long w, long h)
+{
+	if (w <= 0 || h <= 0) return "";
+	double ratio = (double)w / (double)h;
+	// 2026-07-12: 울트라와이드 모니터 대응. 21:9는 실제로는 정확히
+	// 21:9(2.333)가 아니라 패널마다 2.37~2.40 근처로 제각각이라(2560x1080,
+	// 3440x1440, 3840x1600 등) 아래 표준 목록의 1% 오차보다 넓게(6%) 따로 봄.
+	if (std::abs(ratio - 21.0 / 9.0) / (21.0 / 9.0) < 0.06)
+		return "21:9";
+	struct { double r; const char* name; } known[] = {
+		{ 16.0 / 9.0,  "16:9" },
+		{ 16.0 / 10.0, "16:10" },
+		{ 4.0 / 3.0,   "4:3" },
+		{ 32.0 / 9.0,  "32:9" },
+	};
+	for (auto& k : known)
+		if (std::abs(ratio - k.r) / k.r < 0.01)
+			return k.name;
+	char buf[32];
+	snprintf(buf, sizeof(buf), "%.2f:1", ratio);
+	return buf;
+}
+
 // retropangui.conf 에 쓰고, retroarch.cfg 에도 즉시 반영 (부팅 대기 없이 효과)
 static void raCfgSet(const std::string& key, const std::string& value)
 {
@@ -1461,6 +1487,7 @@ void GuiMenu::openSystemSettings()
 					if (width > 0 && height > 0)
 					{
 						std::string label = std::to_string(width) + "x" + std::to_string(height)
+							+ " " + aspectLabel(width, height)
 							+ " @" + std::to_string(refreshRounded) + "Hz"
 							+ (preferred ? " (모니터 선호)" : "");
 						resOptions.push_back({ label, name });
@@ -1469,8 +1496,14 @@ void GuiMenu::openSystemSettings()
 				}
 			}
 		}
-		resOptions.push_back({ "1920x1080 (16:9)", "1920x1080p60hz" });
-		resOptions.push_back({ "1280x720 (16:9)",  "1280x720p60hz" });
+		// 2026-07-12: 항상 존재가 보장된 CEA/VESA 표준 해상도 폴백 - 종횡비별로
+		// 하나씩(16:9/16:10/4:3). CVT-RB로 새로 계산한 값은 검증이 안 돼서
+		// 안 씀(1600x900 등을 시도했다가 역산하니 새로고침율이 틀려서 뺐음) -
+		// 여기 셋 다 업계 표준값으로 역산 검증까지 마친 것만 남김.
+		resOptions.push_back({ "1920x1080 16:9 @60Hz",  "1920x1080p60hz" });
+		resOptions.push_back({ "1280x720 16:9 @60Hz",   "1280x720p60hz" });
+		resOptions.push_back({ "1920x1200 16:10 @60Hz", "fallback_1920x1200p60hz" });
+		resOptions.push_back({ "1024x768 4:3 @60Hz",    "fallback_1024x768p60hz" });
 		auto hdmi_res = std::make_shared< OptionListComponent<std::string> >(mWindow, _("OUTPUT RESOLUTION"), false);
 		bool anySel = false;
 		for (auto& opt : resOptions)
