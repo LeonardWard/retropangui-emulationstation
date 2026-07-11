@@ -1319,22 +1319,26 @@ void GuiMenu::openSystemSettings()
 	// hdmi-set-resolution.py도 재실행됨(전체 리부팅 불필요).
 	{
 		std::string origRes = cfgReadKey(rpConfPath(), "system.hdmi_resolution", "auto");
-		struct ResOption { const char* label; const char* value; };
-		static const ResOption resOptions[] = {
-			{ "AUTO (모니터 네이티브)", "auto" },
-			{ "1920x1080 (16:9)",       "1920x1080p60hz" },
-			{ "1280x720 (16:9)",        "1280x720p60hz" },
+		// 2026-07-11: "AUTO (모니터 네이티브)" 같은 고정 설명 대신, 지금
+		// 실제로 켜져 있는 해상도(Renderer::getWindowWidth/Height - 물리
+		// HDMI 출력 그 자체)를 그대로 찍어서 "AUTO(2560x1600)"처럼 보여줌.
+		std::string autoLabel = "AUTO(" + std::to_string(Renderer::getWindowWidth())
+			+ "x" + std::to_string(Renderer::getWindowHeight()) + ")";
+		std::vector<std::pair<std::string, std::string>> resOptions = {
+			{ autoLabel,            "auto" },
+			{ "1920x1080 (16:9)",   "1920x1080p60hz" },
+			{ "1280x720 (16:9)",    "1280x720p60hz" },
 		};
 		auto hdmi_res = std::make_shared< OptionListComponent<std::string> >(mWindow, _("OUTPUT RESOLUTION"), false);
 		bool anySel = false;
 		for (auto& opt : resOptions)
 		{
-			bool sel = (opt.value == origRes);
+			bool sel = (opt.second == origRes);
 			if (sel) anySel = true;
-			hdmi_res->add(opt.label, opt.value, sel);
+			hdmi_res->add(opt.first, opt.second, sel);
 		}
 		if (!anySel)
-			hdmi_res->add(resOptions[0].label, resOptions[0].value, true);
+			hdmi_res->add(resOptions[0].first, resOptions[0].second, true);
 		s->addWithLabel(_("OUTPUT RESOLUTION"), hdmi_res);
 		s->addSaveFunc([this, hdmi_res, origRes] {
 			std::string newVal = hdmi_res->getSelected();
