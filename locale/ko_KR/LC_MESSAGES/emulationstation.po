@@ -481,7 +481,7 @@ msgid "SWAP BUTTONS A/B"
 msgstr "버튼 A/B 전환"
 
 msgid "SELECT WIFI NETWORK"
-msgstr "WIFI 네트워크 선택"
+msgstr "WIFI 네트워크 설정"
 
 msgid "OPTIONS"
 msgstr "옵션"

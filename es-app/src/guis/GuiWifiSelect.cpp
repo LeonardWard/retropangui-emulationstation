@@ -102,11 +102,25 @@ GuiWifiSelect::GuiWifiSelect(Window* window)
 	if (networks.empty())
 		list->add("검색된 네트워크 없음", "", true);
 	addWithLabel("SSID", list);
+	// 방금 위에서 강제로 골라둔 "기본 선택값" - 사용자가 실제로 다른 걸
+	// 고르지 않았다면 이 값과 같을 것이므로, 그 경우엔 연결 시도를
+	// 하면 안 됨(아래 addSaveFunc 참고).
+	std::string effectiveOrig = list->getSelected();
+
+	// 2026-07-11: "메뉴 안에 메뉴" 느낌이 나던 것 - 화면에 들어오자마자
+	// SSID 목록 팝업을 바로 띄워서 한 번 더 클릭 안 해도 되게 함.
+	list->openPopup();
 
 	Window* win = window;
-	addSaveFunc([list, win]() {
+	addSaveFunc([list, win, effectiveOrig] {
 		const std::string ssid = list->getSelected();
-		if (ssid.empty()) return;
+		// 2026-07-11: 위의 크래시 수정으로 뭔가는 항상 selected가 되기
+		// 때문에, 예전처럼 "선택 안 됨=ssid.empty()"로는 더 이상 "사용자가
+		// 실제로 다른 네트워크를 고름"을 판별할 수 없음 - 기본값과 달라진
+		// 경우에만 연결 시도(빈 화면 들어왔다 그냥 나가도 재연결 시도가
+		// 걸리던 문제 방지).
+		if (ssid.empty() || ssid == effectiveOrig)
+			return;
 
 		win->pushGui(new GuiArcadeVirtualKeyboard(win, "WIFI 비밀번호", "",
 			[ssid](const std::string& psk) {

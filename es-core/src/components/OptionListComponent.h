@@ -336,6 +336,10 @@ public:
 		onSelectedChanged();
 	}
 
+	// 2026-07-11: 화면 진입 즉시 선택 팝업을 띄우고 싶은 화면(예: WIFI
+	// 네트워크 설정)을 위해 private open()을 밖에서 부를 수 있게 감쌈.
+	void openPopup() { open(); }
+
 private:
 	unsigned int getSelectedId()
 	{
