@@ -1128,10 +1128,9 @@ void GuiMenu::openGameSettings()
 	auto s = new GuiSettings(mWindow, _("GAME SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
-	addSubmenuEntry(s, _("EMULATOR SETTINGS"), [this] { openEmulatorSettings(); });
-	// 2026-07-10: 최상위 메인 메뉴에서 이동(todo-scraper.html) - 자주 쓰는
-	// 기능이 아니라고 판단, GAME SETTINGS 하위로 편입.
-	addSubmenuEntry(s, _("SCRAPER"), [this] { openScraperSettings(); });
+	// 2026-07-11: 순서 재배치 - RETROACHIEVEMENTS 맨 위, SCRAPER/EMULATOR
+	// SETTINGS는 맨 아래(자주 안 쓰는 설정이라는 판단, 사용자 요청).
+	addSubmenuEntry(s, _("RETROACHIEVEMENTS"), [this] { openRetroAchievements(); });
 
 	// YAML: 스무딩/정수 스케일(구 VIDEO SETTINGS) + 되감기/자동저장(구 GAME SETTINGS)
 	addFeatureItemsTo(s, "game", *checks);
@@ -1142,7 +1141,8 @@ void GuiMenu::openGameSettings()
 	s->addWithLabel(_("INDEX FILES DURING SCREENSAVER"), background_indexing);
 	s->addSaveFunc([background_indexing] { Settings::getInstance()->setBool("BackgroundIndexing", background_indexing->getState()); });
 
-	addSubmenuEntry(s, _("RETROACHIEVEMENTS"), [this] { openRetroAchievements(); });
+	addSubmenuEntry(s, _("SCRAPER"), [this] { openScraperSettings(); });
+	addSubmenuEntry(s, _("EMULATOR SETTINGS"), [this] { openEmulatorSettings(); });
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
