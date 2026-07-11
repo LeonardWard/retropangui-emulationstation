@@ -197,8 +197,8 @@ void GuiMenu::openSoundSettings()
 		mWindow->pushGui(new GuiBtPairing(mWindow, "audio-", "scan-start-audio"));
 	});
 
-	// 페어링된 블루투스 오디오 기기 목록 — 실시간 데이터라 YAML로 표현 불가
-	addSubmenuEntry(s, _("BLUETOOTH DEVICES"), [this] { mWindow->pushGui(new GuiBtDevices(mWindow)); });
+	// 2026-07-11: "BLUETOOTH DEVICES"(페어링된 기기 목록) 제거 - CONTROLLER
+	// SETTINGS와 동일하게 사용자 판단으로 불필요.
 
 	// 목록에서 골라 지우는 게 아니라 전체 초기화 — 확인 팝업이 필요해 YAML로 표현 불가
 	addSubmenuEntry(s, _("REMOVE ALL BLUETOOTH PAIRINGS"), [this] {
