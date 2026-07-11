@@ -529,48 +529,6 @@ void GuiMenu::openUISettings()
 	s->addWithLabel(_("ES SHOW FRAMERATE"), framerate);
 	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
 
-	// RetroPangui(2026-07-11): UI SCALE - 물리 HDMI 출력(1920x1080)은 고정이고,
-	// ES가 그리는 논리 캔버스 크기(ScreenWidth/Height)만 줄여서 그 안의 UI를
-	// 확대해서 그리게 함(Renderer.cpp에서 뷰포트/투영을 분리해 구현). 폭/높이를
-	// 한 쌍으로 같이 정해야 해서(비율 안 맞으면 레이아웃 깨짐) YAML의
-	// type: list(값 하나만 다루는) 로는 표현이 안 되어 네이티브로 추가함.
-	// 뷰포트/투영은 Renderer::init()에서 한 번만 계산되므로 재시작 필요.
-	struct UiScaleOption { const char* label; int w; int h; };
-	static const UiScaleOption uiScaleOptions[] = {
-		{ "100% (1920x1080)", 1920, 1080 },
-		{ "120% (1600x900)",  1600, 900 },
-		{ "140% (1366x768)",  1366, 768 },
-		{ "150% (1280x720)",  1280, 720 },
-		{ "188% (1024x576)",  1024, 576 },
-		{ "200% (960x540)",    960, 540 },
-		{ "225% (854x480)",    854, 480 },
-		{ "300% (640x360)",    640, 360 },
-	};
-	int curScreenW = Settings::getInstance()->getInt("ScreenWidth");
-	int curScreenH = Settings::getInstance()->getInt("ScreenHeight");
-	if (curScreenW <= 0 || curScreenH <= 0) { curScreenW = 1920; curScreenH = 1080; }
-	std::string curScaleKey = std::to_string(curScreenW) + "x" + std::to_string(curScreenH);
-
-	auto ui_scale = std::make_shared< OptionListComponent<std::string> >(mWindow, _("UI SCALE"), false);
-	for (auto& opt : uiScaleOptions)
-	{
-		std::string key = std::to_string(opt.w) + "x" + std::to_string(opt.h);
-		ui_scale->add(opt.label, key, key == curScaleKey);
-	}
-	s->addWithLabel(_("UI SCALE"), ui_scale);
-	s->addSaveFunc([ui_scale] {
-		std::string sel = ui_scale->getSelected();
-		auto xpos = sel.find('x');
-		if (xpos != std::string::npos)
-		{
-			int w = atoi(sel.substr(0, xpos).c_str());
-			int h = atoi(sel.substr(xpos + 1).c_str());
-			Settings::getInstance()->setInt("ScreenWidth", w);
-			Settings::getInstance()->setInt("ScreenHeight", h);
-		}
-	});
-	checks->push_back({ [ui_scale, curScaleKey]{ return ui_scale->getSelected() != curScaleKey; }, "es" });
-
 	// YAML: UI 관련 항목 (LANGUAGE 등)
 	addFeatureItemsTo(s, "ui", *checks);
 	setSaveWithRestartChecks(s, checks);
