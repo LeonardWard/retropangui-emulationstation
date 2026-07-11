@@ -157,7 +157,9 @@ void Settings::setDefaults()
 	mStringMap["FallbackFont"] = "";
 
 	// RetroPangui: List display mode (ALL/SCRAPED/AUTO)
-	mStringMap["ShowFolders"] = "AUTO";
+	// 2026-07-12: 기본값을 SCRAPED로 변경(요청 반영) - 스크랩 안 된 파일이
+	// 목록에 섞여서 보이는 것보다, 정리된(스크랩된) 게임만 기본으로 보여줌.
+	mStringMap["ShowFolders"] = "SCRAPED";
 
 	// RetroPangui: Button Layout (nintendo, sony, xbox) — xbox 기본 (A=확인, B=취소)
 	mStringMap["ButtonLayout"] = "xbox";
