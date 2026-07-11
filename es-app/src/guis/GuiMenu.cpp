@@ -1421,10 +1421,56 @@ void GuiMenu::openSystemSettings()
 		std::string autoLabel = "AUTO(" + std::to_string(Renderer::getWindowWidth())
 			+ "x" + std::to_string(Renderer::getWindowHeight()) + ")";
 		std::vector<std::pair<std::string, std::string>> resOptions = {
-			{ autoLabel,            "auto" },
-			{ "1920x1080 (16:9)",   "1920x1080p60hz" },
-			{ "1280x720 (16:9)",    "1280x720p60hz" },
+			{ autoLabel, "auto" },
 		};
+		// 2026-07-12: 고정 목록 대신 hdmi-set-resolution.py --list로 지금
+		// 연결된 모니터의 EDID가 실제로 신고한 해상도 후보를 그대로 보여줌
+		// (걸러내지 않음 - 새로고침율 안전 필터는 auto 경로에만 적용됨).
+		// 그 아래엔 항상 존재가 보장된 CEA 표준 해상도 두 개를 폴백으로 둠.
+		{
+			FILE* p = popen("/usr/share/retropangui/hdmi-set-resolution.py --list 2>/dev/null", "r");
+			if (p)
+			{
+				std::string json;
+				char buf[512];
+				while (fgets(buf, sizeof(buf), p)) json += buf;
+				pclose(p);
+
+				size_t pos = 0;
+				while ((pos = json.find("\"name\": \"", pos)) != std::string::npos)
+				{
+					size_t nameStart = pos + 9;
+					size_t nameEnd = json.find('"', nameStart);
+					if (nameEnd == std::string::npos) break;
+					std::string name = json.substr(nameStart, nameEnd - nameStart);
+
+					size_t chunkEnd = json.find("\"name\": \"", nameEnd);
+					std::string chunk = json.substr(nameEnd, (chunkEnd == std::string::npos ? json.size() : chunkEnd) - nameEnd);
+
+					auto findInt = [&chunk](const char* key) -> long {
+						std::string needle = std::string("\"") + key + "\": ";
+						size_t p2 = chunk.find(needle);
+						if (p2 == std::string::npos) return -1;
+						return strtol(chunk.c_str() + p2 + needle.size(), nullptr, 10);
+					};
+					long width = findInt("width");
+					long height = findInt("height");
+					long refreshRounded = findInt("refresh_rounded");
+					bool preferred = chunk.find("\"preferred\": true") != std::string::npos;
+
+					if (width > 0 && height > 0)
+					{
+						std::string label = std::to_string(width) + "x" + std::to_string(height)
+							+ " @" + std::to_string(refreshRounded) + "Hz"
+							+ (preferred ? " (모니터 선호)" : "");
+						resOptions.push_back({ label, name });
+					}
+					pos = nameEnd;
+				}
+			}
+		}
+		resOptions.push_back({ "1920x1080 (16:9)", "1920x1080p60hz" });
+		resOptions.push_back({ "1280x720 (16:9)",  "1280x720p60hz" });
 		auto hdmi_res = std::make_shared< OptionListComponent<std::string> >(mWindow, _("OUTPUT RESOLUTION"), false);
 		bool anySel = false;
 		for (auto& opt : resOptions)
