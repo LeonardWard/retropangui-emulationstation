@@ -24,7 +24,7 @@ static int jsonIntVal(const std::string& line, const std::string& key)
 	return std::stoi(line.substr(pos + needle.size()));
 }
 
-std::vector<GuiStorageSelect::DeviceInfo> GuiStorageSelect::readDevicesJson()
+std::vector<GuiStorageSelect::DeviceInfo> GuiStorageSelect::readDevicesJson(std::string& outCurrent)
 {
 	std::vector<DeviceInfo> list;
 	std::ifstream f("/tmp/retropangui-storage-devices.json");
@@ -35,6 +35,8 @@ std::vector<GuiStorageSelect::DeviceInfo> GuiStorageSelect::readDevicesJson()
 
 	std::string line;
 	while (std::getline(f, line)) {
+		if (outCurrent.empty())
+			outCurrent = jsonVal(line, "current");
 		// 객체 시작
 		if (line.find('{') != std::string::npos && line.find("devices") == std::string::npos
 		    && line.find("current") == std::string::npos)
@@ -65,20 +67,35 @@ std::vector<GuiStorageSelect::DeviceInfo> GuiStorageSelect::readDevicesJson()
 GuiStorageSelect::GuiStorageSelect(Window* window)
 	: GuiSettings(window, "저장장치 선택")
 {
-	auto devices = readDevicesJson();
+	std::string current;
+	auto devices = readDevicesJson(current);
 
 	auto list = std::make_shared<OptionListComponent<std::string>>(window, "저장장치", false);
 
-	for (const auto& d : devices) {
+	// 2026-07-11: 전부 selected=false로 추가하던 버그 - 단일 선택
+	// OptionListComponent::getSelected()는 정확히 1개가 selected여야
+	// 하는데(assert(selected.size()==1) 이후 .at(0)), 아무것도 선택
+	// 안 되면 빈 벡터에 .at(0) 호출로 예외 발생 → ES가 죽고 부팅
+	// 루프가 재시작시켜서 "메뉴 나가면 ES가 재시작되는" 것처럼 보였음
+	// (목록에 체크 표시가 하나도 안 보였던 것도 동일 원인). devices.json의
+	// "current"와 일치하는 항목을 selected로, 못 찾으면 첫 항목을
+	// 강제로 selected 처리해서 항상 정확히 하나는 선택되게 함.
+	bool currentMatches = false;
+	for (const auto& d : devices)
+		if (!current.empty() && d.id == current) { currentMatches = true; break; }
+
+	for (size_t i = 0; i < devices.size(); i++) {
+		const auto& d = devices[i];
 		std::string label = d.label;
 		if (d.size_gb > 0)
 			label += " [" + std::to_string(d.size_gb) + "GB]";
 		label += " (" + d.dev + ")";
-		list->add(label, d.id, false);
+		bool sel = currentMatches ? (d.id == current) : (i == 0);
+		list->add(label, d.id, sel);
 	}
 
 	if (devices.empty())
-		list->add("감지된 장치 없음", "", false);
+		list->add("감지된 장치 없음", "", true);
 
 	addWithLabel("파티션", list);
 

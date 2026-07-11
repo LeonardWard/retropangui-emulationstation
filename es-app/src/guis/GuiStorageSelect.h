@@ -21,7 +21,7 @@ public:
 	GuiStorageSelect(Window* window);
 
 private:
-	static std::vector<DeviceInfo> readDevicesJson();
+	static std::vector<DeviceInfo> readDevicesJson(std::string& outCurrent);
 };
 
 #endif // ES_APP_GUIS_GUI_STORAGE_SELECT_H
