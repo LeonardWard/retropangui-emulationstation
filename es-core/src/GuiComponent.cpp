@@ -453,14 +453,6 @@ void GuiComponent::updateHelpPrompts()
 
 	std::vector<HelpPrompt> prompts = getHelpPrompts();
 
-	// TEMP DEBUG (helpbar-missing 조사, 2026-07-10): peekGui() 가드가 실패해서
-	// setHelpPrompts()가 조용히 스킵되고 있는지 확인용. 원인 확정되면 제거할 것.
-	LOG(LogDebug) << "GuiComponent::updateHelpPrompts() this=" << this
-		<< " peekGui()=" << mWindow->peekGui()
-		<< " stackSize=" << mWindow->getGuiStackSize()
-		<< " promptCount=" << prompts.size()
-		<< " willSet=" << (mWindow->peekGui() == this ? "yes" : "NO");
-
 	if(mWindow->peekGui() == this)
 		mWindow->setHelpPrompts(prompts, getHelpStyle());
 }
