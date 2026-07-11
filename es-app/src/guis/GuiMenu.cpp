@@ -985,18 +985,14 @@ void GuiMenu::setSaveWithRestartChecks(GuiSettings* s,
 		if (actualRestart == "none")
 			return;
 
-		std::string msg = (actualRestart == "system")
-			? _("재부팅이 필요합니다.\n지금 재부팅하시겠습니까?")
-			: _("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?");
-		mWindow->pushGui(new GuiMsgBox(mWindow, msg,
-			_("OK"), [actualRestart] {
-				if (actualRestart == "system")
-					quitES(QuitMode::REBOOT);
-				else
-					quitES(QuitMode::RESTART);
-			},
-			_("CANCEL"), nullptr
-		));
+		// 2026-07-11: 확인 팝업 없이 바로 재시작/재부팅 - 이미 설정 메뉴에서
+		// 명시적으로 값을 바꾼 뒤라 재차 확인받는 게 불필요한 절차로 느껴짐.
+		// (예외: A/B 버튼 전환은 잘못 건드리기 쉬운 설정이라 openControllerSettings()에서
+		// 별도로 확인+되돌리기 다이얼로그를 둠 - 여긴 그 케이스가 아님)
+		if (actualRestart == "system")
+			quitES(QuitMode::REBOOT);
+		else
+			quitES(QuitMode::RESTART);
 	});
 }
 
@@ -1054,11 +1050,25 @@ void GuiMenu::openControllerSettings()
 	// 버튼 방식 — nintendo(A/B 전환)와 sony/xbox(전환 안 함, 코드상 완전히 동일)
 	// 두 상태밖에 없어서 3개짜리 OptionList 대신 간단한 토글로 단순화
 	auto button_ab_swap = std::make_shared<SwitchComponent>(mWindow);
-	button_ab_swap->setState(Settings::getInstance()->getString("ButtonLayout") == "nintendo");
+	bool origButtonSwap = Settings::getInstance()->getString("ButtonLayout") == "nintendo";
+	button_ab_swap->setState(origButtonSwap);
 	s->addWithLabel(_("SWAP BUTTONS A/B"), button_ab_swap);
-	s->addSaveFunc([button_ab_swap] {
-		Settings::getInstance()->setString("ButtonLayout", button_ab_swap->getState() ? "nintendo" : "xbox");
-		InputConfig::initActionMapping();
+	// 2026-07-11: 잘못 건드리기 쉬운 설정이라 다른 토글과 달리 별도로
+	// 확인+되돌리기 처리 - "아니오"를 누르면 값 자체를 안 바꾸고 그대로 둠
+	// (재시작 안 함은 물론, Settings::ButtonLayout도 원래 값 유지).
+	s->addSaveFunc([this, button_ab_swap, origButtonSwap] {
+		bool newState = button_ab_swap->getState();
+		if (newState == origButtonSwap)
+			return;
+		mWindow->pushGui(new GuiMsgBox(mWindow,
+			_("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?"),
+			_("OK"), [newState] {
+				Settings::getInstance()->setString("ButtonLayout", newState ? "nintendo" : "xbox");
+				InputConfig::initActionMapping();
+				quitES(QuitMode::RESTART);
+			},
+			_("CANCEL"), nullptr
+		));
 	});
 
 	// YAML: 조이패드 드라이버 / 통합 컨트롤 설정 (구 ADVANCED SETTINGS)
