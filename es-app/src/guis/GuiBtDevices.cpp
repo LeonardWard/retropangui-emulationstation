@@ -53,11 +53,18 @@ GuiBtDevices::GuiBtDevices(Window* window)
 {
 	auto devices = pairedDevices();
 
+	// 2026-07-11: 전부 selected=false였던 버그 - GuiStorageSelect와 동일한
+	// 원인(OptionListComponent::getSelected()는 정확히 1개 selected를
+	// 요구, 없으면 Back 시 크래시 → ES 재시작처럼 보임). 첫 항목을 항상
+	// selected로 강제.
 	auto list = std::make_shared<OptionListComponent<std::string>>(window, "페어링된 기기", false);
-	for (const auto& d : devices)
-		list->add(d.name + " (" + d.mac + ")", d.mac, false);
+	bool first = true;
+	for (const auto& d : devices) {
+		list->add(d.name + " (" + d.mac + ")", d.mac, first);
+		first = false;
+	}
 	if (devices.empty())
-		list->add("페어링된 기기 없음", "", false);
+		list->add("페어링된 기기 없음", "", true);
 	addWithLabel("기기", list);
 
 	Window* win = window;

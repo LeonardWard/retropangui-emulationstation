@@ -257,7 +257,7 @@ msgid "AUDIO DEVICE"
 msgstr "오디오 장치"
 
 msgid "ENABLE NAVIGATION SOUNDS"
-msgstr "탐색 사운드"
+msgstr "메뉴탐색 효과음"
 
 msgid "ENABLE VIDEO AUDIO"
 msgstr "비디오 오디오"

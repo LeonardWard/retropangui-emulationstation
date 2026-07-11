@@ -89,12 +89,18 @@ GuiWifiSelect::GuiWifiSelect(Window* window)
 		Font::get(FONT_SIZE_SMALL), 0x777777FF);
 	addWithLabel("상태", statusText);
 
+	// 2026-07-11: curSsid와 일치하는 항목이 없으면(아직 연결 전 등) 아무것도
+	// selected=true가 안 돼서 GuiStorageSelect/GuiBtDevices와 동일한 원인으로
+	// Back 시 크래시함 - 매칭 안 되면 첫 항목을 강제 선택.
 	auto networks = scanNetworks();
 	auto list = std::make_shared<OptionListComponent<std::string>>(window, "네트워크", false);
+	bool curMatches = false;
 	for (const auto& n : networks)
-		list->add(n, n, n == curSsid);
+		if (n == curSsid) { curMatches = true; break; }
+	for (size_t i = 0; i < networks.size(); i++)
+		list->add(networks[i], networks[i], curMatches ? (networks[i] == curSsid) : (i == 0));
 	if (networks.empty())
-		list->add("검색된 네트워크 없음", "", false);
+		list->add("검색된 네트워크 없음", "", true);
 	addWithLabel("SSID", list);
 
 	Window* win = window;

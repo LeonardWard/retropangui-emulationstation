@@ -942,8 +942,11 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 
 		auto lbl = std::make_shared<TextComponent>(mWindow, _(item.label.c_str()),
 			Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
+		// 2026-07-11: 다른 값 표시 텍스트(OptionListComponent 선택값,
+		// 슬라이더 등)는 전부 FONT_PATH_LIGHT(콘덴스드 라이트체)를 쓰는데
+		// 여기만 기본 폰트라 눈에 띄게 달라 보이던 것을 통일.
 		auto valText = std::make_shared<TextComponent>(mWindow, orig,
-			Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_RIGHT);
+			Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
 
 		ComponentListRow row;
 		row.addElement(lbl, true);
@@ -1228,7 +1231,10 @@ void GuiMenu::openSystemSettings()
 		}
 		if (curVer.empty())
 			curVer = "-";
-		auto verText = std::make_shared<TextComponent>(mWindow, curVer, Font::get(FONT_SIZE_SMALL), 0x777777FF);
+		// 2026-07-11: FONT_SIZE_SMALL + 기본 폰트였어서 아래 다른 값
+		// 텍스트(HOSTNAME 입력값, TIMEZONE 선택값 등 - 전부 FONT_SIZE_MEDIUM
+		// + FONT_PATH_LIGHT)보다 작고 다른 서체로 눈에 띄게 달라 보이던 것을 통일.
+		auto verText = std::make_shared<TextComponent>(mWindow, curVer, Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF);
 		s->addWithLabel(_("VERSION"), verText);
 	}
 
