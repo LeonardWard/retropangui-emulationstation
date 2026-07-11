@@ -25,6 +25,7 @@
 #include "SystemData.h"
 #include "VolumeControl.h"
 #include <SDL_events.h>
+#include <SDL_joystick.h>
 #include <algorithm>
 #include "platform.h"
 #include "FileSorts.h"
@@ -1192,8 +1193,8 @@ void GuiMenu::openControllerSettings()
 		mWindow->pushGui(new GuiBtPairing(mWindow, "input-gaming", "scan-start-pad"));
 	});
 
-	// 페어링된 블루투스 컨트롤러 목록 — 실시간 데이터라 YAML로 표현 불가
-	addSubmenuEntry(s, _("BLUETOOTH DEVICES"), [this] { mWindow->pushGui(new GuiBtDevices(mWindow)); });
+	// 2026-07-11: "BLUETOOTH DEVICES"(페어링된 기기 목록) 제거 - 사용자
+	// 판단으로 불필요. 페어링/전체 해제는 아래 두 항목으로 충분.
 
 	// 목록에서 골라 지우는 게 아니라 전체 초기화 — 확인 팝업이 필요해 YAML로 표현 불가
 	addSubmenuEntry(s, _("REMOVE ALL BLUETOOTH PAIRINGS"), [this] {
@@ -1201,6 +1202,45 @@ void GuiMenu::openControllerSettings()
 			_("YES"), [] { removeAllBtPairings(); },
 			"아니오", nullptr));
 	});
+
+	// 2026-07-11: PLAYER 1~4 CONTROLLER - 지금 연결된 패드 중 어느 걸 어느
+	// 플레이어 슬롯으로 쓸지 지정. RetroArch의 input_playerN_joypad_index를
+	// 직접 써서 실제 패드/RA 양쪽에 그대로 적용됨(실시간 연결 목록이라
+	// YAML로 표현 불가). SDL 장치 인덱스는 재부팅/재연결 시 바뀔 수 있는
+	// RetroArch 자체의 한계라 이 프로젝트에서 더 견고하게 만들 방법은 없음.
+	for (int p = 1; p <= 4; p++)
+	{
+		std::string confKey = "input_player" + std::to_string(p) + "_joypad_index";
+		std::string origIdxStr = cfgReadKey(raCfgPath(), confKey, "");
+		int origIdx = -1;
+		if (!origIdxStr.empty()) { try { origIdx = std::stoi(origIdxStr); } catch (...) {} }
+
+		std::string rowLabel = "PLAYER " + std::to_string(p) + " CONTROLLER";
+		auto padList = std::make_shared< OptionListComponent<std::string> >(mWindow, rowLabel, false);
+
+		padList->add("None", "-1", origIdx < 0);
+		int numJoy = SDL_NumJoysticks();
+		bool anySel = (origIdx < 0);
+		for (int j = 0; j < numJoy; j++)
+		{
+			const char* name = SDL_JoystickNameForIndex(j);
+			std::string label = (name ? std::string(name) : ("Joystick " + std::to_string(j)))
+				+ " (#" + std::to_string(j) + ")";
+			bool sel = (j == origIdx);
+			if (sel) anySel = true;
+			padList->add(label, std::to_string(j), sel);
+		}
+		if (!anySel)
+			padList->add("None", "-1", true);
+
+		s->addWithLabel(rowLabel, padList);
+		s->addSaveFunc([padList, confKey, origIdxStr] {
+			std::string newVal = padList->getSelected();
+			if (newVal == origIdxStr || (origIdxStr.empty() && newVal == "-1"))
+				return;
+			cfgWriteKey(raCfgPath(), confKey, newVal, false);
+		});
+	}
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
