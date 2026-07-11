@@ -195,6 +195,7 @@ void GuiMenu::openSoundSettings()
 void GuiMenu::openUISettings()
 {
 	auto s = new GuiSettings(mWindow, _("UI SETTINGS"));
+	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
 	//UI mode
 	auto UImodeSelection = std::make_shared< OptionListComponent<std::string> >(mWindow, _("UI MODE"), false);
@@ -424,8 +425,49 @@ void GuiMenu::openUISettings()
 	s->addWithLabel(_("ES SHOW FRAMERATE"), framerate);
 	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
 
+	// RetroPangui(2026-07-11): UI SCALE - 물리 HDMI 출력(1920x1080)은 고정이고,
+	// ES가 그리는 논리 캔버스 크기(ScreenWidth/Height)만 줄여서 그 안의 UI를
+	// 확대해서 그리게 함(Renderer.cpp에서 뷰포트/투영을 분리해 구현). 폭/높이를
+	// 한 쌍으로 같이 정해야 해서(비율 안 맞으면 레이아웃 깨짐) YAML의
+	// type: list(값 하나만 다루는) 로는 표현이 안 되어 네이티브로 추가함.
+	// 뷰포트/투영은 Renderer::init()에서 한 번만 계산되므로 재시작 필요.
+	struct UiScaleOption { const char* label; int w; int h; };
+	static const UiScaleOption uiScaleOptions[] = {
+		{ "100% (1920x1080)", 1920, 1080 },
+		{ "120% (1600x900)",  1600, 900 },
+		{ "140% (1366x768)",  1366, 768 },
+		{ "150% (1280x720)",  1280, 720 },
+		{ "188% (1024x576)",  1024, 576 },
+		{ "200% (960x540)",    960, 540 },
+		{ "225% (854x480)",    854, 480 },
+		{ "300% (640x360)",    640, 360 },
+	};
+	int curScreenW = Settings::getInstance()->getInt("ScreenWidth");
+	int curScreenH = Settings::getInstance()->getInt("ScreenHeight");
+	if (curScreenW <= 0 || curScreenH <= 0) { curScreenW = 1920; curScreenH = 1080; }
+	std::string curScaleKey = std::to_string(curScreenW) + "x" + std::to_string(curScreenH);
+
+	auto ui_scale = std::make_shared< OptionListComponent<std::string> >(mWindow, _("UI SCALE"), false);
+	for (auto& opt : uiScaleOptions)
+	{
+		std::string key = std::to_string(opt.w) + "x" + std::to_string(opt.h);
+		ui_scale->add(opt.label, key, key == curScaleKey);
+	}
+	s->addWithLabel(_("UI SCALE"), ui_scale);
+	s->addSaveFunc([ui_scale] {
+		std::string sel = ui_scale->getSelected();
+		auto xpos = sel.find('x');
+		if (xpos != std::string::npos)
+		{
+			int w = atoi(sel.substr(0, xpos).c_str());
+			int h = atoi(sel.substr(xpos + 1).c_str());
+			Settings::getInstance()->setInt("ScreenWidth", w);
+			Settings::getInstance()->setInt("ScreenHeight", h);
+		}
+	});
+	checks->push_back({ [ui_scale, curScaleKey]{ return ui_scale->getSelected() != curScaleKey; }, "es" });
+
 	// YAML: UI 관련 항목 (LANGUAGE 등)
-	auto checks = std::make_shared<std::vector<RestartCheck>>();
 	addFeatureItemsTo(s, "ui", *checks);
 	setSaveWithRestartChecks(s, checks);
 
@@ -1064,6 +1106,10 @@ void GuiMenu::openControllerSettings()
 			_("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?"),
 			_("OK"), [newState] {
 				Settings::getInstance()->setString("ButtonLayout", newState ? "nintendo" : "xbox");
+				// 2026-07-11: saveFile() 누락 버그 - 메모리에서만 값이 바뀌고
+				// es_settings.cfg에 저장이 안 돼서, ES가 재시작되면 새 프로세스가
+				// 예전 값을 다시 읽어와 설정이 "안 먹히는" 것처럼 보였음(실기기 확인).
+				Settings::getInstance()->saveFile();
 				InputConfig::initActionMapping();
 				quitES(QuitMode::RESTART);
 			},
@@ -1137,6 +1183,47 @@ void GuiMenu::openSystemSettings()
 			curVer = "-";
 		auto verText = std::make_shared<TextComponent>(mWindow, curVer, Font::get(FONT_SIZE_SMALL), 0x777777FF);
 		s->addWithLabel(_("VERSION"), verText);
+	}
+
+	// 2026-07-11: HDMI 출력 해상도 - 잘못 고르면 화면이 아예 안 보이게 될
+	// 수 있는 위험한 설정이라, 다른 목록형 설정과 달리 A/B 버튼전환과
+	// 동일하게 확인+되돌리기 처리. "CANCEL"을 누르면 conf도 안 바꾸고
+	// 재시작도 안 함(다음에 메뉴 들어가면 원래 값 그대로 보임).
+	// restart는 항상 es로 충분 - S99emulationstation의 while 루프 안에
+	// HDMI 모드 설정 코드가 있어서 ES 재시작만으로 그 루프가 다시 돌며
+	// hdmi-set-resolution.py도 재실행됨(전체 리부팅 불필요).
+	{
+		std::string origRes = cfgReadKey(rpConfPath(), "system.hdmi_resolution", "auto");
+		struct ResOption { const char* label; const char* value; };
+		static const ResOption resOptions[] = {
+			{ "AUTO (모니터 네이티브)", "auto" },
+			{ "1920x1080 (16:9)",       "1920x1080p60hz" },
+			{ "1280x720 (16:9)",        "1280x720p60hz" },
+		};
+		auto hdmi_res = std::make_shared< OptionListComponent<std::string> >(mWindow, _("OUTPUT RESOLUTION"), false);
+		bool anySel = false;
+		for (auto& opt : resOptions)
+		{
+			bool sel = (opt.value == origRes);
+			if (sel) anySel = true;
+			hdmi_res->add(opt.label, opt.value, sel);
+		}
+		if (!anySel)
+			hdmi_res->add(resOptions[0].label, resOptions[0].value, true);
+		s->addWithLabel(_("OUTPUT RESOLUTION"), hdmi_res);
+		s->addSaveFunc([this, hdmi_res, origRes] {
+			std::string newVal = hdmi_res->getSelected();
+			if (newVal == origRes)
+				return;
+			mWindow->pushGui(new GuiMsgBox(mWindow,
+				_("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?"),
+				_("OK"), [newVal] {
+					cfgWriteKey(rpConfPath(), "system.hdmi_resolution", newVal, false);
+					quitES(QuitMode::RESTART);
+				},
+				_("CANCEL"), nullptr
+			));
+		});
 	}
 
 	// YAML: 시간대 등 system 최상위 항목

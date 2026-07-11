@@ -140,10 +140,21 @@ namespace Renderer
 		{
 			case 0:
 			{
-				viewport.x = screenOffsetX;
-				viewport.y = screenOffsetY;
-				viewport.w = screenWidth;
-				viewport.h = screenHeight;
+				// RetroPangui UI SCALE(2026-07-11): 뷰포트(실제 픽셀을 뿌리는
+				// 물리 영역)는 항상 물리 창 전체(windowWidth/Height)를 채우고,
+				// 오쏘 투영의 논리 좌표 범위(screenWidth/Height)는 "이 UI를
+				// 얼마나 작게 그릴지" 값으로 완전히 분리함 - 예전엔 이 둘이
+				// 같은 screenWidth/Height 값에 묶여있어서, ScreenWidth/Height를
+				// 줄이면 화면 전체가 아니라 화면 한구석의 작은 사각형에만
+				// 그려졌음(베젤 보정용 오프셋 배치 기능과 뒤섞여 있었음).
+				// screenOffsetX/Y는 회전 없는(이 프로젝트가 실제로 쓰는) 이
+				// 케이스에서는 물리 창을 이미 꽉 채우므로 의미가 없어져서 뺌
+				// - 여전히 0이 아닌 값을 넣으면 아무 효과도 없다는 뜻이니
+				// 베젤 보정이 필요한 포크가 있다면 별도로 고려할 것.
+				viewport.x = 0;
+				viewport.y = 0;
+				viewport.w = windowWidth;
+				viewport.h = windowHeight;
 
 				projection.orthoProjection(0, screenWidth, screenHeight, 0, -1.0, 1.0);
 			}
