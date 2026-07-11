@@ -804,7 +804,10 @@ static std::string raCfgGet(const std::string& key, const std::string& def = "")
 // NETWORK 서브메뉴의 CURRENT IP ADDRESS 표시용 - 유선/무선 구분 없이 lo를 뺀
 // 첫 IPv4 주소 하나(멀티 인터페이스 동시 연결은 흔치 않은 임베디드 환경이라
 // "활성 인터페이스 대표 하나"로 충분하다고 판단, 2026-07-10).
-static std::string getCurrentIpAddress()
+// 2026-07-11: IP만 보여주면 유선/무선 어느 쪽으로 붙어있는지 알 수 없어서
+// 인터페이스 이름(net.ifnames=0 커널 옵션으로 eth*/wlan* 고정됨을 전제)도
+// 같이 반환하도록 확장.
+static std::string getCurrentIpAddress(std::string* outIface = nullptr)
 {
 	struct ifaddrs* ifaddr = nullptr;
 	if (getifaddrs(&ifaddr) == -1)
@@ -821,10 +824,24 @@ static std::string getCurrentIpAddress()
 		auto* sin = (struct sockaddr_in*)ifa->ifa_addr;
 		inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf));
 		result = buf;
+		if (outIface) *outIface = ifa->ifa_name;
 		break;
 	}
 	freeifaddrs(ifaddr);
 	return result;
+}
+
+static std::string getCurrentIpAddressWithLink()
+{
+	std::string iface;
+	std::string ip = getCurrentIpAddress(&iface);
+	if (ip == "-") return ip;
+	std::string link = "?";
+	if (iface.rfind("eth", 0) == 0 || iface.rfind("en", 0) == 0)
+		link = "유선";
+	else if (iface.rfind("wlan", 0) == 0 || iface.rfind("wl", 0) == 0)
+		link = "무선";
+	return ip + " (" + link + ")";
 }
 
 // retropangui.conf 에 쓰고, retroarch.cfg 에도 즉시 반영 (부팅 대기 없이 효과)
@@ -1204,11 +1221,66 @@ void GuiMenu::openNetworkSettings()
 	auto s = new GuiSettings(mWindow, _("NETWORK"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
-	auto ipText = std::make_shared<TextComponent>(mWindow, getCurrentIpAddress(),
-		Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_RIGHT);
+	auto ipText = std::make_shared<TextComponent>(mWindow, getCurrentIpAddressWithLink(),
+		Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
 	s->addWithLabel(_("CURRENT IP ADDRESS"), ipText);
 
 	addFeatureItemsTo(s, "network_settings", *checks);
+
+	// 2026-07-11: WIFI 토글 바로 아래에 SSID/비밀번호를 미리 입력해둘 수
+	// 있게 함 - SSID는 현재 연결된 걸 기본값으로 보여주되(없으면 "None")
+	// 직접 타이핑도 가능. 비밀번호는 여기 미리 넣어두면 아래 "WIFI 네트워크
+	// 설정"에서 목록을 골랐을 때 또 물어보지 않고 바로 이 값을 씀
+	// (GuiWifiSelect::addSaveFunc 참고).
+	{
+		bool wConnected = false;
+		std::string wSsid, wIp;
+		GuiWifiSelect::readStatus(wConnected, wSsid, wIp);
+		std::string ssidDefault = wConnected && !wSsid.empty() ? wSsid : "None";
+
+		auto ssidCur = std::make_shared<std::string>(ssidDefault);
+		auto ssidText = std::make_shared<TextComponent>(mWindow, ssidDefault,
+			Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
+		ComponentListRow ssidRow;
+		ssidRow.addElement(std::make_shared<TextComponent>(mWindow, _("SSID"),
+			Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		ssidRow.addElement(ssidText, false);
+		Window* window = mWindow;
+		ssidRow.makeAcceptInputHandler([window, ssidText, ssidCur] {
+			window->pushGui(new GuiArcadeVirtualKeyboard(window, _("SSID"), *ssidCur,
+				[ssidText, ssidCur](const std::string& v) {
+					*ssidCur = v;
+					ssidText->setValue(v);
+				}));
+		});
+		s->addRow(ssidRow);
+		s->addSaveFunc([ssidCur] {
+			cfgWriteKey(rpConfPath(), "system.wifi_ssid", *ssidCur, false);
+		});
+
+		auto pwCur = std::make_shared<std::string>();
+		auto pwText = std::make_shared<TextComponent>(mWindow, "",
+			Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
+		ComponentListRow pwRow;
+		pwRow.addElement(std::make_shared<TextComponent>(mWindow, _("SSID PASSWORD"),
+			Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		pwRow.addElement(pwText, false);
+		pwRow.makeAcceptInputHandler([window, pwText, pwCur] {
+			window->pushGui(new GuiArcadeVirtualKeyboard(window, _("SSID PASSWORD"), *pwCur,
+				[pwText, pwCur](const std::string& v) {
+					*pwCur = v;
+					pwText->setValue(std::string(v.size(), '*'));
+				}));
+		});
+		s->addRow(pwRow);
+		s->addSaveFunc([pwCur] {
+			// 빈 채로 그냥 나가면(수정 안 함) 기존 저장된 비밀번호를 지우지
+			// 않음 - 실수로 이 화면만 열었다 나가도 이미 입력해둔 비밀번호가
+			// 날아가지 않게.
+			if (pwCur->empty()) return;
+			cfgWriteKey(rpConfPath(), "system.wifi_password", *pwCur, false);
+		});
+	}
 
 	addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this] { mWindow->pushGui(new GuiWifiSelect(mWindow)); });
 

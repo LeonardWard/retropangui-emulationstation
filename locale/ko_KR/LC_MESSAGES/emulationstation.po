@@ -519,6 +519,9 @@ msgstr "네트워크"
 msgid "CURRENT IP ADDRESS"
 msgstr "현재 IP 주소"
 
+msgid "SSID PASSWORD"
+msgstr "SSID 비밀번호"
+
 msgid "TICKER SETTINGS"
 msgstr "티커 설정"
 

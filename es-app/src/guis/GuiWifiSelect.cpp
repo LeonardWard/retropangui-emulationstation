@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 // status.json 단순 파싱 — 외부 JSON 라이브러리 없음 (GuiStorageSelect.cpp와 동일 패턴)
 // 포맷은 rpui-wifi 데몬이 직접 기록하므로 구조가 고정됨
@@ -18,6 +19,41 @@ static std::string jsonVal(const std::string& line, const std::string& key)
 	pos += needle.size();
 	size_t end = line.find('"', pos);
 	return end == std::string::npos ? std::string() : line.substr(pos, end - pos);
+}
+
+// retropangui.conf 경로/읽기 — GuiMenu.cpp의 rpConfPath()/cfgReadKey()와 동일
+// 로직을 간단히 중복(그쪽은 static이라 외부에서 못 부름).
+static std::string wifiConfPath()
+{
+	const char* env = getenv("RETROPANGUI_SHARE");
+	std::string base = (env && env[0] != '\0') ? env : "";
+	if (base.empty()) {
+		struct stat st;
+		if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+			base = "/share";
+		else {
+			const char* home = getenv("HOME");
+			base = home ? std::string(home) + "/share" : "/share";
+		}
+	}
+	return base + "/system/retropangui.conf";
+}
+
+static std::string wifiConfRead(const std::string& key)
+{
+	std::ifstream f(wifiConfPath());
+	if (!f.is_open()) return {};
+	std::string line;
+	while (std::getline(f, line)) {
+		if (line.empty() || line[0] == '#') continue;
+		auto eq = line.find('=');
+		if (eq == std::string::npos) continue;
+		if (line.substr(0, eq) != key) continue;
+		std::string v = line.substr(eq + 1);
+		while (!v.empty() && (v.back() == '\r' || v.back() == '\n')) v.pop_back();
+		return v;
+	}
+	return {};
 }
 
 void GuiWifiSelect::readStatus(bool& connected, std::string& ssid, std::string& ip)
@@ -121,6 +157,14 @@ GuiWifiSelect::GuiWifiSelect(Window* window)
 		// 걸리던 문제 방지).
 		if (ssid.empty() || ssid == effectiveOrig)
 			return;
+
+		// 2026-07-11: NETWORK 화면(SSID/SSID PASSWORD 행)에서 미리 입력해둔
+		// 비밀번호가 있으면 다시 안 물어보고 바로 그걸로 연결 시도.
+		std::string savedPsk = wifiConfRead("system.wifi_password");
+		if (!savedPsk.empty()) {
+			GuiWifiSelect::enableNetwork(ssid, savedPsk);
+			return;
+		}
 
 		win->pushGui(new GuiArcadeVirtualKeyboard(win, "WIFI 비밀번호", "",
 			[ssid](const std::string& psk) {
