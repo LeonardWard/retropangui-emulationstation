@@ -142,6 +142,53 @@ void GuiMenu::openSoundSettings()
 {
 	auto s = new GuiSettings(mWindow, _("SOUND SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
+
+	// 2026-07-11: AUDIO CARD - "default/sysdefault/dmix/hw/plughw/null" 같은
+	// ALSA 기술 용어 고정 목록 대신, 지금 실제로 연결된 사운드카드를
+	// /proc/asound/cards에서 그때그때 스캔해서 보여줌(실시간 데이터라
+	// YAML 정적 목록으로 표현 불가 - BLUETOOTH DEVICES와 동일한 이유).
+	// 온보드(AML-AUGESOUND)는 "HDMI"로, 그 외(USB 오디오 등)는 실제 장치
+	// 이름 그대로 표시. 카드 번호가 아니라 이름으로 값을 구성해서(hw:CARD=
+	// 이름,DEV=0) USB 장치가 먼저 꽂혀 번호가 밀려도 안 깨지게 함.
+	{
+		std::vector<std::pair<std::string, std::string>> cards; // (label, alsaId)
+		std::ifstream f("/proc/asound/cards");
+		std::string line;
+		while (std::getline(f, line))
+		{
+			auto lb = line.find('[');
+			auto rb = line.find(']');
+			if (lb == std::string::npos || rb == std::string::npos || rb < lb)
+				continue;
+			std::string id = line.substr(lb + 1, rb - lb - 1);
+			while (!id.empty() && id.back() == ' ') id.pop_back();
+			if (id.empty()) continue;
+			std::string label = (id == "AMLAUGESOUND") ? "HDMI" : id;
+			cards.push_back({ label, id });
+		}
+		std::string origCard = Settings::getInstance()->getString("AudioCard");
+		auto audio_card = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO CARD"), false);
+		bool anySel = false;
+		for (auto& c : cards)
+		{
+			std::string val = "hw:CARD=" + c.second + ",DEV=0";
+			bool sel = (val == origCard);
+			if (sel) anySel = true;
+			audio_card->add(c.first, val, sel);
+		}
+		if (!anySel)
+			audio_card->add("default", "default", true);
+		s->addWithLabel(_("AUDIO CARD"), audio_card);
+		s->addSaveFunc([audio_card, origCard] {
+			std::string newVal = audio_card->getSelected();
+			if (newVal == origCard) return;
+			Settings::getInstance()->setString("AudioCard", newVal);
+			cfgWriteKey(rpConfPath(), "global.audio_device", newVal, false);
+			VolumeControl::getInstance()->deinit();
+			VolumeControl::getInstance()->init();
+		});
+	}
+
 	addFeatureItemsTo(s, "sound", *checks);
 
 	// 실시간 스캔 목록 표시가 필요해 YAML로 표현 불가 (BLUETOOTH DEVICES와 동일 이유)
