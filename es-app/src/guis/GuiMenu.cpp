@@ -1493,8 +1493,13 @@ void GuiMenu::openSystemSettings()
 		// 하나씩(16:9/16:10/4:3). CVT-RB로 새로 계산한 값은 검증이 안 돼서
 		// 안 씀(1600x900 등을 시도했다가 역산하니 새로고침율이 틀려서 뺐음) -
 		// 여기 셋 다 업계 표준값으로 역산 검증까지 마친 것만 남김.
-		resOptions.push_back({ "1920x1080 16:9 @60Hz",  "1920x1080p60hz" });
-		resOptions.push_back({ "1280x720 16:9 @60Hz",   "1280x720p60hz" });
+		// 2026-07-12 정정: 값 이름이 "1920x1080p60hz"/"1280x720p60hz"였는데
+		// 이건 U-Boot vout= 표기이지 실제 DRM 커넥터 모드 이름이 아님 -
+		// odroid-drm-fbset -showmodes로 확인한 실제 이름("1080p60hz"/
+		// "720p60hz")으로 정정. 존재하지 않는 이름이라 이 메뉴에서 골라도
+		// 조용히 적용 실패하던 버그(실기기에서 재현 확인).
+		resOptions.push_back({ "1920x1080 16:9 @60Hz",  "1080p60hz" });
+		resOptions.push_back({ "1280x720 16:9 @60Hz",   "720p60hz" });
 		resOptions.push_back({ "1920x1200 16:10 @60Hz", "fallback_1920x1200p60hz" });
 		resOptions.push_back({ "1024x768 4:3 @60Hz",    "fallback_1024x768p60hz" });
 		auto hdmi_res = std::make_shared< OptionListComponent<std::string> >(mWindow, _("OUTPUT RESOLUTION"), false);
