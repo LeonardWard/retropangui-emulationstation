@@ -1218,6 +1218,31 @@ void GuiMenu::openGameSettings()
 	// YAML: 스무딩/정수 스케일(구 VIDEO SETTINGS) + 되감기/자동저장(구 GAME SETTINGS)
 	addFeatureItemsTo(s, "game", *checks);
 
+	// 2026-07-12: SHOW BUNDLED GAMES - 예전엔 YAML toggle(restart: none) +
+	// apply_retropangui_conf.sh가 rpui-bundlegame show/hide를 호출하고 그
+	// 안에서 killall emulationstation으로 강제 종료했음. killall(외부
+	// SIGTERM)은 타이밍에 따라 ES가 GPU/DRM 작업 도중 끊길 수 있어서 다음
+	// 실행 때 화면에 아무것도 안 그려지는(DRM plane 없음) 문제가 실기기에서
+	// 확인됨 - ES 메뉴 자체의 RESTART/재시작들이 쓰는 quitES()(ES 스스로
+	// SDL_QUIT을 큐에 넣고 메인 루프 안전한 지점에서 정리 후 종료)로
+	// 교체. apply_retropangui_conf.sh가 백그라운드(&)로 실행되는 것과
+	// 달리, 여기서는 rpui-bundlegame을 동기 호출해서 gamelist.xml 갱신이
+	// 끝난 뒤에만 재시작하도록(레이스 방지) 순서를 보장함.
+	if (isBinAvailable("rpui-bundlegame"))
+	{
+		auto bundlegame_show = std::make_shared<SwitchComponent>(mWindow);
+		bool origBundleShow = cfgReadKey(rpConfPath(), "system.bundlegame_show", "true") != "false";
+		bundlegame_show->setState(origBundleShow);
+		s->addWithLabel(_("SHOW BUNDLED GAMES"), bundlegame_show);
+		s->addSaveFunc([bundlegame_show, origBundleShow] {
+			bool newState = bundlegame_show->getState();
+			if (newState == origBundleShow) return;
+			cfgWriteKey(rpConfPath(), "system.bundlegame_show", newState ? "true" : "false", false);
+			::system(newState ? "rpui-bundlegame show" : "rpui-bundlegame hide");
+			quitES(QuitMode::RESTART);
+		});
+	}
+
 	// 백그라운드 인덱싱
 	auto background_indexing = std::make_shared<SwitchComponent>(mWindow);
 	background_indexing->setState(Settings::getInstance()->getBool("BackgroundIndexing"));
