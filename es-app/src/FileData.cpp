@@ -584,6 +584,23 @@ void FileData::launchGame(Window* window)
 	// 스크립트가 스크린샷은 name 폴더에서 찾고 테마 에셋은 theme 이름으로 써야 함.
 	Scripting::fireEvent("game-end", mSystem->getName(), mSystem->getThemeFolder());
 
+	// 2026-07-12: 외부 프로그램(터미널 유틸리티 등) 실행 중 해상도가 바뀌어
+	// 있을 수 있는데, ES는 재개 시(window->init()) 그 순간의 DRM 상태를
+	// 그대로 받아들일 뿐 원래 해상도를 다시 강제하지 않았음(실기기에서
+	// 확인 - 터미널 종료 후 복귀해도 해상도가 원복 안 됨). Batocera의
+	// emulatorlauncher.py가 게임 실행 전후로 해상도를 명시적으로 저장/복원
+	// 하는 것과 같은 목적 - 다만 우리는 "이전 상태"를 따로 저장할 필요 없이
+	// retropangui.conf(system.hdmi_resolution)가 이미 단일 진실 공급원이라
+	// S60display/S99emulationstation과 동일하게 그 값을 그대로 재적용하면
+	// 됨. window->init()이 SDL_GetDesktopDisplayMode()로 그 순간의 실제
+	// DRM 상태를 새로 조회하므로(캐시 아님), 반드시 그 호출 전에 실행해야 함.
+	system(
+		"HDMI_MODE=\"$(python3 /usr/share/retropangui/hdmi-set-resolution.py "
+		"2>>/var/log/hdmi-resolution.log)\"; "
+		"[ -z \"$HDMI_MODE\" ] && HDMI_MODE=\"1080p60hz\"; "
+		"odroid-drm-fbset -outputmode \"$HDMI_MODE\" 2>/dev/null "
+		"|| odroid-drm-fbset -outputmode 1080p60hz 2>/dev/null || true");
+
 	window->init();
 	InputManager::getInstance()->init();
 	VolumeControl::getInstance()->init();
