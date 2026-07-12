@@ -42,10 +42,21 @@
 #include <FreeImage.h>
 #include "guis/GuiOtaUpdate.h"
 #include "HttpReq.h"
+#include "AudioManager.h"
+#include "VolumeControl.h"
 #include <future>
 #include <fstream>
+#include <csignal>
 
 bool scrape_cmdline = false;
+
+// 2026-07-13: 모니터 핫스왑 대응. hdmi-hotplug(udev)가 "다른 모니터로 교체"를
+// 감지하면 ES에 SIGUSR1을 보냄 - ES 프로세스를 죽이지 않고(메뉴 위치 등
+// 사용자 화면 상태 유지) 비디오만 재초기화해서 새 모니터에 맞는 해상도를
+// 다시 잡기 위함. 시그널 핸들러에서는 async-safe하게 플래그만 세우고, 실제
+// 처리는 메인 루프가 프레임 사이에서 수행(launchGame 복귀 경로와 동일 패턴).
+static volatile sig_atomic_t gDisplayResetRequested = 0;
+static void displayResetSignalHandler(int) { gDisplayResetRequested = 1; }
 
 bool parseArgs(int argc, char* argv[])
 {
@@ -513,6 +524,9 @@ int main(int argc, char* argv[])
 	// RetroPangui: 배경 음악 시작 (BackgroundMusic=false거나 <share>/music 비어 있으면 no-op)
 	MusicManager::getInstance()->start();
 
+	// 모니터 핫스왑 시 hdmi-hotplug가 보내는 비디오 재초기화 요청 수신
+	signal(SIGUSR1, displayResetSignalHandler);
+
 	int lastTime = SDL_GetTicks();
 	int ps_time = SDL_GetTicks();
 
@@ -520,6 +534,35 @@ int main(int argc, char* argv[])
 
 	while(running)
 	{
+		// 모니터 교체(SIGUSR1) - ES를 유지한 채 비디오만 재초기화.
+		// launchGame()의 게임 복귀 시퀀스(deinit → 해상도 재적용 → init,
+		// d1e5719)와 동일한 순서를 그대로 따름 - GUI 스택은 건드리지
+		// 않으므로 사용자가 보던 화면(메뉴 위치 등)이 유지됨.
+		if(gDisplayResetRequested)
+		{
+			gDisplayResetRequested = 0;
+			LOG(LogInfo) << "monitor hotplug: display reset requested - reinitializing video only";
+			MusicManager::getInstance()->stop();
+			AudioManager::getInstance()->deinit();
+			VolumeControl::getInstance()->deinit();
+			InputManager::getInstance()->deinit();
+			window.deinit();
+			// 새 모니터의 EDID 기준으로 해상도 재적용 (3단 폴백 - 교체
+			// 직후엔 화면이 안 보여서 사람이 개입할 수 없으므로 어떤
+			// 모니터든 반드시 화면이 나오는 데까지 자동으로 내려감)
+			system(
+				"HDMI_MODE=\"$(python3 /usr/share/retropangui/hdmi-set-resolution.py "
+				"2>>/var/log/hdmi-resolution.log)\"; "
+				"[ -z \"$HDMI_MODE\" ] && HDMI_MODE=\"1080p60hz\"; "
+				"odroid-drm-fbset -outputmode \"$HDMI_MODE\" 2>/dev/null "
+				"|| odroid-drm-fbset -outputmode 1080p60hz 2>/dev/null "
+				"|| odroid-drm-fbset -outputmode 720p60hz 2>/dev/null || true");
+			window.init();
+			InputManager::getInstance()->init();
+			VolumeControl::getInstance()->init();
+			MusicManager::getInstance()->start();
+			lastTime = SDL_GetTicks();
+		}
 		SDL_Event event;
 		bool ps_standby = PowerSaver::getState() && (int) SDL_GetTicks() - ps_time > PowerSaver::getMode();
 
