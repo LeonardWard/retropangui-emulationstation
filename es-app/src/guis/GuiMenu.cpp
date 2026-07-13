@@ -1501,6 +1501,10 @@ void GuiMenu::openSystemSettings()
 		resOptions.push_back({ "1920x1080 16:9 @60Hz",  "1080p60hz" });
 		resOptions.push_back({ "1280x720 16:9 @60Hz",   "720p60hz" });
 		resOptions.push_back({ "1920x1200 16:10 @60Hz", "fallback_1920x1200p60hz" });
+		// 16:10 저해상도 사다리 - VESA DMT CVT-RB 표준, 역산 검증 완료(2026-07-13)
+		resOptions.push_back({ "1680x1050 16:10 @60Hz", "fallback_1680x1050p60hz" });
+		resOptions.push_back({ "1440x900 16:10 @60Hz",  "fallback_1440x900p60hz" });
+		resOptions.push_back({ "1280x800 16:10 @60Hz",  "fallback_1280x800p60hz" });
 		resOptions.push_back({ "1024x768 4:3 @60Hz",    "fallback_1024x768p60hz" });
 		auto hdmi_res = std::make_shared< OptionListComponent<std::string> >(mWindow, _("OUTPUT RESOLUTION"), false);
 		bool anySel = false;
