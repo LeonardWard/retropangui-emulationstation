@@ -9,6 +9,7 @@
 #include "ThemeData.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <deque>
 #include <vector>
 
 class TextCache;
@@ -102,7 +103,15 @@ private:
 	void rebuildTextures();
 	void unloadTextures();
 
-	std::vector<FontTexture> mTextures;
+	// deque 필수(vector 금지): TextCache::VertexList::textureIdPtr와
+	// Glyph::texture가 이 컨테이너 "원소의 내부"를 가리키는 raw 포인터라,
+	// vector였을 때 getTextureForNewGlyph()의 push_back 재할당 한 번에
+	// 기존 캐시 전부가 허상 포인터가 됨 - 게임 목록 모드(ShowFolders) 변경
+	// 등으로 reloadAll()이 새 글리프를 대량 유입시키면 아틀라스가 증식하며
+	// 재할당 → 화면에 살아있는 메뉴의 renderTextCache()에서 SIGSEGV
+	// (2026-07-13 실기기 코어덤프로 규명). deque는 push_back 시 기존 원소를
+	// 절대 이동시키지 않아 포인터가 안정적임.
+	std::deque<FontTexture> mTextures;
 
 	void getTextureForNewGlyph(const Vector2i& glyphSize, FontTexture*& tex_out, Vector2i& cursor_out);
 
