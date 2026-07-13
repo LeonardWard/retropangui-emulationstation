@@ -123,7 +123,17 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 	std::string showFoldersSetting = Settings::getInstance()->getString("ShowFolders");
 
 	// RetroPangui: gamelist.xml-based filtering
-	bool needsFolderFiltering = (showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
+	// 컬렉션(전체 게임/즐겨찾기/최근 플레이/랜덤)은 실제 롬 폴더가 없고
+	// (SystemEnvironmentData::mStartPath == "") gamelist.xml도 없다 -
+	// mChildren은 이미 CollectionSystemManager가 실제 게임만 골라 채운
+	// 목록이라 gamelist.xml 매칭이 필요 없다. SCRAPED/AUTO 필터를 컬렉션에도
+	// 적용하면 gamelistPaths가 항상 빈 채로 남아 SCRAPED 모드에서 전체
+	// 컬렉션이 통째로 빈 화면이 되는 버그였다(2026-07-14 실기기 확인 -
+	// ShowFolders 기본값이 AUTO였을 때는 AUTO의 2단계 스마트 필터링이
+	// mChildren을 순회해서 일부나마 보였지만, 기본값이 SCRAPED로 바뀐
+	// 뒤(2026-07-12)로는 완전히 안 보이게 됨).
+	bool needsFolderFiltering = !mSystem->isCollection() &&
+		(showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
 
 	// ALL mode with no active filter: return mChildren directly (never stored in mFilteredChildren)
 	if (!idx->isFiltered() && !needsFolderFiltering) {
