@@ -10,6 +10,7 @@
 #include "guis/GuiBtDevices.h"
 #include "guis/GuiBtPairing.h"
 #include "guis/GuiDetectDevice.h"
+#include "guis/GuiGamelistRefresh.h"
 #include "guis/GuiGeneralScreensaverOptions.h"
 #include "guis/GuiMsgBox.h"
 #include "guis/GuiScraperStart.h"
@@ -1206,6 +1207,23 @@ void GuiMenu::openGameSettings()
 	background_indexing->setState(Settings::getInstance()->getBool("BackgroundIndexing"));
 	s->addWithLabel(_("INDEX FILES DURING SCREENSAVER"), background_indexing);
 	s->addSaveFunc([background_indexing] { Settings::getInstance()->setBool("BackgroundIndexing", background_indexing->getState()); });
+
+	// RetroPangui: 게임 리스트 갱신(전체 시스템) - 각 롬 폴더를 재스캔해서
+	// gamelist.xml에 없는 게임만 등록(기존 항목 유지). 진행 상황은
+	// GuiGamelistRefresh가 시스템별로 화면에 표시. ES 재시작 없이 반영됨.
+	{
+		ComponentListRow row;
+		row.addElement(std::make_shared<TextComponent>(mWindow, _("UPDATE GAMELISTS"),
+			Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		row.makeAcceptInputHandler([this] {
+			std::vector<SystemData*> systems;
+			for (auto sys : SystemData::sSystemVector)
+				if (sys->isGameSystem() && !sys->isCollection())
+					systems.push_back(sys);
+			mWindow->pushGui(new GuiGamelistRefresh(mWindow, systems));
+		});
+		s->addRow(row);
+	}
 
 	addSubmenuEntry(s, _("SCRAPER"), [this] { openScraperSettings(); });
 	addSubmenuEntry(s, _("EMULATOR SETTINGS"), [this] { openEmulatorSettings(); });

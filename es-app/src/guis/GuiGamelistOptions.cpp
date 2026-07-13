@@ -9,6 +9,7 @@
 #include "FileFilterIndex.h"
 #include "FileSorts.h"
 #include "GuiMetaDataEd.h"
+#include "guis/GuiMsgBox.h"
 #include "SystemData.h"
 #include "components/TextListComponent.h"
 #include "Gamelist.h"
@@ -114,6 +115,17 @@ GuiGamelistOptions::GuiGamelistOptions(Window* window, SystemData* system) : Gui
 		mMenu.addRow(row);
 	}
 
+	// RetroPangui: 게임 리스트 갱신 - 이 시스템의 롬 폴더를 재스캔해서
+	// gamelist.xml에 없는 게임만 등록(기존 항목 유지). SCRAPED 게임 목록
+	// 모드에서 새로 넣은 롬이 안 보일 때 쓰는 버튼.
+	if(UIModeController::getInstance()->isUIModeFull() && !mSystem->isCollection() && mSystem->isGameSystem())
+	{
+		row.elements.clear();
+		row.addElement(std::make_shared<TextComponent>(mWindow, _("UPDATE GAMELIST"), Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		row.makeAcceptInputHandler(std::bind(&GuiGamelistOptions::refreshGamelist, this));
+		mMenu.addRow(row);
+	}
+
 	std::map<std::string, CollectionSystemData> customCollections = CollectionSystemManager::get()->getCustomCollectionSystems();
 
 	if(UIModeController::getInstance()->isUIModeFull() &&
@@ -206,6 +218,29 @@ void GuiGamelistOptions::openGamelistFilter()
 	mFiltersChanged = true;
 	GuiGamelistFilter* ggf = new GuiGamelistFilter(mWindow, mSystem);
 	mWindow->pushGui(ggf);
+}
+
+void GuiGamelistOptions::refreshGamelist()
+{
+	Window* window = mWindow;
+	SystemData* system = mSystem;
+
+	int added = system->refreshGamelist();
+
+	// 뷰 리로드 전에 옵션 메뉴부터 정리(소멸자가 현재 뷰를 건드리므로 순서 중요)
+	delete this;
+
+	if (added > 0)
+		ViewController::get()->reloadGameListView(system);
+
+	std::string msg;
+	if (added < 0)
+		msg = _("GAMELIST UPDATE FAILED");
+	else if (added == 0)
+		msg = _("NO NEW GAMES FOUND");
+	else
+		msg = Utils::String::replace(_("%i NEW GAMES ADDED"), "%i", std::to_string(added));
+	window->pushGui(new GuiMsgBox(window, msg, _("OK")));
 }
 
 void GuiGamelistOptions::recreateCollection()

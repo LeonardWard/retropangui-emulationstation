@@ -94,6 +94,11 @@ public:
 	void onMetaDataSavePoint();
 	void setShuffledCacheDirty();
 
+	// RetroPangui: 롬 폴더를 재스캔해서 gamelist.xml에 없는 게임만 최소
+	// 항목(<path>/<name>)으로 등록하고 메모리 트리에 반영한다. 기존 항목은
+	// 건드리지 않는다. 반환: 새로 등록된 개수, 오류 시 -1.
+	int refreshGamelist();
+
 private:
 	static SystemData* loadSystem(pugi::xml_node system);
 

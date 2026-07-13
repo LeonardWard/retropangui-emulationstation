@@ -548,3 +548,25 @@ msgstr "배경음악"
 
 msgid "SHOW BUNDLED GAMES"
 msgstr "번들 게임 표시"
+
+# Gamelist refresh (2026-07-14)
+msgid "UPDATE GAMELIST"
+msgstr "게임 리스트 갱신"
+
+msgid "UPDATE GAMELISTS"
+msgstr "게임 리스트 갱신 (전체 시스템)"
+
+msgid "%i NEW GAMES ADDED"
+msgstr "새 게임 %i개 등록됨"
+
+msgid "NO NEW GAMES FOUND"
+msgstr "새로 발견된 게임이 없습니다"
+
+msgid "GAMELIST UPDATE FAILED"
+msgstr "게임 리스트 갱신 실패 - 로그를 확인하세요"
+
+msgid "DONE. %i NEW GAMES ADDED"
+msgstr "완료 - 새 게임 %i개 등록됨"
+
+msgid "FAILED"
+msgstr "실패"

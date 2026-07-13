@@ -12,6 +12,7 @@
 #include "views/UIModeController.h"
 #include <fstream>
 #include <random>
+#include <set>
 #include "utils/StringUtil.h"
 #include "utils/ThreadPool.h"
 #include "Window.h"
@@ -177,6 +178,114 @@ void SystemData::populateFolder(FileData* folder)
 				folder->addChild(newFolder);
 		}
 	}
+}
+
+// RetroPangui: refreshGamelist()용 경로 스캔.
+// populateFolder()와 같은 규칙(확장자 매칭 - 디렉토리도 게임으로 인정(higan/.pc/.scummvm 폴더),
+// 숨김 제외, 디스크 이미지 우선순위, 재귀 심볼릭 링크 가드)을 따르되 FileData를 만들지 않는다.
+// FileData는 소멸 시 removeFromIndex()를 호출해 임시 스캔 용도로 쓰면 필터 인덱스
+// 카운트가 오염되기 때문에 경로 문자열만 수집한다.
+static void scanGamePaths(const std::string& folderPath, const std::vector<std::string>& extensions,
+                          bool showHidden, std::vector<std::string>& out)
+{
+	if (!FileSystem::isDirectory(folderPath))
+		return;
+
+	if (FileSystem::isSymlink(folderPath) &&
+	    folderPath.find(FileSystem::getCanonicalPath(folderPath)) == 0)
+		return;
+
+	FileSystem::stringList dirContent = FileSystem::getDirContent(folderPath);
+	for (FileSystem::stringList::const_iterator it = dirContent.cbegin(); it != dirContent.cend(); ++it)
+	{
+		const std::string& filePath = *it;
+
+		if (!showHidden && FileSystem::isHidden(filePath))
+			continue;
+
+		std::string extension = FileSystem::getExtension(filePath);
+		bool isGame = false;
+		if (std::find(extensions.cbegin(), extensions.cend(), extension) != extensions.cend())
+		{
+			isGame = true;
+			if (!hasHigherPriorityDiscImage(filePath, extension, folderPath))
+				out.push_back(filePath);
+		}
+
+		if (!isGame && FileSystem::isDirectory(filePath))
+			scanGamePaths(filePath, extensions, showHidden, out);
+	}
+}
+
+int SystemData::refreshGamelist()
+{
+	if (mIsCollectionSystem || !mIsGameSystem)
+		return 0;
+	if (!FileSystem::isDirectory(mEnvData->mStartPath))
+		return -1;
+
+	std::vector<std::string> diskGames;
+	scanGamePaths(mEnvData->mStartPath, mEnvData->mSearchExtensions,
+	              Settings::getInstance()->getBool("ShowHiddenFiles"), diskGames);
+
+	std::string xmlPath = getGamelistPath(true);
+	pugi::xml_document doc;
+	pugi::xml_node root;
+	if (FileSystem::exists(xmlPath))
+	{
+		pugi::xml_parse_result res = doc.load_file(xmlPath.c_str());
+		if (!res)
+		{
+			LOG(LogError) << "refreshGamelist: error parsing \"" << xmlPath << "\": " << res.description();
+			return -1;
+		}
+		root = doc.child("gameList");
+		if (!root)
+			root = doc.append_child("gameList");
+	}
+	else
+		root = doc.append_child("gameList");
+
+	// 이미 등록된 경로(절대경로로 정규화)
+	std::set<std::string> registered;
+	for (pugi::xml_node g = root.child("game"); g; g = g.next_sibling("game"))
+	{
+		pugi::xml_node p = g.child("path");
+		if (p)
+			registered.insert(FileSystem::resolveRelativePath(p.text().get(), mEnvData->mStartPath, false, true));
+	}
+
+	int added = 0;
+	for (std::vector<std::string>::const_iterator it = diskGames.cbegin(); it != diskGames.cend(); ++it)
+	{
+		if (registered.find(*it) != registered.cend())
+			continue;
+
+		pugi::xml_node gameNode = root.append_child("game");
+		gameNode.append_child("path").text().set(
+			FileSystem::createRelativePath(*it, mEnvData->mStartPath, false, true).c_str());
+		gameNode.append_child("name").text().set(FileSystem::getStem(*it).c_str());
+		added++;
+	}
+
+	if (added == 0)
+		return 0;
+
+	if (!doc.save_file(xmlPath.c_str()))
+	{
+		LOG(LogError) << "refreshGamelist: failed to write \"" << xmlPath << "\"";
+		return -1;
+	}
+
+	// 새 항목을 메모리 트리에 반영(기존 항목은 findOrCreateFile이 그대로 반환)
+	parseGamelist(this);
+
+	// 새 게임이 필터 인덱스에 빠지지 않도록 전체 재색인
+	mFilterIndex->resetIndex();
+	indexAllGameFilters(mRootFolder);
+
+	LOG(LogInfo) << "refreshGamelist: \"" << mName << "\" +" << added << " new games";
+	return added;
 }
 
 void SystemData::indexAllGameFilters(const FileData* folder)
