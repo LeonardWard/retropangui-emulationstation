@@ -174,17 +174,21 @@ std::shared_ptr<MusicManager>& MusicManager::getInstance()
 }
 
 // RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색 (GuiMenu.cpp 규칙과 동일)
+// 2026-07-14: share/music → share/bios/music로 이전 - bios/는 이미 "시스템이
+// 제공/소비하는 리소스" 폴더라 배경음악(.mid)·사용자 교체용 사운드폰트(.sf2)도
+// 같은 성격. S61share가 실제 폴더 생성·번들 .mid 복사를 담당(마이그레이션 없음 -
+// 기존 share/music 사용자는 파일을 수동으로 옮겨야 함, 초기 사용자층 규모상 허용).
 static std::string getMusicDirectory()
 {
 	const char* env = getenv("RETROPANGUI_SHARE");
 	if (env && env[0] != '\0')
-		return std::string(env) + "/music";
+		return std::string(env) + "/bios/music";
 
 	if (Utils::FileSystem::isDirectory("/share"))
-		return "/share/music";
+		return "/share/bios/music";
 
 	const char* home = getenv("HOME");
-	return (home ? std::string(home) + "/share" : "/share") + "/music";
+	return (home ? std::string(home) + "/share" : "/share") + "/bios/music";
 }
 
 // MIDI 합성용 사운드폰트 탐색: <share>/music 의 .sf2 (사용자 교체용) 우선,
