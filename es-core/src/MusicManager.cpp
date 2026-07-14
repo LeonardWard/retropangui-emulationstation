@@ -202,7 +202,11 @@ static std::string findSoundfont(const std::string& musicDir)
 			return *it;
 	}
 
-	static const char* BUNDLED_SF2 = "/usr/share/soundfonts/MT32.sf2";
+	// 2026-07-14: MT32.sf2(archive.org, 라이선스 불명확 - "개인 용도 무료"로
+	// 보이는 리코딩본을 이미지에 굽고 있었음)에서 FluidR3_GM.sf2(MIT,
+	// fluid-soundfont 패키지 - Debian 공식 미러 소스, legal-info 라이선스
+	// 추적됨)로 교체.
+	static const char* BUNDLED_SF2 = "/usr/share/soundfonts/FluidR3_GM.sf2";
 	if (Utils::FileSystem::exists(BUNDLED_SF2))
 		return BUNDLED_SF2;
 
