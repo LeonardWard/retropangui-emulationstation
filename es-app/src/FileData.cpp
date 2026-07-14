@@ -132,7 +132,15 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 	// ShowFolders 기본값이 AUTO였을 때는 AUTO의 2단계 스마트 필터링이
 	// mChildren을 순회해서 일부나마 보였지만, 기본값이 SCRAPED로 바뀐
 	// 뒤(2026-07-12)로는 완전히 안 보이게 됨).
-	bool needsFolderFiltering = !mSystem->isCollection() &&
+	//
+	// 같은 이유로 코어가 없는 유틸리티형 시스템(screenshots, utility -
+	// systems.json의 cores:[])도 제외한다. 이런 시스템은 "게임"이 아니라
+	// 스크린샷 뷰어/터미널 실행 등 커스텀 커맨드 대상이라 gamelist.xml에
+	// 등록될 일이 없는데, SCRAPED 모드에서 getDisplayedGameCount()가
+	// getChildrenListToDisplay()(이 필터 적용됨)를 쓰기 때문에 필터링을
+	// 받으면 표시 개수가 0으로 계산돼 캐러셀에서 시스템 자체가 통째로
+	// 사라진다(2026-07-14 실기기 확인 - screenshots 캐러셀 항목 없음).
+	bool needsFolderFiltering = !mSystem->isCollection() && !mSystem->getCores().empty() &&
 		(showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
 
 	// ALL mode with no active filter: return mChildren directly (never stored in mFilteredChildren)
