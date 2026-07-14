@@ -206,8 +206,15 @@ void GuiMenu::openSoundSettings()
 				std::string line(buf);
 				size_t colon = line.find(':');
 				if (colon == std::string::npos || colon == 0) continue;
-				bool numeric = true;
-				for (size_t i = 0; i < colon; i++)
+				// aplaymidi -l은 클라이언트 번호를 3칸 오른쪽 정렬로 찍어서
+				// 두 자리 이하 번호(예: " 16:0")는 앞에 공백이 붙는다 -
+				// 콜론 앞부분을 곧바로 숫자 판정하면 이런 줄이 전부 헤더로
+				// 오인돼 걸러짐(2026-07-14 실기기에서 확인 - 클라이언트
+				// 번호가 3자리인 장치만 목록에 남고 나머지는 사라짐).
+				// 앞쪽 공백은 건너뛰고 실제 숫자 구간만 검사.
+				size_t numStart = line.find_first_not_of(" \t");
+				bool numeric = (numStart != std::string::npos && numStart < colon);
+				for (size_t i = numStart; numeric && i < colon; i++)
 					if (!isdigit((unsigned char)line[i])) { numeric = false; break; }
 				if (!numeric) continue; // 헤더 줄("Port  Client name  ...") 건너뜀
 
