@@ -258,14 +258,7 @@ int SystemData::refreshGamelist()
 	int added = 0;
 	for (std::vector<std::string>::const_iterator it = diskGames.cbegin(); it != diskGames.cend(); ++it)
 	{
-		// registered는 gamelist.xml의 <path>를 resolveRelativePath로 정규화해서 담아뒀는데,
-		// diskGames(scanGamePaths)는 getDirContent 기반 단순 문자열 결합이라 정규화가 달라서
-		// 실제로 같은 파일이어도 문자열이 안 맞아 중복으로 다시 추가되는 버그가 있었음
-		// (수기로 gamelist.xml을 미리 써둔 뒤 갱신하면 최소정보 중복 항목이 뒤에 또 생겨서
-		// parseGamelist 병합 시 나중 항목이 먼저 쓴 name/image를 덮어써버림, 2026-07-15).
-		// 같은 정규화를 적용해서 비교해야 정확히 매칭된다.
-		std::string normalized = FileSystem::resolveRelativePath(*it, mEnvData->mStartPath, false, true);
-		if (registered.find(normalized) != registered.cend())
+		if (registered.find(*it) != registered.cend())
 			continue;
 
 		pugi::xml_node gameNode = root.append_child("game");
