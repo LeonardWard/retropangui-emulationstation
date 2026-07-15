@@ -521,6 +521,13 @@ int main(int argc, char* argv[])
 		window.setInfoPopup(new GuiInfoPopup(&window, msg, 3000));
 	});
 
+	// RetroPangui: USB/블루투스 오디오 장치 연결/해제 OSD 알림 (조이스틱과 동일한 패턴 -
+	// 부팅 시 이미 연결돼 있던 장치는 Window::checkAudioDeviceChange()에서 걸러짐)
+	window.setAudioDeviceNotificationCallback([&window](const std::string& name, bool connected) {
+		std::string msg = name + (connected ? " 연결됨" : " 연결 해제됨");
+		window.setInfoPopup(new GuiInfoPopup(&window, msg, 3000));
+	});
+
 	// RetroPangui: 배경 음악 시작 (BackgroundMusic=false거나 <share>/music 비어 있으면 no-op)
 	MusicManager::getInstance()->start();
 

@@ -85,6 +85,11 @@ public:
 	void setJoystickNotificationCallback(std::function<void(const std::string& name, bool connected)> cb) { mJoystickNotificationCallback = cb; }
 	void onJoystickNotification(const std::string& name, bool connected) { if (mJoystickNotificationCallback) mJoystickNotificationCallback(name, connected); }
 
+	// 2026-07-16: USB/블루투스 오디오 장치 연결/해제 OSD 알림 - 조이스틱과 동일한
+	// 패턴이지만 SDL 이벤트가 없어서(오디오는 핫플러그 콜백이 없음) checkNewStorage()
+	// 처럼 폴링 방식(/proc/asound/cards + discovery.json)으로 감지한다.
+	void setAudioDeviceNotificationCallback(std::function<void(const std::string& name, bool connected)> cb) { mAudioDeviceNotificationCallback = cb; }
+
 	void startScreenSaver(SystemData* system=NULL);
 	bool cancelScreenSaver();
 	void renderScreenSaver();
@@ -126,6 +131,12 @@ private:
 
 	std::function<void(InputConfig*)> mUnconfiguredJoystickCallback;
 	std::function<void(const std::string& name, bool connected)> mJoystickNotificationCallback;
+
+	int mAudioDeviceCheckTimer;
+	std::vector<std::string> mKnownAudioDevices; // 지난 체크 시점의 (라벨) 스냅샷
+	bool mAudioDeviceFirstCheck; // 최초 1회는 알림 없이 스냅샷만(부팅 시 이미 꽂힌 것들 걸러내기)
+	std::function<void(const std::string& name, bool connected)> mAudioDeviceNotificationCallback;
+	void checkAudioDeviceChange();
 };
 
 #endif // ES_CORE_WINDOW_H

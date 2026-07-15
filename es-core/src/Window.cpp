@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
+#include <sstream>
 #include <sys/stat.h>
 
 #ifdef WIN32
@@ -17,7 +18,7 @@
 
 Window::Window() : mNormalizeNextUpdate(false), mFrameTimeElapsed(0), mFrameCountElapsed(0), mAverageDeltaTime(10),
 	mAllowSleep(true), mSleeping(false), mTimeSinceLastInput(0), mScreenSaver(NULL), mRenderScreenSaver(false), mInfoPopup(NULL),
-	mStorageCheckTimer(0)
+	mStorageCheckTimer(0), mAudioDeviceCheckTimer(0), mAudioDeviceFirstCheck(true)
 {
 	mHelp = new HelpComponent(this);
 	mBackgroundOverlay = new ImageComponent(this);
@@ -212,6 +213,15 @@ void Window::update(int deltaTime)
 		if (mStorageCheckTimer >= 5000) {
 			mStorageCheckTimer = 0;
 			checkNewStorage();
+		}
+	}
+
+	// USB/블루투스 오디오 장치 연결 감지 — 3초마다 체크
+	if (!mGuiStack.empty()) {
+		mAudioDeviceCheckTimer += deltaTime;
+		if (mAudioDeviceCheckTimer >= 3000) {
+			mAudioDeviceCheckTimer = 0;
+			checkAudioDeviceChange();
 		}
 	}
 }
@@ -503,4 +513,81 @@ void Window::checkNewStorage()
 	// 이벤트 파일 삭제 (다음 폴링에서 중복 처리 방지)
 	::remove(EVT);
 	mStorageDetectedCallback(label, id);
+}
+
+// 2026-07-16: USB(/proc/asound/cards)·블루투스(discovery.json) 오디오 장치
+// 연결/해제를 폴링으로 감지해 조이스틱과 동일한 OSD 알림을 띄운다. 오디오는
+// SDL 핫플러그 이벤트가 없어서 checkNewStorage()와 같은 폴링 패턴을 쓴다.
+void Window::checkAudioDeviceChange()
+{
+	if (!mAudioDeviceNotificationCallback) return;
+
+	std::vector<std::string> current;
+
+	// USB/온보드 등 실제 ALSA 하드웨어 카드 (GuiMenu.cpp AUDIO CARD 메뉴와 동일 규칙 -
+	// RP2040ZERO는 MT-32 에뮬레이터의 USB 인터페이스일 뿐 재생용 카드가 아니라 제외)
+	{
+		std::ifstream f("/proc/asound/cards");
+		std::string line;
+		while (std::getline(f, line)) {
+			auto lb = line.find('[');
+			auto rb = line.find(']');
+			if (lb == std::string::npos || rb == std::string::npos || rb < lb) continue;
+			std::string id = line.substr(lb + 1, rb - lb - 1);
+			while (!id.empty() && id.back() == ' ') id.pop_back();
+			if (id.empty() || id.find("RP2040") != std::string::npos) continue;
+			current.push_back(id == "AMLAUGESOUND" ? "HDMI" : id);
+		}
+	}
+
+	// 연결된 블루투스 오디오 기기 (GuiBtPairing.cpp와 동일한 손으로 짠 JSON 파싱 스타일)
+	{
+		std::ifstream f("/tmp/retropangui-bt-discovery.json");
+		if (f.is_open()) {
+			std::stringstream ss;
+			ss << f.rdbuf();
+			std::string buf = ss.str();
+			auto strVal = [&](const std::string& chunk, const std::string& key) -> std::string {
+				std::string needle = "\"" + key + "\": \"";
+				size_t pos = chunk.find(needle);
+				if (pos == std::string::npos) return {};
+				pos += needle.size();
+				size_t end = chunk.find('"', pos);
+				return end == std::string::npos ? std::string() : chunk.substr(pos, end - pos);
+			};
+			auto boolVal = [&](const std::string& chunk, const std::string& key) -> bool {
+				return chunk.find("\"" + key + "\": true") != std::string::npos;
+			};
+			std::vector<size_t> starts;
+			size_t pos = 0;
+			while ((pos = buf.find("\"mac\": \"", pos)) != std::string::npos) { starts.push_back(pos); pos += 1; }
+			for (size_t i = 0; i < starts.size(); i++) {
+				size_t begin = starts[i];
+				size_t end = (i + 1 < starts.size()) ? starts[i + 1] : buf.size();
+				std::string chunk = buf.substr(begin, end - begin);
+				std::string icon = strVal(chunk, "icon");
+				if (icon.rfind("audio-", 0) != 0 || !boolVal(chunk, "connected")) continue;
+				std::string name = strVal(chunk, "name");
+				std::string mac = strVal(chunk, "mac");
+				current.push_back(name.empty() ? mac : name);
+			}
+		}
+	}
+
+	if (mAudioDeviceFirstCheck) {
+		// 부팅 시 이미 연결돼 있던 장치는 알림 없이 스냅샷만 - 조이스틱과 동일한 규칙
+		mKnownAudioDevices = current;
+		mAudioDeviceFirstCheck = false;
+		return;
+	}
+
+	for (auto& name : current) {
+		if (std::find(mKnownAudioDevices.begin(), mKnownAudioDevices.end(), name) == mKnownAudioDevices.end())
+			mAudioDeviceNotificationCallback(name, true);
+	}
+	for (auto& name : mKnownAudioDevices) {
+		if (std::find(current.begin(), current.end(), name) == current.end())
+			mAudioDeviceNotificationCallback(name, false);
+	}
+	mKnownAudioDevices = current;
 }
