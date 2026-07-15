@@ -66,6 +66,10 @@ static std::string cfgReadKey(const std::string& filePath, const std::string& fu
                               const std::string& def);
 static void cfgWriteKey(const std::string& filePath, const std::string& fullKey,
                         const std::string& value, bool quote);
+// 2026-07-16: 연결된 블루투스 오디오 기기 목록 - AUDIO CARD 메뉴에서 선택 가능하게
+// 하기 위해 rpui-bt가 쓰는 discovery.json에서 읽는다(GuiBtPairing.cpp의 손으로 짠
+// JSON 파싱과 동일한 스타일 - 이 파일은 그 클래스와 무관하니 별도로 작성).
+static std::vector<std::pair<std::string, std::string>> readConnectedBtAudioDevices(); // (label, mac)
 
 GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
 {
@@ -173,18 +177,31 @@ void GuiMenu::openSoundSettings()
 			std::string label = (id == "AMLAUGESOUND") ? "HDMI" : id;
 			cards.push_back({ label, id });
 		}
+		// 2026-07-16: 연결된 블루투스 오디오 기기도 선택 가능한 항목으로 추가 -
+		// bluealsa ALSA 플러그인 확장 device 문자열(DEV=mac,PROFILE=a2dp)로 값을
+		// 구성하면 RA audio_device/ES 믹서 둘 다 이 값을 그대로 쓸 수 있다.
+		std::vector<std::pair<std::string, std::string>> btDevices = readConnectedBtAudioDevices(); // (label, mac)
+
 		std::string origCard = Settings::getInstance()->getString("AudioCard");
-		// origCard가 스캔된 카드 어디에도 안 걸리면(예: 이전에 고른 USB 카드가 지금은
-		// 안 꽂혀있음) DEFAULT를 선택 상태로 - 항목 전체가 미선택 상태가 되는 것 방지.
+		// origCard가 스캔된 카드/블루투스 기기 어디에도 안 걸리면(예: 이전에 고른
+		// USB 카드가 지금은 안 꽂혀있음) DEFAULT를 선택 상태로 - 항목 전체가
+		// 미선택 상태가 되는 것 방지.
 		bool origMatchesCard = false;
 		for (auto& c : cards)
 			if ("hw:CARD=" + c.second + ",DEV=0" == origCard) { origMatchesCard = true; break; }
+		for (auto& b : btDevices)
+			if ("bluealsa:DEV=" + b.second + ",PROFILE=a2dp" == origCard) { origMatchesCard = true; break; }
 		auto audio_card = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO CARD"), false);
 		audio_card->add("DEFAULT", "default", !origMatchesCard);
 		for (auto& c : cards)
 		{
 			std::string val = "hw:CARD=" + c.second + ",DEV=0";
 			audio_card->add(c.first, val, val == origCard);
+		}
+		for (auto& b : btDevices)
+		{
+			std::string val = "bluealsa:DEV=" + b.second + ",PROFILE=a2dp";
+			audio_card->add(b.first + " (BT)", val, val == origCard);
 		}
 		s->addWithLabel(_("AUDIO CARD"), audio_card);
 		s->addSaveFunc([audio_card, origCard] {
@@ -730,6 +747,53 @@ void GuiMenu::openKodiMediaCenter()
 // ---------------------------------------------------------------------------
 // RetroAchievements - retropangui.conf / retroarch.cfg 읽기·쓰기 헬퍼
 // ---------------------------------------------------------------------------
+
+// AUDIO CARD 메뉴용 - rpui-bt discovery.json에서 "연결됨 + audio-* 아이콘"인
+// 기기만 골라 (label, mac) 쌍으로 돌려준다. GuiBtPairing.cpp의 jsonStrVal류와
+// 같은 방식(외부 JSON 라이브러리 없이 손으로 파싱) - 이 파일은 그 클래스와
+// 무관해서 별도로 작성했다.
+static std::vector<std::pair<std::string, std::string>> readConnectedBtAudioDevices()
+{
+	std::vector<std::pair<std::string, std::string>> result;
+	std::ifstream f("/tmp/retropangui-bt-discovery.json");
+	if (!f.is_open()) return result;
+	std::stringstream ss;
+	ss << f.rdbuf();
+	std::string buf = ss.str();
+
+	auto jsonStrVal = [&](const std::string& chunk, const std::string& key) -> std::string {
+		std::string needle = "\"" + key + "\": \"";
+		size_t pos = chunk.find(needle);
+		if (pos == std::string::npos) return {};
+		pos += needle.size();
+		size_t end = chunk.find('"', pos);
+		return end == std::string::npos ? std::string() : chunk.substr(pos, end - pos);
+	};
+	auto jsonBoolVal = [&](const std::string& chunk, const std::string& key) -> bool {
+		return chunk.find("\"" + key + "\": true") != std::string::npos;
+	};
+
+	std::vector<size_t> starts;
+	size_t pos = 0;
+	while ((pos = buf.find("\"mac\": \"", pos)) != std::string::npos) {
+		starts.push_back(pos);
+		pos += 1;
+	}
+	for (size_t i = 0; i < starts.size(); i++) {
+		size_t begin = starts[i];
+		size_t end = (i + 1 < starts.size()) ? starts[i + 1] : buf.size();
+		std::string chunk = buf.substr(begin, end - begin);
+
+		std::string mac = jsonStrVal(chunk, "mac");
+		std::string icon = jsonStrVal(chunk, "icon");
+		if (mac.empty() || icon.rfind("audio-", 0) != 0) continue;
+		if (!jsonBoolVal(chunk, "connected")) continue;
+
+		std::string name = jsonStrVal(chunk, "name");
+		result.push_back({ name.empty() ? mac : name, mac });
+	}
+	return result;
+}
 
 // RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
 static std::string getSharePath()
