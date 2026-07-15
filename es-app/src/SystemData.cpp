@@ -50,6 +50,44 @@ static bool hasHigherPriorityDiscImage(const std::string& filePath, const std::s
 	return false;
 }
 
+// RetroPangui: 이 폴더에 있는 .m3u 플레이리스트가 실제로 참조하는 파일들의 경로 집합을 반환.
+// 위 hasHigherPriorityDiscImage()의 stem(파일명 동일) 매칭은 이 프로젝트가 실제로 쓰는
+// 명명 관례(예: "Zeliard.m3u"가 "Zeliard (1987)(Game Arts)(Disk 1 of 4).zip"을 참조 - stem이
+// 다름)에서 사실상 작동하지 않아, 개별 디스크 파일이 m3u와 별개로 계속 중복 등록되는 버그가
+// 있었음(2026-07-15 실기기 보고). m3u 파일명이 아니라 그 안의 실제 내용을 신뢰하는 쪽이 이름
+// 관례에 의존하지 않는 정확한 방법.
+static std::set<std::string> getM3uMemberPaths(const std::string& folderPath)
+{
+	std::set<std::string> members;
+	FileSystem::stringList dirContent = FileSystem::getDirContent(folderPath);
+	for (FileSystem::stringList::const_iterator it = dirContent.cbegin(); it != dirContent.cend(); ++it)
+	{
+		std::string m3uExt = FileSystem::getExtension(*it);
+		if (m3uExt != ".m3u" && m3uExt != ".M3U")
+			continue;
+
+		std::ifstream file(*it);
+		if (!file.is_open())
+			continue;
+
+		std::string line;
+		while (std::getline(file, line))
+		{
+			while (!line.empty() && (line.back() == '\r' || line.back() == '\n'))
+				line.pop_back();
+			size_t start = line.find_first_not_of(" \t");
+			if (start == std::string::npos)
+				continue;
+			line = line.substr(start);
+			if (line.empty() || line[0] == '#')
+				continue;
+
+			members.insert(FileSystem::resolveRelativePath(line, folderPath, false, true));
+		}
+	}
+	return members;
+}
+
 
 SystemData::SystemData(const std::string& name, const std::string& fullName, SystemEnvironmentData* envData, const std::string& themeFolder, bool CollectionSystem) :
 	mName(name), mFullName(fullName), mEnvData(envData), mThemeFolder(themeFolder), mIsCollectionSystem(CollectionSystem), mIsGameSystem(true)
@@ -127,6 +165,7 @@ void SystemData::populateFolder(FileData* folder)
 	std::string extension;
 	bool isGame;
 	bool showHidden = Settings::getInstance()->getBool("ShowHiddenFiles");
+	std::set<std::string> m3uMembers = getM3uMemberPaths(folderPath);
 	Utils::FileSystem::stringList dirContent = Utils::FileSystem::getDirContent(folderPath);
 	for(Utils::FileSystem::stringList::const_iterator it = dirContent.cbegin(); it != dirContent.cend(); ++it)
 	{
@@ -148,9 +187,11 @@ void SystemData::populateFolder(FileData* folder)
 		{
 			// RetroPangui: Skip if a higher priority disc image exists for the same game
 			// e.g., if both .ccd and .img exist, only add .ccd
-			if (hasHigherPriorityDiscImage(filePath, extension, folderPath))
+			// Also skip if this exact file is already referenced by an .m3u playlist in
+			// this folder (content-based check, not filename-stem-based - see getM3uMemberPaths()).
+			if (hasHigherPriorityDiscImage(filePath, extension, folderPath) || m3uMembers.count(filePath))
 			{
-				LOG(LogDebug) << "Skipping " << filePath << " - higher priority disc image exists";
+				LOG(LogDebug) << "Skipping " << filePath << " - higher priority disc image exists or referenced by an .m3u playlist";
 			}
 			else
 			{
@@ -195,6 +236,7 @@ static void scanGamePaths(const std::string& folderPath, const std::vector<std::
 	    folderPath.find(FileSystem::getCanonicalPath(folderPath)) == 0)
 		return;
 
+	std::set<std::string> m3uMembers = getM3uMemberPaths(folderPath);
 	FileSystem::stringList dirContent = FileSystem::getDirContent(folderPath);
 	for (FileSystem::stringList::const_iterator it = dirContent.cbegin(); it != dirContent.cend(); ++it)
 	{
@@ -208,7 +250,7 @@ static void scanGamePaths(const std::string& folderPath, const std::vector<std::
 		if (std::find(extensions.cbegin(), extensions.cend(), extension) != extensions.cend())
 		{
 			isGame = true;
-			if (!hasHigherPriorityDiscImage(filePath, extension, folderPath))
+			if (!hasHigherPriorityDiscImage(filePath, extension, folderPath) && !m3uMembers.count(filePath))
 				out.push_back(filePath);
 		}
 
