@@ -152,6 +152,10 @@ void GuiMenu::openSoundSettings()
 	// 온보드(AML-AUGESOUND)는 "HDMI"로, 그 외(USB 오디오 등)는 실제 장치
 	// 이름 그대로 표시. 카드 번호가 아니라 이름으로 값을 구성해서(hw:CARD=
 	// 이름,DEV=0) USB 장치가 먼저 꽂혀 번호가 밀려도 안 깨지게 함.
+	// 2026-07-16: DEFAULT는 매번 스캔 결과에 따라 있다 없다 하는 조건부 항목이
+	// 아니라 항상 존재하는 고정 첫 항목이어야 함(선택값이 실제 카드와 매칭되면
+	// DEFAULT가 목록에서 사라지는 버그가 있었음). RP2040ZERO(MT-32 에뮬레이터의
+	// USB 인터페이스 - 재생용 카드가 아님)는 목록에서 제외.
 	{
 		std::vector<std::pair<std::string, std::string>> cards; // (label, alsaId)
 		std::ifstream f("/proc/asound/cards");
@@ -165,27 +169,33 @@ void GuiMenu::openSoundSettings()
 			std::string id = line.substr(lb + 1, rb - lb - 1);
 			while (!id.empty() && id.back() == ' ') id.pop_back();
 			if (id.empty()) continue;
+			if (id.find("RP2040") != std::string::npos) continue; // MT-32 USB 인터페이스 제외
 			std::string label = (id == "AMLAUGESOUND") ? "HDMI" : id;
 			cards.push_back({ label, id });
 		}
 		std::string origCard = Settings::getInstance()->getString("AudioCard");
+		// origCard가 스캔된 카드 어디에도 안 걸리면(예: 이전에 고른 USB 카드가 지금은
+		// 안 꽂혀있음) DEFAULT를 선택 상태로 - 항목 전체가 미선택 상태가 되는 것 방지.
+		bool origMatchesCard = false;
+		for (auto& c : cards)
+			if ("hw:CARD=" + c.second + ",DEV=0" == origCard) { origMatchesCard = true; break; }
 		auto audio_card = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO CARD"), false);
-		bool anySel = false;
+		audio_card->add("DEFAULT", "default", !origMatchesCard);
 		for (auto& c : cards)
 		{
 			std::string val = "hw:CARD=" + c.second + ",DEV=0";
-			bool sel = (val == origCard);
-			if (sel) anySel = true;
-			audio_card->add(c.first, val, sel);
+			audio_card->add(c.first, val, val == origCard);
 		}
-		if (!anySel)
-			audio_card->add("default", "default", true);
 		s->addWithLabel(_("AUDIO CARD"), audio_card);
 		s->addSaveFunc([audio_card, origCard] {
 			std::string newVal = audio_card->getSelected();
 			if (newVal == origCard) return;
 			Settings::getInstance()->setString("AudioCard", newVal);
-			cfgWriteKey(rpConfPath(), "global.audio_device", newVal, false);
+			// emulationstation. 접두 - Settings::loadRetropanguiConf()가 기동 시 자동으로
+			// 이 키를 읽어 Settings에 반영한다. 예전엔 global.audio_device로 저장했는데
+			// 그 접두사는 자동 로드 대상이 아니라서 ES 재시작(게임/Kodi 실행 후 복귀 포함)
+			// 때마다 AudioCard가 기본값으로 리셋되는 버그가 있었음(2026-07-16 발견).
+			cfgWriteKey(rpConfPath(), "emulationstation.AudioCard", newVal, false);
 			VolumeControl::getInstance()->deinit();
 			VolumeControl::getInstance()->init();
 		});
