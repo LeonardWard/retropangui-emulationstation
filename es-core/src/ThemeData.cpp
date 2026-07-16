@@ -10,6 +10,7 @@
 #include "Settings.h"
 #include <pugixml.hpp>
 #include <algorithm>
+#include <cstdio>
 
 std::vector<std::string> ThemeData::sSupportedViews { { "system" }, { "basic" }, { "detailed" }, { "grid" }, { "video" } };
 std::vector<std::string> ThemeData::sSupportedFeatures { { "video" }, { "carousel" }, { "z-index" }, { "visible" } };
@@ -336,6 +337,36 @@ void ThemeData::parseFeatures(const pugi::xml_node& root)
 	}
 }
 
+// <variables> 항목에 exec="명령어" 속성이 있으면 셸로 실행해 표준출력 첫 줄을
+// 값으로 씀 - 테마가 (ES 코드/rpui 훅 없이) 파일시스템을 직접 들여다보고
+// 동적인 값(예: 폴더 안 최신 파일 경로)을 스스로 결정할 수 있게 하는 범용
+// 기능. 명령어 문자열 자체도 resolvePlaceholders를 거치므로 exec 안에서도
+// ${system.name} 같은 다른 변수를 그대로 쓸 수 있음. 테마(theme.xml)는
+// 어차피 신뢰된 번들 콘텐츠라 Scripting::fireEvent가 이미 system()으로 훅
+// 스크립트를 실행하는 것과 같은 신뢰 모델 - 새로운 보안 경계 아님.
+static std::string runShellCommandFirstLine(const std::string& cmd)
+{
+	if(cmd.empty())
+		return "";
+
+	FILE* pipe = popen(cmd.c_str(), "r");
+	if(pipe == nullptr)
+		return "";
+
+	std::string result;
+	char buf[1024];
+	if(fgets(buf, sizeof(buf), pipe) != nullptr)
+		result = buf;
+
+	pclose(pipe);
+
+	// 개행/공백 트리밍 (popen 출력은 보통 fgets가 끝에 '\n'을 포함시킴)
+	while(!result.empty() && (result.back() == '\n' || result.back() == '\r' || result.back() == ' '))
+		result.pop_back();
+
+	return result;
+}
+
 void ThemeData::parseVariables(const pugi::xml_node& root)
 {
 	ThemeException error;
@@ -349,7 +380,18 @@ void ThemeData::parseVariables(const pugi::xml_node& root)
 	for(pugi::xml_node_iterator it = variables.begin(); it != variables.end(); ++it)
 	{
 		std::string key = it->name();
-		std::string val = resolvePlaceholders(it->text().as_string());
+		std::string val;
+
+		pugi::xml_attribute execAttr = it->attribute("exec");
+		if(execAttr)
+		{
+			std::string cmd = resolvePlaceholders(execAttr.value());
+			val = runShellCommandFirstLine(cmd);
+		}
+		else
+		{
+			val = resolvePlaceholders(it->text().as_string());
+		}
 
 		if (!val.empty())
 			mVariables.insert(std::pair<std::string, std::string>(key, val));
