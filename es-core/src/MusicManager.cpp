@@ -174,11 +174,29 @@ std::shared_ptr<MusicManager>& MusicManager::getInstance()
 }
 
 // RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색 (GuiMenu.cpp 규칙과 동일)
-// 2026-07-14: share/music → share/bios/music로 이전 - bios/는 이미 "시스템이
-// 제공/소비하는 리소스" 폴더라 배경음악(.mid)·사용자 교체용 사운드폰트(.sf2)도
-// 같은 성격. S61share가 실제 폴더 생성·번들 .mid 복사를 담당(마이그레이션 없음 -
-// 기존 share/music 사용자는 파일을 수동으로 옮겨야 함, 초기 사용자층 규모상 허용).
+// 2026-07-16: 2026-07-14에 share/music → share/bios/music로 옮겼던 걸 되돌림 -
+// bios/music은 사운드폰트(.sf2)·MT-32 롬처럼 "합성 재료"를 두는 곳이지 실제로
+// 재생할 곡(mp3/mid) 파일이 있을 자리가 아니었음(설계 오류, 사용자 지적). 실제
+// 재생곡 스캔은 share/music으로 복귀, 사운드폰트 탐색만 getSoundfontDirectory()
+// 로 분리해 share/bios/music을 계속 사용(dosbox의 share/bios/ 재귀 스캔 범위
+// 안에 있어야 dosbox MIDI Output도 같은 사운드폰트/롬을 재료로 쓸 수 있음).
 static std::string getMusicDirectory()
+{
+	const char* env = getenv("RETROPANGUI_SHARE");
+	if (env && env[0] != '\0')
+		return std::string(env) + "/music";
+
+	if (Utils::FileSystem::isDirectory("/share"))
+		return "/share/music";
+
+	const char* home = getenv("HOME");
+	return (home ? std::string(home) + "/share" : "/share") + "/music";
+}
+
+// 사운드폰트(.sf2)·MT-32 롬 등 MIDI 합성 재료가 있는 위치. dosbox의 share/bios/
+// 재귀 스캔 범위 안이라 dosbox MIDI Output(frontend)도 같은 파일을 재료로 쓸 수
+// 있음 - 실제 재생곡 폴더(getMusicDirectory())와는 별개.
+static std::string getSoundfontDirectory()
 {
 	const char* env = getenv("RETROPANGUI_SHARE");
 	if (env && env[0] != '\0')
@@ -191,11 +209,11 @@ static std::string getMusicDirectory()
 	return (home ? std::string(home) + "/share" : "/share") + "/bios/music";
 }
 
-// MIDI 합성용 사운드폰트 탐색: <share>/music 의 .sf2 (사용자 교체용) 우선,
-// 없으면 이미지 번들 MT-32 (bundled-bgmusic 패키지). 둘 다 없으면 빈 문자열.
-static std::string findSoundfont(const std::string& musicDir)
+// MIDI 합성용 사운드폰트 탐색: getSoundfontDirectory()의 .sf2 (사용자 교체용)
+// 우선, 없으면 이미지 번들 FluidR3_GM (bundled-bgmusic 패키지). 둘 다 없으면 빈 문자열.
+static std::string findSoundfont(const std::string& soundfontDir)
 {
-	Utils::FileSystem::stringList files = Utils::FileSystem::getDirContent(musicDir);
+	Utils::FileSystem::stringList files = Utils::FileSystem::getDirContent(soundfontDir);
 	for (Utils::FileSystem::stringList::const_iterator it = files.cbegin(); it != files.cend(); ++it)
 	{
 		if (Utils::String::toLower(Utils::FileSystem::getExtension(*it)) == ".sf2")
@@ -247,7 +265,7 @@ void MusicManager::start()
 	// MIDI는 사운드폰트가 있어야만 재생 가능 (VLC fluidsynth 플러그인)
 	// 사운드폰트는 libvlc 인스턴스 생성 시점에 --soundfont 로 고정됨 —
 	// 이후 sf2를 추가한 경우 ES 재시작 필요
-	const std::string soundfont = findSoundfont(musicDir);
+	const std::string soundfont = findSoundfont(getSoundfontDirectory());
 
 	// libvlc 인스턴스 lazy 생성
 	if (mVLC == nullptr)
