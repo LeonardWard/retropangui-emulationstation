@@ -143,6 +143,23 @@ const std::vector<FileData*>& FileData::getChildrenListToDisplay() {
 	bool needsFolderFiltering = !mSystem->isCollection() && !mSystem->getCores().empty() &&
 		(showFoldersSetting == "SCRAPED" || showFoldersSetting == "AUTO");
 
+	// 2026-07-16: screenshots 가상 시스템 flatten - 시스템별 폴더 계층
+	// (nes/snes/...)을 무시하고 하위 스크린샷 파일을 전부 평평한 목록으로
+	// 보여줌. 저장 구조는 그대로(write_system_override()가 계속
+	// screenshot_directory를 시스템 폴더로 지정) - 화면 표시만 바뀜
+	// (설계: todo-20260613-screenshot-system.html). getFilesRecursive()는
+	// Recalbox의 FolderData::GetItemsRecursivelyTo()와 동등한 기존 함수
+	// 재사용 - "screenshots" 하나에만 하드코딩, 전체 시스템에 토글 메뉴를
+	// 만드는 범용 기능까지는 불필요하다고 판단.
+	if (mSystem->getName() == "screenshots" && mType == FOLDER) {
+		if (mFilteredChildrenDirty || showFoldersSetting != mLastShowFoldersSetting) {
+			mFilteredChildren = getFilesRecursive(GAME, false);
+			mFilteredChildrenDirty = false;
+			mLastShowFoldersSetting = showFoldersSetting;
+		}
+		return mFilteredChildren;
+	}
+
 	// ALL mode with no active filter: return mChildren directly (never stored in mFilteredChildren)
 	if (!idx->isFiltered() && !needsFolderFiltering) {
 		return mChildren;
