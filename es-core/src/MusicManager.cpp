@@ -493,7 +493,12 @@ void MusicManager::playCurrent()
 	// SMF 내부 메타 텍스트(트랙명/마커)를 직접 읽어보고, 그것도 없으면 stem으로 대체.
 	libvlc_media_parse(media);
 	const char* tagTitle = libvlc_media_get_meta(media, libvlc_meta_Title);
-	if (tagTitle != nullptr && tagTitle[0] != '\0' && Utils::FileSystem::getFileName(path) != tagTitle)
+	// libvlc의 내부 ID3v2 파서가 일부 인코딩(특히 한자 포함 일본어 태그)에서
+	// 깨진 바이트열을 돌려주는 사례가 있음(실기기 확인, ffmpeg로는 정상 읽힘) -
+	// SMF 경로(readSmfTitle)와 동일하게 isValidUtf8()로 걸러서, 깨진 값이면
+	// "태그 없음"과 동일하게 취급해 stem으로 대체한다.
+	if (tagTitle != nullptr && tagTitle[0] != '\0' && Utils::FileSystem::getFileName(path) != tagTitle
+		&& isValidUtf8(tagTitle))
 	{
 		mCurrentTitle = tagTitle;
 	}
