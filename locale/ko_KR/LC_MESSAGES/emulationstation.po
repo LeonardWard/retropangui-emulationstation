@@ -594,3 +594,6 @@ msgstr "바이오스 정의 파일을 찾을 수 없음"
 
 msgid "MENU RUMBLE"
 msgstr "메뉴 진동"
+
+msgid "MENU RUMBLE STRENGTH"
+msgstr "메뉴 진동 세기"

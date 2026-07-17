@@ -243,12 +243,26 @@ void InputManager::rumble(SDL_JoystickID deviceId, float strength, int durationM
 	if(it == mJoysticks.end() || it->second == nullptr)
 		return;
 
+	// 사용자 세기 설정(메뉴 슬라이더, 10~100%)을 곱해서 최종 세기 결정 -
+	// 호출부는 상대 비율(이동 0.6/선택 1.0)만 넘긴다.
+	strength *= Settings::getInstance()->getInt("MenuRumbleStrength") / 100.f;
 	if(strength < 0.f) strength = 0.f;
 	if(strength > 1.f) strength = 1.f;
 
-	// 저주파(strong) 모터만 사용 - 고주파까지 쓰면 "톡"이 아니라 "징-" 하는 느낌이 됨.
-	// 진동 미지원 장치(SmartJoy 어댑터 등)는 SDL이 -1을 돌려주고 끝이라 예외 처리 불필요.
-	SDL_JoystickRumble(it->second, (Uint16)(strength * 0xFFFF), 0, (Uint32)durationMs);
+	// 두 모터 모두 구동 - PS2(DualShock) 계열은 작은 모터(weak)가 on/off 방식이라
+	// 짧은 "톡" 느낌을 담당하고, 큰 모터(strong)는 회전 시동 시간이 필요해 저세기
+	// 단펄스로는 체감이 안 됨(2026-07-17 Twin USB 실기기 확인 - strong 18%/40ms는
+	// 무감각, weak 100%는 뚜렷). 진동 미지원 장치는 SDL이 -1을 돌려주고 끝.
+	Uint16 mag = (Uint16)(strength * 0xFFFF);
+	SDL_JoystickRumble(it->second, mag, mag, (Uint32)durationMs);
+}
+
+void InputManager::rumbleAll(float strength, int durationMs)
+{
+	// 세기 슬라이더 조절 중 즉시 피드백용 - 어느 패드로 조작 중인지 슬라이더
+	// 콜백에서는 알 수 없어서 열려 있는 패드 전부에 보냄.
+	for(auto it = mJoysticks.cbegin(); it != mJoysticks.cend(); ++it)
+		rumble(it->first, strength, durationMs);
 }
 
 InputConfig* InputManager::getInputConfigByDevice(int device)

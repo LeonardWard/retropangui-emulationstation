@@ -84,6 +84,8 @@ void Settings::setDefaults()
 	mBoolMap["BackgroundMusic"] = true;
 	// 메뉴 조작 시 패드 진동 피드백 (InputManager::rumble)
 	mBoolMap["MenuRumble"] = true;
+	// 메뉴 진동 세기(%) - 컨트롤러 설정 슬라이더로 조절
+	mIntMap["MenuRumbleStrength"] = 80;
 	// 게임 실행 전 세이브 스테이트 목록+썸네일 화면(GuiSaveStates) - 기존 실행
 	// 흐름을 가로채는 기능이라 기본 꺼짐(todo-20260706-savestate-preview.html)
 	mBoolMap["SaveStatePreview"] = false;

@@ -21,6 +21,7 @@
 #include "CollectionSystemManager.h"
 #include "EmulationStation.h"
 #include "InputConfig.h"
+#include "InputManager.h"
 #include "LocaleES.h"
 #include "MusicManager.h"
 #include "Scripting.h"
@@ -1134,6 +1135,15 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 				if (now - *lastCallTick < 80) return;
 				*lastCallTick = now;
 				VolumeControl::getInstance()->setVolume((int)Math::round(val));
+			});
+		}
+		else if (item.conf_key == "emulationstation.MenuRumbleStrength") {
+			// 조절 즉시 Settings에 반영 + 그 세기로 바로 진동을 울려서
+			// 사용자가 움직이면서 느낌을 확인할 수 있게 함(어느 패드로 조작
+			// 중인지는 여기서 모르므로 rumbleAll).
+			sl->setChangedCallback([](float val) {
+				Settings::getInstance()->setInt("MenuRumbleStrength", (int)Math::round(val));
+				InputManager::getInstance()->rumbleAll(1.0f, 90);
 			});
 		}
 		s->addWithLabel(_(item.label.c_str()), sl);

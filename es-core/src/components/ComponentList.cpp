@@ -4,12 +4,13 @@
 
 #define TOTAL_HORIZONTAL_PADDING_PX 20
 
-// 메뉴 진동 세기/길이 - 실기기 튜닝 값. 방향 이동은 스치듯 약하게,
-// 확인(선택)은 구분되게 조금 더 뚜렷하게.
-#define RUMBLE_NAV_STRENGTH     0.18f
-#define RUMBLE_NAV_MS           40
-#define RUMBLE_SELECT_STRENGTH  0.35f
-#define RUMBLE_SELECT_MS        60
+// 메뉴 진동 상대 비율/길이 - 절대 세기는 MenuRumbleStrength 슬라이더(%)가
+// 결정하고 여기선 이동<선택 구분만 둠. 큰 모터의 회전 시동 시간 때문에
+// 너무 짧으면 체감이 안 돼 40ms→60/90ms로 상향(2026-07-17 Twin USB 실측).
+#define RUMBLE_NAV_STRENGTH     0.6f
+#define RUMBLE_NAV_MS           60
+#define RUMBLE_SELECT_STRENGTH  1.0f
+#define RUMBLE_SELECT_MS        90
 
 // RetroPangui: LIST_PAUSE_AT_END로 변경 - 단일 키 누름 시 최상단/최하단에서 wrap-around
 ComponentList::ComponentList(Window* window) : IList<ComponentListRow, void*>(window, LIST_SCROLL_STYLE_SLOW, LIST_PAUSE_AT_END)
