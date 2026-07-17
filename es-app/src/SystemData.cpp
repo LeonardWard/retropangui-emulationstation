@@ -259,8 +259,11 @@ static void scanGamePaths(const std::string& folderPath, const std::vector<std::
 	}
 }
 
-int SystemData::refreshGamelist()
+int SystemData::refreshGamelist(int* removedOut)
 {
+	if (removedOut)
+		*removedOut = 0;
+
 	if (mIsCollectionSystem || !mIsGameSystem)
 		return 0;
 	if (!FileSystem::isDirectory(mEnvData->mStartPath))
@@ -269,64 +272,111 @@ int SystemData::refreshGamelist()
 	std::vector<std::string> diskGames;
 	scanGamePaths(mEnvData->mStartPath, mEnvData->mSearchExtensions,
 	              Settings::getInstance()->getBool("ShowHiddenFiles"), diskGames);
+	std::set<std::string> diskGameSet(diskGames.cbegin(), diskGames.cend());
 
 	std::string xmlPath = getGamelistPath(true);
-	pugi::xml_document doc;
-	pugi::xml_node root;
+
+	// RetroPangui 2026-07-18(사용자 지시): 기존 <path> 노드를 찾아 지우고 다시
+	// 넣는 diff-patch 방식 대신, 새 문서를 통째로 다시 써서 로직을 단순화.
+	// 살아있는(디스크에 실제 존재하는) <game>은 노드를 그대로 복사해 메타데이터
+	// 보존, 디스크에서 사라진 <game>은 복사하지 않고 개수만 셈(추가 감지만 하고
+	// 삭제는 전혀 못 보던 기존 결함 해결). <folder> 등 다른 노드는 그대로 보존.
+	// saveGamelistXml()이 교체 전 기존 파일을 .old로 백업해준다.
+	pugi::xml_document oldDoc;
+	pugi::xml_node oldRoot;
 	if (FileSystem::exists(xmlPath))
 	{
-		pugi::xml_parse_result res = doc.load_file(xmlPath.c_str());
+		pugi::xml_parse_result res = oldDoc.load_file(xmlPath.c_str());
 		if (!res)
 		{
 			LOG(LogError) << "refreshGamelist: error parsing \"" << xmlPath << "\": " << res.description();
 			return -1;
 		}
-		root = doc.child("gameList");
-		if (!root)
-			root = doc.append_child("gameList");
+		oldRoot = oldDoc.child("gameList");
 	}
-	else
-		root = doc.append_child("gameList");
 
-	// 이미 등록된 경로(절대경로로 정규화)
-	std::set<std::string> registered;
-	for (pugi::xml_node g = root.child("game"); g; g = g.next_sibling("game"))
+	pugi::xml_document newDoc;
+	pugi::xml_node newRoot = newDoc.append_child("gameList");
+
+	std::set<std::string> keptPaths;
+	std::vector<std::string> removedPaths;
+	if (oldRoot)
 	{
-		pugi::xml_node p = g.child("path");
-		if (p)
-			registered.insert(FileSystem::resolveRelativePath(p.text().get(), mEnvData->mStartPath, false, true));
+		for (pugi::xml_node child = oldRoot.first_child(); child; child = child.next_sibling())
+		{
+			if (std::string(child.name()) == "game")
+			{
+				pugi::xml_node p = child.child("path");
+				std::string absPath = p ? FileSystem::resolveRelativePath(
+					p.text().get(), mEnvData->mStartPath, false, true) : "";
+
+				if (!absPath.empty() && diskGameSet.count(absPath))
+				{
+					newRoot.append_copy(child);
+					keptPaths.insert(absPath);
+				}
+				else
+				{
+					removedPaths.push_back(absPath);
+				}
+			}
+			else
+			{
+				newRoot.append_copy(child); // folder 등 - 이 함수가 다루는 대상이 아니라 그대로 보존
+			}
+		}
 	}
 
 	int added = 0;
 	for (std::vector<std::string>::const_iterator it = diskGames.cbegin(); it != diskGames.cend(); ++it)
 	{
-		if (registered.find(*it) != registered.cend())
+		if (keptPaths.count(*it))
 			continue;
 
-		pugi::xml_node gameNode = root.append_child("game");
+		pugi::xml_node gameNode = newRoot.append_child("game");
 		gameNode.append_child("path").text().set(
 			FileSystem::createRelativePath(*it, mEnvData->mStartPath, false, true).c_str());
 		gameNode.append_child("name").text().set(FileSystem::getStem(*it).c_str());
 		added++;
 	}
 
-	if (added == 0)
+	int removed = (int)removedPaths.size();
+	if (added == 0 && removed == 0)
 		return 0;
 
-	if (!saveGamelistXml(doc, xmlPath))
+	if (!saveGamelistXml(newDoc, xmlPath))
 	{
 		LOG(LogError) << "refreshGamelist: failed to write \"" << xmlPath << "\"";
 		return -1;
 	}
 
-	// 새 항목을 메모리 트리에 반영(기존 항목은 findOrCreateFile이 그대로 반환)
-	parseGamelist(this);
+	// 사라진 게임을 메모리 트리에서도 제거 - 즐겨찾기/최근플레이 등 컬렉션에 이
+	// 게임을 감싼 래퍼가 남아있으면 소스 삭제 후 댕글링 포인터가 되므로, "게임
+	// 직접 삭제" 메뉴(GuiGamelistOptions)와 동일하게 먼저 컬렉션 쪽 래퍼부터
+	// 정리한 뒤 소스 FileData를 지운다(소멸자가 부모/필터인덱스에서도 뗌).
+	if (removed > 0)
+	{
+		std::vector<FileData*> allGames = mRootFolder->getFilesRecursive(GAME);
+		for (std::vector<FileData*>::const_iterator it = allGames.cbegin(); it != allGames.cend(); ++it)
+		{
+			if (diskGameSet.count((*it)->getPath()))
+				continue;
+			CollectionSystemManager::get()->deleteCollectionFiles(*it);
+			delete *it;
+		}
+	}
 
-	// 새 게임이 필터 인덱스에 빠지지 않도록 전체 재색인
+	// 새 항목을 메모리 트리에 반영(기존 항목은 findOrCreateFile이 그대로 반환)
+	if (added > 0)
+		parseGamelist(this);
+
+	// 추가/삭제로 필터 인덱스가 어긋나지 않게 전체 재색인
 	mFilterIndex->resetIndex();
 	indexAllGameFilters(mRootFolder);
 
-	LOG(LogInfo) << "refreshGamelist: \"" << mName << "\" +" << added << " new games";
+	LOG(LogInfo) << "refreshGamelist: \"" << mName << "\" +" << added << " -" << removed;
+	if (removedOut)
+		*removedOut = removed;
 	return added;
 }
 

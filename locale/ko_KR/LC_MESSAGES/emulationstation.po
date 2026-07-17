@@ -615,3 +615,6 @@ msgstr "해시 확인 실패"
 
 msgid "FOUND"
 msgstr "확인됨"
+
+msgid "%i REMOVED"
+msgstr "%i개 제거됨"

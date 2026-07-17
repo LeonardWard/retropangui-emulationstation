@@ -11,7 +11,7 @@
 
 GuiGamelistRefresh::GuiGamelistRefresh(Window* window, const std::vector<SystemData*>& systems)
 	: GuiComponent(window), mBackground(window, ":/frame.png"),
-	  mSystems(systems), mIndex(0), mTotalAdded(0), mFailed(false), mDone(false)
+	  mSystems(systems), mIndex(0), mTotalAdded(0), mTotalRemoved(0), mFailed(false), mDone(false)
 {
 	addChild(&mBackground);
 
@@ -68,17 +68,27 @@ void GuiGamelistRefresh::update(int deltaTime)
 	if (mIndex < mSystems.size())
 	{
 		SystemData* sys = mSystems.at(mIndex);
-		int added = sys->refreshGamelist();
+		int removed = 0;
+		int added = sys->refreshGamelist(&removed);
 		if (added > 0)
-		{
 			mTotalAdded += added;
-			mChanged.push_back(sys);
-		}
+		if (removed > 0)
+			mTotalRemoved += removed;
+		if (added > 0 || removed > 0)
+			mChanged.push_back(sys); // 삭제만 있어도 뷰를 다시 그려야 반영됨
 		if (added < 0)
 			mFailed = true;
 
-		appendLine(sys->getFullName() + " ... " +
-			(added < 0 ? _("FAILED") : "+" + std::to_string(added)));
+		std::string line = sys->getFullName() + " ... ";
+		if (added < 0)
+			line += _("FAILED");
+		else
+		{
+			line += "+" + std::to_string(added);
+			if (removed > 0)
+				line += " -" + std::to_string(removed);
+		}
+		appendLine(line);
 		mIndex++;
 		return;
 	}
@@ -90,6 +100,9 @@ void GuiGamelistRefresh::update(int deltaTime)
 	appendLine("");
 	std::string summary = Utils::String::replace(_("DONE. %i NEW GAMES ADDED"),
 		"%i", std::to_string(mTotalAdded));
+	if (mTotalRemoved > 0)
+		summary += ", " + Utils::String::replace(_("%i REMOVED"),
+			"%i", std::to_string(mTotalRemoved));
 	if (mFailed)
 		summary += " - " + std::string(_("GAMELIST UPDATE FAILED"));
 	appendLine(summary);

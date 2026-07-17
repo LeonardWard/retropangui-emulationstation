@@ -37,6 +37,7 @@ private:
 	std::string mLog;
 	size_t mIndex;
 	int mTotalAdded;
+	int mTotalRemoved;
 	bool mFailed;
 	bool mDone;
 };
