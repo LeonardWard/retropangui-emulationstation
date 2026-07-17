@@ -68,11 +68,6 @@ static std::string cfgReadKey(const std::string& filePath, const std::string& fu
                               const std::string& def);
 static void cfgWriteKey(const std::string& filePath, const std::string& fullKey,
                         const std::string& value, bool quote);
-// 2026-07-16: 연결된 블루투스 오디오 기기 목록 - AUDIO CARD 메뉴에서 선택 가능하게
-// 하기 위해 rpui-bt가 쓰는 discovery.json에서 읽는다(GuiBtPairing.cpp의 손으로 짠
-// JSON 파싱과 동일한 스타일 - 이 파일은 그 클래스와 무관하니 별도로 작성).
-static std::vector<std::pair<std::string, std::string>> readConnectedBtAudioDevices(); // (label, mac)
-
 GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
@@ -151,72 +146,73 @@ void GuiMenu::openSoundSettings()
 	auto s = new GuiSettings(mWindow, _("SOUND SETTINGS"));
 	auto checks = std::make_shared<std::vector<RestartCheck>>();
 
-	// 2026-07-11: AUDIO CARD - "default/sysdefault/dmix/hw/plughw/null" 같은
-	// ALSA 기술 용어 고정 목록 대신, 지금 실제로 연결된 사운드카드를
-	// /proc/asound/cards에서 그때그때 스캔해서 보여줌(실시간 데이터라
-	// YAML 정적 목록으로 표현 불가 - BLUETOOTH DEVICES와 동일한 이유).
-	// 온보드(AML-AUGESOUND)는 "HDMI"로, 그 외(USB 오디오 등)는 실제 장치
-	// 이름 그대로 표시. 카드 번호가 아니라 이름으로 값을 구성해서(hw:CARD=
-	// 이름,DEV=0) USB 장치가 먼저 꽂혀 번호가 밀려도 안 깨지게 함.
-	// 2026-07-16: DEFAULT는 매번 스캔 결과에 따라 있다 없다 하는 조건부 항목이
-	// 아니라 항상 존재하는 고정 첫 항목이어야 함(선택값이 실제 카드와 매칭되면
-	// DEFAULT가 목록에서 사라지는 버그가 있었음). RP2040ZERO(MT-32 에뮬레이터의
-	// USB 인터페이스 - 재생용 카드가 아님)는 목록에서 제외.
+	// 2026-07-18 PulseAudio 전환에 맞춰 재구현(todo-20260716-pulseaudio-migration.html
+	// 마지막 후속 항목) - 예전엔 /proc/asound/cards의 raw ALSA 하드웨어를 스캔해서
+	// hw:CARD=... 문자열로 직접 여는 방식이었는데, 지금은 라우팅/믹싱을 PA가
+	// 전담하므로(ctl.!default가 type pulse) 그 경로는 PA를 우회해 죽은 선택지였음
+	// (블루투스 bluealsa: 문자열도 마찬가지 - bluealsa 데몬이 이제 no-op).
+	// PA가 실제로 아는 sink 목록(pactl list sinks)을 그대로 보여주고, 선택 시
+	// pactl set-default-sink 한 줄로 전환 - 재생 중인 스트림까지 즉시 옮겨간다.
+	// 블루투스 스피커는 연결되면 PA가 자동으로 sink를 만들어주므로 별도 스캔
+	// 코드(discovery.json 조회) 불필요 - 목록에 자연히 나타남.
+	// VolumeControl은 그대로 둬도 됨: AudioCard 설정을 안 건드리므로 항상
+	// "default"→ctl pulse Master로 남고, 그게 PA의 현재 default sink 볼륨에
+	// 자동으로 매핑됨(재초기화 불필요). 선택 상태 자체는 PA의
+	// module-default-device-restore가 재부팅 간 영속화하므로 ES 쪽에 별도
+	// 저장이 필요 없음 - 매번 pactl get-default-sink로 그때그때 조회.
 	{
-		std::vector<std::pair<std::string, std::string>> cards; // (label, alsaId)
-		std::ifstream f("/proc/asound/cards");
-		std::string line;
-		while (std::getline(f, line))
+		std::vector<std::pair<std::string, std::string>> sinks; // (label, sinkName)
+		FILE* p = popen("pactl list sinks 2>/dev/null", "r");
+		if (p)
 		{
-			auto lb = line.find('[');
-			auto rb = line.find(']');
-			if (lb == std::string::npos || rb == std::string::npos || rb < lb)
-				continue;
-			std::string id = line.substr(lb + 1, rb - lb - 1);
-			while (!id.empty() && id.back() == ' ') id.pop_back();
-			if (id.empty()) continue;
-			if (id.find("RP2040") != std::string::npos) continue; // MT-32 USB 인터페이스 제외
-			std::string label = (id == "AMLAUGESOUND") ? "HDMI" : id;
-			cards.push_back({ label, id });
+			char buf[512];
+			std::string curName, curDesc;
+			auto flush = [&]() {
+				if (!curName.empty())
+					sinks.push_back({ curDesc.empty() ? curName : curDesc, curName });
+				curName.clear(); curDesc.clear();
+			};
+			while (fgets(buf, sizeof(buf), p))
+			{
+				std::string line(buf);
+				if (line.rfind("Sink #", 0) == 0) { flush(); continue; }
+				auto trimEol = [](std::string& s) {
+					while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+				};
+				size_t nm = line.find("\tName: ");
+				if (nm != std::string::npos) { curName = line.substr(nm + 7); trimEol(curName); }
+				size_t ds = line.find("\tDescription: ");
+				if (ds != std::string::npos) { curDesc = line.substr(ds + 14); trimEol(curDesc); }
+			}
+			flush();
+			pclose(p);
 		}
-		// 2026-07-16: 연결된 블루투스 오디오 기기도 선택 가능한 항목으로 추가 -
-		// bluealsa ALSA 플러그인 확장 device 문자열(DEV=mac,PROFILE=a2dp)로 값을
-		// 구성하면 RA audio_device/ES 믹서 둘 다 이 값을 그대로 쓸 수 있다.
-		std::vector<std::pair<std::string, std::string>> btDevices = readConnectedBtAudioDevices(); // (label, mac)
 
-		std::string origCard = Settings::getInstance()->getString("AudioCard");
-		// origCard가 스캔된 카드/블루투스 기기 어디에도 안 걸리면(예: 이전에 고른
-		// USB 카드가 지금은 안 꽂혀있음) DEFAULT를 선택 상태로 - 항목 전체가
-		// 미선택 상태가 되는 것 방지.
-		bool origMatchesCard = false;
-		for (auto& c : cards)
-			if ("hw:CARD=" + c.second + ",DEV=0" == origCard) { origMatchesCard = true; break; }
-		for (auto& b : btDevices)
-			if ("bluealsa:DEV=" + b.second + ",PROFILE=a2dp" == origCard) { origMatchesCard = true; break; }
+		std::string curDefault;
+		{
+			FILE* pd = popen("pactl get-default-sink 2>/dev/null", "r");
+			if (pd)
+			{
+				char buf[256];
+				if (fgets(buf, sizeof(buf), pd)) { curDefault = buf; while (!curDefault.empty() && (curDefault.back() == '\n' || curDefault.back() == '\r')) curDefault.pop_back(); }
+				pclose(pd);
+			}
+		}
+
 		auto audio_card = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO CARD"), false);
-		audio_card->add("DEFAULT", "default", !origMatchesCard);
-		for (auto& c : cards)
-		{
-			std::string val = "hw:CARD=" + c.second + ",DEV=0";
-			audio_card->add(c.first, val, val == origCard);
-		}
-		for (auto& b : btDevices)
-		{
-			std::string val = "bluealsa:DEV=" + b.second + ",PROFILE=a2dp";
-			audio_card->add(b.first + " (BT)", val, val == origCard);
-		}
+		for (auto& sk : sinks)
+			audio_card->add(sk.first, sk.second, sk.second == curDefault);
 		s->addWithLabel(_("AUDIO CARD"), audio_card);
-		s->addSaveFunc([audio_card, origCard] {
+		s->addSaveFunc([audio_card, curDefault] {
 			std::string newVal = audio_card->getSelected();
-			if (newVal == origCard) return;
-			Settings::getInstance()->setString("AudioCard", newVal);
-			// emulationstation. 접두 - Settings::loadRetropanguiConf()가 기동 시 자동으로
-			// 이 키를 읽어 Settings에 반영한다. 예전엔 global.audio_device로 저장했는데
-			// 그 접두사는 자동 로드 대상이 아니라서 ES 재시작(게임/Kodi 실행 후 복귀 포함)
-			// 때마다 AudioCard가 기본값으로 리셋되는 버그가 있었음(2026-07-16 발견).
-			cfgWriteKey(rpConfPath(), "emulationstation.AudioCard", newVal, false);
-			VolumeControl::getInstance()->deinit();
-			VolumeControl::getInstance()->init();
+			if (newVal.empty() || newVal == curDefault) return;
+			std::string cmd = "pactl set-default-sink '" + newVal + "'";
+			system(cmd.c_str());
+			// 재생 중이던 스트림(BGM 등)도 새 default로 옮겨줌 - set-default-sink는
+			// 이후 새로 열리는 스트림에만 적용되고 기존 스트림은 안 옮기므로 명시 필요
+			std::string moveCmd = "for i in $(pactl list sink-inputs short | awk '{print $1}'); do "
+				"pactl move-sink-input \"$i\" '" + newVal + "' 2>/dev/null; done";
+			system(moveCmd.c_str());
 		});
 	}
 
@@ -749,53 +745,6 @@ void GuiMenu::openKodiMediaCenter()
 // ---------------------------------------------------------------------------
 // RetroAchievements - retropangui.conf / retroarch.cfg 읽기·쓰기 헬퍼
 // ---------------------------------------------------------------------------
-
-// AUDIO CARD 메뉴용 - rpui-bt discovery.json에서 "연결됨 + audio-* 아이콘"인
-// 기기만 골라 (label, mac) 쌍으로 돌려준다. GuiBtPairing.cpp의 jsonStrVal류와
-// 같은 방식(외부 JSON 라이브러리 없이 손으로 파싱) - 이 파일은 그 클래스와
-// 무관해서 별도로 작성했다.
-static std::vector<std::pair<std::string, std::string>> readConnectedBtAudioDevices()
-{
-	std::vector<std::pair<std::string, std::string>> result;
-	std::ifstream f("/tmp/retropangui-bt-discovery.json");
-	if (!f.is_open()) return result;
-	std::stringstream ss;
-	ss << f.rdbuf();
-	std::string buf = ss.str();
-
-	auto jsonStrVal = [&](const std::string& chunk, const std::string& key) -> std::string {
-		std::string needle = "\"" + key + "\": \"";
-		size_t pos = chunk.find(needle);
-		if (pos == std::string::npos) return {};
-		pos += needle.size();
-		size_t end = chunk.find('"', pos);
-		return end == std::string::npos ? std::string() : chunk.substr(pos, end - pos);
-	};
-	auto jsonBoolVal = [&](const std::string& chunk, const std::string& key) -> bool {
-		return chunk.find("\"" + key + "\": true") != std::string::npos;
-	};
-
-	std::vector<size_t> starts;
-	size_t pos = 0;
-	while ((pos = buf.find("\"mac\": \"", pos)) != std::string::npos) {
-		starts.push_back(pos);
-		pos += 1;
-	}
-	for (size_t i = 0; i < starts.size(); i++) {
-		size_t begin = starts[i];
-		size_t end = (i + 1 < starts.size()) ? starts[i + 1] : buf.size();
-		std::string chunk = buf.substr(begin, end - begin);
-
-		std::string mac = jsonStrVal(chunk, "mac");
-		std::string icon = jsonStrVal(chunk, "icon");
-		if (mac.empty() || icon.rfind("audio-", 0) != 0) continue;
-		if (!jsonBoolVal(chunk, "connected")) continue;
-
-		std::string name = jsonStrVal(chunk, "name");
-		result.push_back({ name.empty() ? mac : name, mac });
-	}
-	return result;
-}
 
 // RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
 static std::string getSharePath()
