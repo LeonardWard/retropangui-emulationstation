@@ -20,11 +20,12 @@
 
 #define BIOS_DEFINITION_FILE "/usr/share/retropangui/bios-check.json"
 
-// 상태 색상 - Ok/Warning/Missing (todo-20260714-bios-check-menu.html의
-// Recalbox식 3단계 Green/Yellow/Red 모델)
+// 상태 색상 - 정상/주의/누락 (Recalbox식 3단계 Green/Yellow/Red 모델)
 #define COLOR_OK      0x44AA44FF
 #define COLOR_WARN    0xCC9933FF
 #define COLOR_MISSING 0xCC3333FF
+#define COLOR_HEADER  0x8899AAFF
+#define COLOR_TEXT    0x777777FF
 
 // RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
 // (MusicManager.cpp getMusicDirectory()와 동일 규칙)
@@ -77,16 +78,26 @@ GuiBiosCheck::GuiBiosCheck(Window* window)
 		Font::get(FONT_SIZE_MEDIUM), 0x555555FF, ALIGN_CENTER);
 	addChild(mTitle.get());
 
+	// 요약 칩 3개 - 스캔 중에도 실시간으로 숫자가 올라가며 색으로 구분됨
+	mChipOk = std::make_shared<TextComponent>(mWindow, "", Font::get(FONT_SIZE_SMALL), COLOR_OK, ALIGN_LEFT);
+	mChipWarn = std::make_shared<TextComponent>(mWindow, "", Font::get(FONT_SIZE_SMALL), COLOR_WARN, ALIGN_LEFT);
+	mChipMiss = std::make_shared<TextComponent>(mWindow, "", Font::get(FONT_SIZE_SMALL), COLOR_MISSING, ALIGN_LEFT);
+	addChild(mChipOk.get());
+	addChild(mChipWarn.get());
+	addChild(mChipMiss.get());
+
 	mList = std::make_shared<ComponentList>(mWindow);
+	mList->setCursorChangedCallback([this](CursorState) { updateDetail(); });
 	addChild(mList.get());
 
-	mSummary = std::make_shared<TextComponent>(mWindow, _("SCANNING..."),
-		Font::get(FONT_SIZE_SMALL), 0x777777FF, ALIGN_CENTER);
-	addChild(mSummary.get());
+	mDetail = std::make_shared<TextComponent>(mWindow, _("SCANNING..."),
+		Font::get(FONT_SIZE_SMALL), COLOR_TEXT, ALIGN_CENTER);
+	addChild(mDetail.get());
 
 	loadDefinitions();
+	updateSummaryChips();
 
-	setSize(Renderer::getScreenWidth() * 0.7f, Renderer::getScreenHeight() * 0.8f);
+	setSize(Renderer::getScreenWidth() * 0.72f, Renderer::getScreenHeight() * 0.82f);
 	setPosition((Renderer::getScreenWidth() - mSize.x()) / 2,
 	            (Renderer::getScreenHeight() - mSize.y()) / 2);
 }
@@ -97,7 +108,7 @@ void GuiBiosCheck::loadDefinitions()
 	if (!f.is_open())
 	{
 		LOG(LogError) << "GuiBiosCheck: 정의 파일 없음 - " << BIOS_DEFINITION_FILE;
-		mSummary->setText(_("BIOS DEFINITION FILE NOT FOUND"));
+		mDetail->setText(_("BIOS DEFINITION FILE NOT FOUND"));
 		mDone = true;
 		return;
 	}
@@ -111,7 +122,7 @@ void GuiBiosCheck::loadDefinitions()
 	{
 		LOG(LogError) << "GuiBiosCheck: JSON 파싱 실패 - "
 			<< (doc.HasParseError() ? rapidjson::GetParseError_En(doc.GetParseError()) : "루트가 오브젝트 아님");
-		mSummary->setText(_("BIOS DEFINITION FILE NOT FOUND"));
+		mDetail->setText(_("BIOS DEFINITION FILE NOT FOUND"));
 		mDone = true;
 		return;
 	}
@@ -155,7 +166,7 @@ void GuiBiosCheck::loadDefinitions()
 
 	if (mEntries.empty())
 	{
-		mSummary->setText(_("BIOS DEFINITION FILE NOT FOUND"));
+		mDetail->setText(_("BIOS DEFINITION FILE NOT FOUND"));
 		mDone = true;
 	}
 }
@@ -168,6 +179,7 @@ void GuiBiosCheck::checkEntry(BiosEntry& e)
 	{
 		e.status = e.mandatory ? BiosStatus::Missing : BiosStatus::Warning;
 		e.statusText = e.mandatory ? "MISSING" : "MISSING (OPTIONAL)";
+		e.detail = e.note;
 		return;
 	}
 
@@ -175,6 +187,7 @@ void GuiBiosCheck::checkEntry(BiosEntry& e)
 	{
 		e.status = BiosStatus::Ok;
 		e.statusText = "FOUND";
+		e.detail = e.note;
 		return;
 	}
 
@@ -183,6 +196,7 @@ void GuiBiosCheck::checkEntry(BiosEntry& e)
 	{
 		e.status = BiosStatus::Warning;
 		e.statusText = "MD5 CHECK FAILED";
+		e.detail = e.note;
 		return;
 	}
 
@@ -192,28 +206,87 @@ void GuiBiosCheck::checkEntry(BiosEntry& e)
 		{
 			e.status = BiosStatus::Ok;
 			e.statusText = "OK";
+			e.detail = e.note;
 			return;
 		}
 	}
 
 	e.status = e.hashMandatory ? BiosStatus::Missing : BiosStatus::Warning;
 	e.statusText = "MD5 MISMATCH";
+	// 어떤 파일이 온 건지 사용자가 추적할 수 있게 실측 해시를 상세줄에 노출
+	e.detail = e.note + (e.note.empty() ? "" : " · ") + "md5 " + hash;
+}
+
+void GuiBiosCheck::addSystemHeaderRow(const std::string& name)
+{
+	ComponentListRow row;
+	row.addElement(std::make_shared<TextComponent>(mWindow, Utils::String::toUpper(name),
+		Font::get(FONT_SIZE_SMALL), COLOR_HEADER), true);
+	mList->addRow(row);
+	mRowEntry.push_back(-1);
 }
 
 void GuiBiosCheck::addResultRow(const BiosEntry& e)
 {
+	if (e.system != mLastSystem)
+	{
+		addSystemHeaderRow(e.systemName);
+		mLastSystem = e.system;
+	}
+
 	unsigned int color = COLOR_OK;
 	if (e.status == BiosStatus::Warning) color = COLOR_WARN;
 	else if (e.status == BiosStatus::Missing) color = COLOR_MISSING;
 
-	std::string text = e.systemName + " · " + e.path + " — " + e.statusText;
-	if (!e.note.empty())
-		text += " (" + e.note + ")";
-
 	ComponentListRow row;
-	row.addElement(std::make_shared<TextComponent>(mWindow, text,
-		Font::get(FONT_SIZE_SMALL), color), true);
+	// [●상태점] [파일명(남는 폭 전부)] [한국어 상태 라벨] - 색으로 한눈에 구분
+	row.addElement(std::make_shared<TextComponent>(mWindow, "  ● ",
+		Font::get(FONT_SIZE_SMALL), color), false);
+	row.addElement(std::make_shared<TextComponent>(mWindow, e.path,
+		Font::get(FONT_SIZE_SMALL), COLOR_TEXT), true);
+	row.addElement(std::make_shared<TextComponent>(mWindow, _(e.statusText.c_str()),
+		Font::get(FONT_SIZE_SMALL), color), false);
 	mList->addRow(row);
+	mRowEntry.push_back((int)mIndex);
+}
+
+void GuiBiosCheck::updateSummaryChips()
+{
+	mChipOk->setText("● " + std::string(_("OK")) + " " + std::to_string(mOkCount));
+	mChipWarn->setText("● " + std::string(_("WARNING")) + " " + std::to_string(mWarnCount));
+	mChipMiss->setText("● " + std::string(_("MISSING")) + " " + std::to_string(mMissingCount));
+
+	// 세 칩을 가운데 정렬로 나란히 배치 - 폭이 숫자에 따라 변해서 매번 재계산
+	const float y = mTitle->getPosition().y() + mTitle->getSize().y() * 1.35f;
+	const float gap = Font::get(FONT_SIZE_SMALL)->sizeText("MM").x();
+	float wOk = Font::get(FONT_SIZE_SMALL)->sizeText(mChipOk->getValue()).x();
+	float wWarn = Font::get(FONT_SIZE_SMALL)->sizeText(mChipWarn->getValue()).x();
+	float wMiss = Font::get(FONT_SIZE_SMALL)->sizeText(mChipMiss->getValue()).x();
+	float total = wOk + wWarn + wMiss + gap * 2;
+	float x = (mSize.x() - total) / 2.0f;
+	mChipOk->setPosition(x, y);
+	mChipWarn->setPosition(x + wOk + gap, y);
+	mChipMiss->setPosition(x + wOk + gap + wWarn + gap, y);
+}
+
+void GuiBiosCheck::updateDetail()
+{
+	if (!mDone && mIndex < mEntries.size())
+		return; // 스캔 중엔 진행 표시를 유지
+
+	const int cursor = mList->getCursorId();
+	if (cursor < 0 || cursor >= (int)mRowEntry.size() || mRowEntry[cursor] < 0)
+	{
+		mDetail->setText("");
+		return;
+	}
+
+	const BiosEntry& e = mEntries.at(mRowEntry[cursor]);
+	unsigned int color = COLOR_OK;
+	if (e.status == BiosStatus::Warning) color = COLOR_WARN;
+	else if (e.status == BiosStatus::Missing) color = COLOR_MISSING;
+	mDetail->setColor(color);
+	mDetail->setText(e.detail.empty() ? std::string(_(e.statusText.c_str())) : e.detail);
 }
 
 void GuiBiosCheck::update(int deltaTime)
@@ -232,17 +305,17 @@ void GuiBiosCheck::update(int deltaTime)
 		else if (e.status == BiosStatus::Warning) mWarnCount++;
 		else mMissingCount++;
 		addResultRow(e);
+		updateSummaryChips();
+		mDetail->setColor(COLOR_TEXT);
+		mDetail->setText(std::string(_("SCANNING...")) + " " + std::to_string(mIndex + 1)
+			+ " / " + std::to_string(mEntries.size()));
 		mIndex++;
 		return;
 	}
 
 	writeReport();
-
-	mSummary->setText("OK " + std::to_string(mOkCount)
-		+ " · WARNING " + std::to_string(mWarnCount)
-		+ " · MISSING " + std::to_string(mMissingCount)
-		+ "  (bios_report.txt)");
 	mDone = true;
+	updateDetail();
 	updateHelpPrompts();
 }
 
@@ -281,13 +354,16 @@ void GuiBiosCheck::onSizeChanged()
 	mTitle->setSize(mSize.x() - padX * 2, 0);
 	mTitle->setPosition(padX, padY);
 
-	const float summaryH = Font::get(FONT_SIZE_SMALL)->getLetterHeight() * 2.0f;
-	mSummary->setSize(mSize.x() - padX * 2, 0);
-	mSummary->setPosition(padX, mSize.y() - padY - summaryH);
+	const float detailH = Font::get(FONT_SIZE_SMALL)->getLetterHeight() * 2.2f;
+	mDetail->setSize(mSize.x() - padX * 2, 0);
+	mDetail->setPosition(padX, mSize.y() - padY - detailH);
 
-	const float listTop = padY + mTitle->getSize().y() * 1.6f;
+	const float chipH = Font::get(FONT_SIZE_SMALL)->getLetterHeight() * 2.0f;
+	const float listTop = mTitle->getPosition().y() + mTitle->getSize().y() * 1.35f + chipH;
 	mList->setPosition(padX, listTop);
-	mList->setSize(mSize.x() - padX * 2, mSummary->getPosition().y() - listTop - padY);
+	mList->setSize(mSize.x() - padX * 2, mDetail->getPosition().y() - listTop - padY * 0.5f);
+
+	updateSummaryChips();
 }
 
 bool GuiBiosCheck::input(InputConfig* config, Input input)

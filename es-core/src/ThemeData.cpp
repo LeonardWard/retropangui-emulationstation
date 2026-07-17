@@ -661,7 +661,7 @@ namespace
 	public:
 		ScrollableTextExtra(Window* window)
 			: GuiComponent(window), mText(window),
-			  mMarqueeTime(0), mMarqueeOffset(0), mMarqueeOffset2(0), mAlignRight(false)
+			  mMarqueeTime(0), mMarqueeOffset(0), mMarqueeOffset2(0)
 		{
 		}
 
@@ -675,8 +675,6 @@ namespace
 			mText.applyTheme(theme, view, element, properties ^ (POSITION | ThemeFlags::SIZE | ORIGIN | ROTATION | Z_INDEX | VISIBLE));
 			mText.setSize(0, 0);
 
-			const ThemeData::ThemeElement* elem = theme->getElement(view, element, "text");
-			mAlignRight = elem && elem->has("alignment") && elem->get<std::string>("alignment") == "right";
 		}
 
 		// 내부 TextComponent로 위임 — 호출부가 TextComponent인지 ScrollableTextExtra인지
@@ -700,7 +698,11 @@ namespace
 
 			const float textLength = mText.getSize().x();
 			const float limit = mSize.x();
-			if (textLength <= limit || !mText.getFont())
+			// 2026-07-17 사용자 지시: 길이와 무관하게 항상 우→좌로 흘림 -
+			// "넘칠 때만 스크롤" 분기 제거. 아래 이중 렌더 루프 수식은 짧은
+			// 텍스트에서도 그대로 성립한다(두 번째 사본이 returnLength 간격을
+			// 두고 오른쪽에서 이어 들어오는 컨베이어가 됨).
+			if (textLength <= 0 || !mText.getFont())
 			{
 				mMarqueeTime = 0;
 				mMarqueeOffset = 0;
@@ -739,21 +741,13 @@ namespace
 			Renderer::pushClipRect(Vector2i((int)trans.translation().x(), (int)trans.translation().y()),
 				Vector2i((int)mSize.x(), (int)mSize.y()));
 
-			if (textW <= mSize.x())
-			{
-				// 박스보다 짧으면 스크롤 없이 테마 정렬만 존중
-				Transform4x4f t = trans;
-				t.translate(Vector3f(mAlignRight ? mSize.x() - textW : 0.0f, yOff, 0));
-				mText.render(t);
-			}
-			else
 			{
 				Transform4x4f t = trans;
 				t.translate(Vector3f(-mMarqueeOffset, yOff, 0));
 				mText.render(t);
 				if (mMarqueeOffset2 < 0)
 				{
-					// 꼬리가 화면을 빠져나가는 동안 두 번째 사본이 이어 들어옴 (루프)
+					// 꼬리가 빠져나가는 동안 두 번째 사본이 이어 들어옴 (루프)
 					Transform4x4f t2 = trans;
 					t2.translate(Vector3f(-mMarqueeOffset2, yOff, 0));
 					mText.render(t2);
@@ -768,7 +762,6 @@ namespace
 		int mMarqueeTime;
 		float mMarqueeOffset;
 		float mMarqueeOffset2;
-		bool mAlignRight;
 	};
 }
 

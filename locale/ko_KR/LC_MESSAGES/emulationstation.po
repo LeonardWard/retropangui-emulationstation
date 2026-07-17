@@ -597,3 +597,21 @@ msgstr "메뉴 진동"
 
 msgid "MENU RUMBLE STRENGTH"
 msgstr "메뉴 진동 세기"
+
+msgid "WARNING"
+msgstr "주의"
+
+msgid "MISSING"
+msgstr "없음 (필수)"
+
+msgid "MISSING (OPTIONAL)"
+msgstr "없음 (선택)"
+
+msgid "MD5 MISMATCH"
+msgstr "해시 불일치"
+
+msgid "MD5 CHECK FAILED"
+msgstr "해시 확인 실패"
+
+msgid "FOUND"
+msgstr "확인됨"
