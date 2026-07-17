@@ -3,6 +3,8 @@
 #include "components/ImageComponent.h"
 #include "components/ScrollableContainer.h"
 #include "components/TextComponent.h"
+#include "math/Misc.h"
+#include "renderers/Renderer.h"
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
 #include "Log.h"
@@ -650,37 +652,123 @@ const std::shared_ptr<ThemeData>& ThemeData::getDefault()
 namespace
 {
 	// RetroPangui: scrollable="true" text extra 전용 래퍼.
-	// 긴 글이 size 박스를 넘으면 클리핑 없이 다른 요소 위로 넘쳐 그려지는 문제를
-	// ScrollableContainer(자동 스크롤)로 해결한다. 내부 TextComponent를 소유한다.
-	class ScrollableTextExtra : public ScrollableContainer
+	// 긴 글이 size 박스를 넘으면 클리핑 없이 다른 요소 위로 넘쳐 그려지는 문제 해결용.
+	// 2026-07-17: 세로(ScrollableContainer 자동 스크롤) → 가로(우→좌) 마퀴로 재작성 -
+	// BGM 제목 같은 한 줄 텍스트가 여러 줄로 접혀 위아래로 흐르는 게 어색하다는
+	// 사용자 지적. 루프 파라미터/이중 렌더 방식은 TextListComponent 선택행 마퀴와 동일.
+	class ScrollableTextExtra : public GuiComponent
 	{
 	public:
-		static const int SCROLL_DELAY_MS = 5 * 1000;
-
 		ScrollableTextExtra(Window* window)
-			: ScrollableContainer(window, SCROLL_DELAY_MS), mText(window)
+			: GuiComponent(window), mText(window),
+			  mMarqueeTime(0), mMarqueeOffset(0), mMarqueeOffset2(0), mAlignRight(false)
 		{
-			setAutoScroll(true);
-			addChild(&mText);
 		}
 
 		void applyTheme(const std::shared_ptr<ThemeData>& theme, const std::string& view,
 						const std::string& element, unsigned int properties) override
 		{
 			using namespace ThemeFlags;
-			// 컨테이너가 위치/크기를 갖고, 텍스트는 컨테이너 폭에 맞춰 높이 자동
-			ScrollableContainer::applyTheme(theme, view, element, POSITION | ThemeFlags::SIZE | Z_INDEX | VISIBLE);
-			mText.setSize(getSize().x(), 0);
+			// 박스(위치/크기)는 이 컴포넌트가 갖고, 텍스트는 한 줄 자연폭(size 0,0)으로
+			// 두어 넘침 여부를 폭 비교만으로 판정
+			GuiComponent::applyTheme(theme, view, element, properties & (POSITION | ThemeFlags::SIZE | ORIGIN | ROTATION | Z_INDEX | VISIBLE));
 			mText.applyTheme(theme, view, element, properties ^ (POSITION | ThemeFlags::SIZE | ORIGIN | ROTATION | Z_INDEX | VISIBLE));
+			mText.setSize(0, 0);
+
+			const ThemeData::ThemeElement* elem = theme->getElement(view, element, "text");
+			mAlignRight = elem && elem->has("alignment") && elem->get<std::string>("alignment") == "right";
 		}
 
 		// 내부 TextComponent로 위임 — 호출부가 TextComponent인지 ScrollableTextExtra인지
-		// 몰라도 setValue()만으로 텍스트를 갱신할 수 있게 함 (bgmTitle 등 동적 텍스트 extra용)
-		void setValue(const std::string& value) override { mText.setValue(value); }
+		// 몰라도 setValue()만으로 텍스트를 갱신할 수 있게 함 (bgmTitle 등 동적 텍스트 extra용).
+		// SystemView가 매 프레임 같은 값으로 호출하므로 변경 시에만 반영(마퀴 리셋 방지).
+		void setValue(const std::string& value) override
+		{
+			if (value == mText.getValue())
+				return;
+			mText.setValue(value);
+			mText.setSize(0, 0);
+			mMarqueeTime = 0;
+			mMarqueeOffset = 0;
+			mMarqueeOffset2 = 0;
+		}
 		std::string getValue() const override { return mText.getValue(); }
+
+		void update(int deltaTime) override
+		{
+			GuiComponent::update(deltaTime);
+
+			const float textLength = mText.getSize().x();
+			const float limit = mSize.x();
+			if (textLength <= limit || !mText.getFont())
+			{
+				mMarqueeTime = 0;
+				mMarqueeOffset = 0;
+				mMarqueeOffset2 = 0;
+				return;
+			}
+
+			// TextListComponent 선택행 마퀴와 동일한 속도/딜레이 공식
+			const float speed        = mText.getFont()->sizeText("ABCDEFGHIJKLMNOPQRSTUVWXYZ").x() * 0.247f;
+			const float delay        = 3000;
+			const float scrollLength = textLength;
+			const float returnLength = speed * 1.5f;
+			const float scrollTime   = (scrollLength * 1000) / speed;
+			const float returnTime   = (returnLength * 1000) / speed;
+			const int   maxTime      = (int)(delay + scrollTime + returnTime);
+
+			mMarqueeTime += deltaTime;
+			while (mMarqueeTime > maxTime)
+				mMarqueeTime -= maxTime;
+
+			mMarqueeOffset = Math::Scroll::loop(delay, scrollTime + returnTime, (float)mMarqueeTime, scrollLength + returnLength);
+			mMarqueeOffset2 = 0;
+			if (mMarqueeOffset > (scrollLength - (limit - returnLength)))
+				mMarqueeOffset2 = mMarqueeOffset - (scrollLength + returnLength);
+		}
+
+		void render(const Transform4x4f& parentTrans) override
+		{
+			if (!isVisible() || mText.getValue().empty())
+				return;
+
+			Transform4x4f trans = parentTrans * getTransform();
+			const float textW = mText.getSize().x();
+			const float yOff = (mSize.y() - mText.getSize().y()) / 2.0f;
+
+			Renderer::pushClipRect(Vector2i((int)trans.translation().x(), (int)trans.translation().y()),
+				Vector2i((int)mSize.x(), (int)mSize.y()));
+
+			if (textW <= mSize.x())
+			{
+				// 박스보다 짧으면 스크롤 없이 테마 정렬만 존중
+				Transform4x4f t = trans;
+				t.translate(Vector3f(mAlignRight ? mSize.x() - textW : 0.0f, yOff, 0));
+				mText.render(t);
+			}
+			else
+			{
+				Transform4x4f t = trans;
+				t.translate(Vector3f(-mMarqueeOffset, yOff, 0));
+				mText.render(t);
+				if (mMarqueeOffset2 < 0)
+				{
+					// 꼬리가 화면을 빠져나가는 동안 두 번째 사본이 이어 들어옴 (루프)
+					Transform4x4f t2 = trans;
+					t2.translate(Vector3f(-mMarqueeOffset2, yOff, 0));
+					mText.render(t2);
+				}
+			}
+
+			Renderer::popClipRect();
+		}
 
 	private:
 		TextComponent mText;
+		int mMarqueeTime;
+		float mMarqueeOffset;
+		float mMarqueeOffset2;
+		bool mAlignRight;
 	};
 }
 
