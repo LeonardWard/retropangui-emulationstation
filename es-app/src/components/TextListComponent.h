@@ -8,6 +8,7 @@
 #include "Log.h"
 #include "Settings.h"
 #include "Sound.h"
+#include "InputManager.h"
 #include <memory>
 
 class TextCache;
@@ -303,6 +304,8 @@ bool TextListComponent<T>::input(InputConfig* config, Input input)
 	{
 		if(input.value != 0)
 		{
+			// 누름 에지에서만 - 홀드 반복 스크롤은 IList 내부 처리라 재진입 안 함
+			InputManager::getInstance()->rumbleNav(config->getDeviceId());
 			int delta;
 			mCursorPrev = mCursor;
 			if(isSingleStep)

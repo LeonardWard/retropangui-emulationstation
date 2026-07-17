@@ -1,5 +1,7 @@
 #include "views/gamelist/ISimpleGameListView.h"
 
+#include "InputManager.h"
+
 #include <cctype>
 #include "views/UIModeController.h"
 #include "views/ViewController.h"
@@ -126,6 +128,8 @@ bool ISimpleGameListView::input(InputConfig* config, Input input)
 	{
 		if(config->isMappedToAction("accept", input))
 		{
+			// 롬(또는 폴더) 선택 진동 - 취소(b)는 판단 보류로 일단 무진동(2026-07-17)
+			InputManager::getInstance()->rumbleSelect(config->getDeviceId());
 			FileData* cursor = getCursor();
 			if(cursor->getType() == GAME)
 			{

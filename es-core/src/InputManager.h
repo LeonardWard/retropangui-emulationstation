@@ -74,6 +74,10 @@ public:
 	void rumble(SDL_JoystickID deviceId, float strength, int durationMs);
 	// 열려 있는 모든 패드에 rumble() - 세기 슬라이더 즉시 피드백용.
 	void rumbleAll(float strength, int durationMs);
+	// 공용 프리셋 - 이동(메뉴/캐러셀/롬리스트)과 선택을 모든 훅 지점에서
+	// 동일한 느낌으로 통일 (상대비율/길이의 단일 진실 공급원).
+	void rumbleNav(SDL_JoystickID deviceId)    { rumble(deviceId, 0.6f, 60); }
+	void rumbleSelect(SDL_JoystickID deviceId) { rumble(deviceId, 1.0f, 90); }
 
 	InputConfig* getInputConfigByDevice(int deviceId);
 

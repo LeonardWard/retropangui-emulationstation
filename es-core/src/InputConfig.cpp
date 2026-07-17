@@ -108,17 +108,36 @@ bool InputConfig::isMappedTo(const std::string& name, Input input)
 	return false;
 }
 
+// 왼스틱 매핑의 방향 판정. 이 프로젝트의 es_input.cfg(RetroPie 계보)는
+// leftanalog* 이름이 아니라 joystick1up/joystick1left 이름으로, 그것도 음(-)
+// 방향 한쪽만 저장한다(2026-07-17 실기기 Twin USB 확인) - 반대 방향은 같은
+// 축에서 부호를 뒤집어 비교해야 스틱 내비게이션이 성립한다.
+bool InputConfig::isMappedToAxisDir(const std::string& name, Input input, bool invert)
+{
+	Input comp;
+	if(!getInputByName(name, &comp))
+		return false;
+	if(!comp.configured || comp.type != TYPE_AXIS || input.type != TYPE_AXIS || comp.id != input.id)
+		return false;
+	const int want = invert ? -comp.value : comp.value;
+	return input.value == 0 || input.value == want;
+}
+
 bool InputConfig::isMappedLike(const std::string& name, Input input)
 {
 	if(name == "left")
 	{
-		return isMappedTo("left", input) || isMappedTo("leftanalogleft", input) || isMappedTo("rightanalogleft", input);
+		return isMappedTo("left", input) || isMappedTo("leftanalogleft", input) || isMappedTo("rightanalogleft", input)
+			|| isMappedToAxisDir("joystick1left", input, false);
 	}else if(name == "right"){
-		return isMappedTo("right", input) || isMappedTo("leftanalogright", input) || isMappedTo("rightanalogright", input);
+		return isMappedTo("right", input) || isMappedTo("leftanalogright", input) || isMappedTo("rightanalogright", input)
+			|| isMappedToAxisDir("joystick1left", input, true);
 	}else if(name == "up"){
-		return isMappedTo("up", input) || isMappedTo("leftanalogup", input) || isMappedTo("rightanalogup", input);
+		return isMappedTo("up", input) || isMappedTo("leftanalogup", input) || isMappedTo("rightanalogup", input)
+			|| isMappedToAxisDir("joystick1up", input, false);
 	}else if(name == "down"){
-		return isMappedTo("down", input) || isMappedTo("leftanalogdown", input) || isMappedTo("rightanalogdown", input);
+		return isMappedTo("down", input) || isMappedTo("leftanalogdown", input) || isMappedTo("rightanalogdown", input)
+			|| isMappedToAxisDir("joystick1up", input, true);
 	}else if(name == "leftshoulder"){
 		if (mDeviceId == DEVICE_KEYBOARD && input.type == TYPE_KEY && input.id == SDLK_PAGEUP)
 			return true;

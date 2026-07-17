@@ -1,5 +1,7 @@
 #include "views/SystemView.h"
 
+#include "InputManager.h"
+
 #include "animations/LambdaAnimation.h"
 #include "components/ImageComponent.h"
 #include "components/ScrollableContainer.h"
@@ -168,11 +170,13 @@ bool SystemView::input(InputConfig* config, Input input)
 		case VERTICAL_WHEEL:
 			if (config->isMappedLike("up", input))
 			{
+				InputManager::getInstance()->rumbleNav(config->getDeviceId());
 				listInput(-1);
 				return true;
 			}
 			if (config->isMappedLike("down", input))
 			{
+				InputManager::getInstance()->rumbleNav(config->getDeviceId());
 				listInput(1);
 				return true;
 			}
@@ -182,11 +186,13 @@ bool SystemView::input(InputConfig* config, Input input)
 		default:
 			if (config->isMappedLike("left", input))
 			{
+				InputManager::getInstance()->rumbleNav(config->getDeviceId());
 				listInput(-1);
 				return true;
 			}
 			if (config->isMappedLike("right", input))
 			{
+				InputManager::getInstance()->rumbleNav(config->getDeviceId());
 				listInput(1);
 				return true;
 			}

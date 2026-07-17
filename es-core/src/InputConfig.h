@@ -114,6 +114,9 @@ public:
 	//Returns true if Input is mapped to this name, false otherwise.
 	bool isMappedTo(const std::string& name, Input input);
 	bool isMappedLike(const std::string& name, Input input);
+	// joystick1up/joystick1left(왼스틱) 매핑의 방향 판정 - 설정 파일엔 음(-)
+	// 방향 한쪽만 저장되므로 반대 방향(invert=true)은 부호를 뒤집어 비교.
+	bool isMappedToAxisDir(const std::string& name, Input input, bool invert);
 
 	// RetroPangui: Logical button mapping (separates physical buttons from logical actions)
 	bool isMappedToAction(const std::string& action, Input input);
