@@ -313,7 +313,7 @@ int SystemData::refreshGamelist()
 	if (added == 0)
 		return 0;
 
-	if (!doc.save_file(xmlPath.c_str()))
+	if (!saveGamelistXml(doc, xmlPath))
 	{
 		LOG(LogError) << "refreshGamelist: failed to write \"" << xmlPath << "\"";
 		return -1;

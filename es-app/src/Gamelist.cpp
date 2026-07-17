@@ -1,6 +1,7 @@
 #include "Gamelist.h"
 
 #include <chrono>
+#include <cstdio>
 
 #include "utils/FileSystemUtil.h"
 #include "FileData.h"
@@ -9,6 +10,30 @@
 #include "Settings.h"
 #include "SystemData.h"
 #include <pugixml.hpp>
+
+bool saveGamelistXml(const pugi::xml_document& doc, const std::string& path)
+{
+	const std::string tmpPath = path + ".tmp";
+	const std::string oldPath = path + ".old";
+
+	if (!doc.save_file(tmpPath.c_str()))
+	{
+		LOG(LogError) << "saveGamelistXml: 임시 파일 쓰기 실패 - " << tmpPath;
+		std::remove(tmpPath.c_str());
+		return false;
+	}
+
+	// 기존 파일이 있으면 백업(있던 .old는 덮어씀 - 한 세대만 유지)
+	if (Utils::FileSystem::exists(path))
+		std::rename(path.c_str(), oldPath.c_str());
+
+	if (std::rename(tmpPath.c_str(), path.c_str()) != 0)
+	{
+		LOG(LogError) << "saveGamelistXml: " << tmpPath << " → " << path << " 교체 실패";
+		return false;
+	}
+	return true;
+}
 
 FileData* findOrCreateFile(SystemData* system, const std::string& path, FileType type)
 {
@@ -128,7 +153,7 @@ void generateGamelist(SystemData* system)
 	}
 
 	Utils::FileSystem::createDirectory(Utils::FileSystem::getParent(xmlWritePath));
-	if(doc.save_file(xmlWritePath.c_str()))
+	if(saveGamelistXml(doc, xmlWritePath))
 		LOG(LogInfo) << "Auto-generated gamelist.xml for \"" << system->getName()
 		             << "\" with " << files.size() << " entries at \"" << xmlWritePath << "\"";
 	else
@@ -372,7 +397,7 @@ void updateGamelist(SystemData* system)
 
 			LOG(LogInfo) << "Added/Updated " << numUpdated << " entities in '" << xmlReadPath << "'";
 
-			if (!doc.save_file(xmlWritePath.c_str())) {
+			if (!saveGamelistXml(doc, xmlWritePath)) {
 				LOG(LogError) << "Error saving gamelist.xml to \"" << xmlWritePath << "\" (for system " << system->getName() << ")!";
 			}
 
