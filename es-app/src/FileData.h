@@ -73,7 +73,9 @@ public:
 	// As above, but also remove parenthesis
 	std::string getCleanName() const;
 
-	void launchGame(Window* window);
+	// entrySlot >= 0 이면 rpui-launcher 5번째 인자로 붙여 RetroArch --entryslot
+	// (해당 슬롯 스테이트를 로드하며 시작)로 전달됨. -1 = 스테이트 없이 실행.
+	void launchGame(Window* window, int entrySlot = -1);
 
 	typedef bool ComparisonFunction(const FileData* a, const FileData* b);
 	struct SortType

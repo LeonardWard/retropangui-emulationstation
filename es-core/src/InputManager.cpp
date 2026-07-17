@@ -234,6 +234,23 @@ int InputManager::getButtonCountByDevice(SDL_JoystickID id)
 		return SDL_JoystickNumButtons(mJoysticks[id]);
 }
 
+void InputManager::rumble(SDL_JoystickID deviceId, float strength, int durationMs)
+{
+	if(!Settings::getInstance()->getBool("MenuRumble"))
+		return;
+
+	auto it = mJoysticks.find(deviceId); // 키보드(-1)/CEC(-2)는 여기서 걸러짐
+	if(it == mJoysticks.end() || it->second == nullptr)
+		return;
+
+	if(strength < 0.f) strength = 0.f;
+	if(strength > 1.f) strength = 1.f;
+
+	// 저주파(strong) 모터만 사용 - 고주파까지 쓰면 "톡"이 아니라 "징-" 하는 느낌이 됨.
+	// 진동 미지원 장치(SmartJoy 어댑터 등)는 SDL이 -1을 돌려주고 끝이라 예외 처리 불필요.
+	SDL_JoystickRumble(it->second, (Uint16)(strength * 0xFFFF), 0, (Uint32)durationMs);
+}
+
 InputConfig* InputManager::getInputConfigByDevice(int device)
 {
 	if(device == DEVICE_KEYBOARD)

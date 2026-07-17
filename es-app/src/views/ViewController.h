@@ -42,7 +42,10 @@ public:
 
 	// Plays a nice launch effect and launches the game at the end of it.
 	// Once the game terminates, plays a return effect.
-	void launch(FileData* game, Vector3f centerCameraOn = Vector3f(Renderer::getScreenWidth() / 2.0f, Renderer::getScreenHeight() / 2.0f, 0));
+	// entrySlot: 세이브 스테이트 미리보기(GuiSaveStates)에서 고른 슬롯
+	// (-1 = 스테이트 없이 실행). skipSaveStatePreview: GuiSaveStates 콜백에서
+	// 되돌아온 호출임을 표시 - 미리보기 화면을 또 띄우는 재귀를 막는다.
+	void launch(FileData* game, Vector3f centerCameraOn = Vector3f(Renderer::getScreenWidth() / 2.0f, Renderer::getScreenHeight() / 2.0f, 0), int entrySlot = -1, bool skipSaveStatePreview = false);
 
 	bool input(InputConfig* config, Input input) override;
 	void update(int deltaTime) override;

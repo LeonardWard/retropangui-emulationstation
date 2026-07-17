@@ -1,6 +1,15 @@
 #include "components/ComponentList.h"
 
+#include "InputManager.h"
+
 #define TOTAL_HORIZONTAL_PADDING_PX 20
+
+// 메뉴 진동 세기/길이 - 실기기 튜닝 값. 방향 이동은 스치듯 약하게,
+// 확인(선택)은 구분되게 조금 더 뚜렷하게.
+#define RUMBLE_NAV_STRENGTH     0.18f
+#define RUMBLE_NAV_MS           40
+#define RUMBLE_SELECT_STRENGTH  0.35f
+#define RUMBLE_SELECT_MS        60
 
 // RetroPangui: LIST_PAUSE_AT_END로 변경 - 단일 키 누름 시 최상단/최하단에서 wrap-around
 ComponentList::ComponentList(Window* window) : IList<ComponentListRow, void*>(window, LIST_SCROLL_STYLE_SLOW, LIST_PAUSE_AT_END)
@@ -57,6 +66,18 @@ bool ComponentList::input(InputConfig* config, Input input)
 {
 	if(size() == 0)
 		return false;
+
+	// 메뉴 진동: 누름 에지(value != 0)에서만 울려서, 키를 누르고 있는 동안의
+	// 내부 반복 스크롤(IList가 update()에서 처리)에는 반응하지 않음 -
+	// "논리적으로 한 번 누름 = 한 번 진동" 디바운스가 자연스럽게 성립.
+	if(input.value != 0)
+	{
+		if(config->isMappedTo("a", input))
+			InputManager::getInstance()->rumble(config->getDeviceId(), RUMBLE_SELECT_STRENGTH, RUMBLE_SELECT_MS);
+		else if(config->isMappedLike("up", input) || config->isMappedLike("down", input)
+			|| config->isMappedLike("leftshoulder", input) || config->isMappedLike("rightshoulder", input))
+			InputManager::getInstance()->rumble(config->getDeviceId(), RUMBLE_NAV_STRENGTH, RUMBLE_NAV_MS);
+	}
 
 	// give it to the current row's input handler
 	if(mEntries.at(mCursor).data.input_handler)

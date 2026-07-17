@@ -68,6 +68,10 @@ public:
 
 	std::string getDeviceGUIDString(int deviceId);
 
+	// 메뉴 조작감용 짧은 진동 펄스. deviceId가 키보드/CEC(-1/-2)거나 장치가
+	// 진동 미지원이면 조용히 무시. strength 0.0~1.0 (저주파 모터만 사용).
+	void rumble(SDL_JoystickID deviceId, float strength, int durationMs);
+
 	InputConfig* getInputConfigByDevice(int deviceId);
 
 	bool parseEvent(const SDL_Event& ev, Window* window);

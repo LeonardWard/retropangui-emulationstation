@@ -82,6 +82,11 @@ void Settings::setDefaults()
 	mBoolMap["EnableSounds"] = true;
 	// 배경 음악(BGM): <share>/music 폴더의 음악 파일을 셔플 재생 (MusicManager)
 	mBoolMap["BackgroundMusic"] = true;
+	// 메뉴 조작 시 패드 진동 피드백 (InputManager::rumble)
+	mBoolMap["MenuRumble"] = true;
+	// 게임 실행 전 세이브 스테이트 목록+썸네일 화면(GuiSaveStates) - 기존 실행
+	// 흐름을 가로채는 기능이라 기본 꺼짐(todo-20260706-savestate-preview.html)
+	mBoolMap["SaveStatePreview"] = false;
 	mBoolMap["ShowHelpPrompts"] = true;
 	mBoolMap["DoublePressRemovesFromFavs"] = false;
 	mBoolMap["ScrapeRatings"] = true;

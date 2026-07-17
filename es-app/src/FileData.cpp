@@ -542,7 +542,7 @@ void FileData::sort(const SortType& type)
 }
 
 
-void FileData::launchGame(Window* window)
+void FileData::launchGame(Window* window, int entrySlot)
 {
 	LOG(LogInfo) << "Attempting to launch game...";
 
@@ -603,6 +603,13 @@ void FileData::launchGame(Window* window)
 	command = Utils::String::replace(command, "%ROM%", rom);
 	command = Utils::String::replace(command, "%BASENAME%", basename);
 	command = Utils::String::replace(command, "%ROM_RAW%", rom_raw);
+
+	// 세이브 스테이트 미리보기에서 고른 슬롯 - rpui-launcher의 선택적 5번째
+	// 인자로 붙임(launcher가 --entryslot으로 변환). es_systems.xml 커맨드가
+	// launcher 형식이 아닌 시스템(%ROM% 단독 실행 등)은 스테이트 파일이
+	// 있을 수 없어 GuiSaveStates 개입 자체가 안 일어나므로 여기 안 옴.
+	if (entrySlot >= 0)
+		command += " " + std::to_string(entrySlot);
 
 	Scripting::fireEvent("game-start", rom, basename, name);
 

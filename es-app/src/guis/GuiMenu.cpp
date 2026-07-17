@@ -10,6 +10,7 @@
 #include "guis/GuiBtDevices.h"
 #include "guis/GuiBtPairing.h"
 #include "guis/GuiDetectDevice.h"
+#include "guis/GuiBiosCheck.h"
 #include "guis/GuiGamelistRefresh.h"
 #include "guis/GuiGeneralScreensaverOptions.h"
 #include "guis/GuiMsgBox.h"
@@ -1302,6 +1303,20 @@ void GuiMenu::openGameSettings()
 				if (sys->isGameSystem() && !sys->isCollection())
 					systems.push_back(sys);
 			mWindow->pushGui(new GuiGamelistRefresh(mWindow, systems));
+		});
+		s->addRow(row);
+	}
+
+	// RetroPangui: 바이오스 체크 - share/bios/의 시스템별 필수/선택 바이오스
+	// 존재+md5를 검사해 색상 목록으로 표시(GuiBiosCheck). "코어가 조용히 안
+	// 뜨는" 원인 1순위를 로그 안 뒤지고 확인하기 위한 메뉴
+	// (todo-20260714-bios-check-menu.html).
+	{
+		ComponentListRow row;
+		row.addElement(std::make_shared<TextComponent>(mWindow, _("BIOS CHECK"),
+			Font::get(FONT_SIZE_MEDIUM), 0x777777FF), true);
+		row.makeAcceptInputHandler([this] {
+			mWindow->pushGui(new GuiBiosCheck(mWindow));
 		});
 		s->addRow(row);
 	}

@@ -5,6 +5,7 @@
 #include "animations/LaunchAnimation.h"
 #include "animations/MoveCameraAnimation.h"
 #include "guis/GuiMenu.h"
+#include "guis/GuiSaveStates.h"
 #include "views/gamelist/DetailedGameListView.h"
 #include "views/gamelist/IGameListView.h"
 #include "views/gamelist/GridGameListView.h"
@@ -256,12 +257,28 @@ void ViewController::onFileChanged(FileData* file, FileChangeType change)
 		it->second->onFileChanged(file, change);
 }
 
-void ViewController::launch(FileData* game, Vector3f center)
+void ViewController::launch(FileData* game, Vector3f center, int entrySlot, bool skipSaveStatePreview)
 {
 	if(game->getType() != GAME)
 	{
 		LOG(LogError) << "tried to launch something that isn't a game";
 		return;
+	}
+
+	// 세이브 스테이트 미리보기: 전역 토글이 켜져 있고 이 게임에 저장된
+	// 스테이트가 실제로 하나라도 있을 때만 실행을 가로챈다(Recalbox
+	// CheckSaveStates 방식) - 스테이트 없는 게임/기능 꺼둔 사용자는 이 화면
+	// 자체를 안 보고 기존 흐름 그대로 게임이 시작됨.
+	if (!skipSaveStatePreview && Settings::getInstance()->getBool("SaveStatePreview"))
+	{
+		if (!GuiSaveStates::scanSaveStates(game).empty())
+		{
+			mWindow->pushGui(new GuiSaveStates(mWindow, game, [this, game, center](int slot)
+			{
+				launch(game, center, slot, true);
+			}));
+			return;
+		}
 	}
 
 	// Hide the current view
@@ -283,9 +300,9 @@ void ViewController::launch(FileData* game, Vector3f center)
 		auto fadeFunc = [this](float t) {
 			mFadeOpacity = Math::lerp(0.0f, 1.0f, t);
 		};
-		setAnimation(new LambdaAnimation(fadeFunc, 800), 0, [this, game, fadeFunc]
+		setAnimation(new LambdaAnimation(fadeFunc, 800), 0, [this, game, fadeFunc, entrySlot]
 		{
-			game->launchGame(mWindow);
+			game->launchGame(mWindow, entrySlot);
 			setAnimation(new LambdaAnimation(fadeFunc, 800), 0, [this, game] { mLockInput = false; }, true);
 			this->onFileChanged(game, FILE_METADATA_CHANGED);
 			if (mCurrentView) {
@@ -295,9 +312,9 @@ void ViewController::launch(FileData* game, Vector3f center)
 		});
 	} else if (transition_style == "slide"){
 		// move camera to zoom in on center + fade out, launch game, come back in
-		setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 1500), 0, [this, origCamera, center, game]
+		setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 1500), 0, [this, origCamera, center, game, entrySlot]
 		{
-			game->launchGame(mWindow);
+			game->launchGame(mWindow, entrySlot);
 			mCamera = origCamera;
 			setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 600), 0, [this, game] { mLockInput = false; }, true);
 			this->onFileChanged(game, FILE_METADATA_CHANGED);
@@ -307,9 +324,9 @@ void ViewController::launch(FileData* game, Vector3f center)
 			}
 		});
 	} else { // instant
-		setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 10), 0, [this, origCamera, center, game]
+		setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 10), 0, [this, origCamera, center, game, entrySlot]
 		{
-			game->launchGame(mWindow);
+			game->launchGame(mWindow, entrySlot);
 			mCamera = origCamera;
 			setAnimation(new LaunchAnimation(mCamera, mFadeOpacity, center, 10), 0, [this, game] { mLockInput = false; }, true);
 			this->onFileChanged(game, FILE_METADATA_CHANGED);

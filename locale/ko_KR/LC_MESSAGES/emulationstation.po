@@ -570,3 +570,27 @@ msgstr "완료 - 새 게임 %i개 등록됨"
 
 msgid "FAILED"
 msgstr "실패"
+
+msgid "CHOOSE"
+msgstr "선택"
+
+msgid "SAVE STATES"
+msgstr "세이브 스테이트"
+
+msgid "START NEW GAME"
+msgstr "새로 시작 (스테이트 없이)"
+
+msgid "SHOW SAVE STATES BEFORE LAUNCH"
+msgstr "실행 전 세이브 스테이트 표시"
+
+msgid "BIOS CHECK"
+msgstr "바이오스 체크"
+
+msgid "SCANNING..."
+msgstr "검사 중..."
+
+msgid "BIOS DEFINITION FILE NOT FOUND"
+msgstr "바이오스 정의 파일을 찾을 수 없음"
+
+msgid "MENU RUMBLE"
+msgstr "메뉴 진동"
