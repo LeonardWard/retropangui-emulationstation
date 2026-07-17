@@ -35,6 +35,15 @@ bool saveGamelistXml(const pugi::xml_document& doc, const std::string& path)
 	return true;
 }
 
+// RetroPangui: 번들 롬 루트. rpui-bundlegame.sh의 BUNDLED와 동일한 경로.
+static const std::string BUNDLED_ROMS_ROOT = "/usr/share/retropangui/bundled-roms/";
+
+bool isBundledRomPath(const std::string& absPath, const std::string& systemName)
+{
+	const std::string prefix = BUNDLED_ROMS_ROOT + systemName + "/";
+	return absPath.compare(0, prefix.size(), prefix) == 0;
+}
+
 FileData* findOrCreateFile(SystemData* system, const std::string& path, FileType type)
 {
 	FileData* root = system->getRootFolder();
@@ -43,6 +52,13 @@ FileData* findOrCreateFile(SystemData* system, const std::string& path, FileType
 
 	// first, verify that path is within the system's root folder
 	std::string relative = Utils::FileSystem::removeCommonPath(path, systemPath, contains, true);
+
+	// RetroPangui: 시스템 롬 루트 밖이라도 번들 스쿼시fs 경로면 허용 - cp 없이
+	// gamelist.xml이 직접 이 경로를 가리키는 방식(위 isBundledRomPath 주석 참고).
+	// 이 경우 번들 루트를 기준으로 상대경로를 다시 계산해서 FileData 트리에 끼워넣는다.
+	if(!contains && isBundledRomPath(path, system->getName()))
+		relative = Utils::FileSystem::removeCommonPath(path, BUNDLED_ROMS_ROOT + system->getName(), contains, true);
+
 	if(!contains)
 	{
 		LOG(LogError) << "File path \"" << path << "\" is outside system path \"" << system->getStartPath() << "\"";

@@ -310,7 +310,12 @@ int SystemData::refreshGamelist(int* removedOut)
 				std::string absPath = p ? FileSystem::resolveRelativePath(
 					p.text().get(), mEnvData->mStartPath, false, true) : "";
 
-				if (!absPath.empty() && diskGameSet.count(absPath))
+				// RetroPangui: 번들 게임(squashfs 직결, share에 물리 파일 없음)은
+				// 디스크 스캔 대상이 아니므로 diskGameSet에 절대 없음 - 삭제로
+				// 오인하지 않도록 별도로 보존. show/hide는 rpui-bundlegame.sh가
+				// 노드 자체를 추가/제거하는 방식으로 처리(여기서 관여 안 함).
+				if (!absPath.empty() &&
+				    (diskGameSet.count(absPath) || isBundledRomPath(absPath, mName)))
 				{
 					newRoot.append_copy(child);
 					keptPaths.insert(absPath);
