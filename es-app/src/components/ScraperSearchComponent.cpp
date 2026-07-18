@@ -463,7 +463,7 @@ std::vector<HelpPrompt> ScraperSearchComponent::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts = mGrid.getHelpPrompts();
 	if(getSelectedIndex() != -1)
-		prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "accept result"));
+		prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("ACCEPT RESULT")));
 
 	return prompts;
 }

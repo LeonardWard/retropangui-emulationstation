@@ -2053,10 +2053,10 @@ HelpStyle GuiMenu::getHelpStyle()
 std::vector<HelpPrompt> GuiMenu::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
-	prompts.push_back(HelpPrompt("up/down", "choose"));
+	prompts.push_back(HelpPrompt("up/down", _("CHOOSE")));
 
 	// RetroPangui: InputConfig::getActionButton()로 통일(중복 삼항연산자 제거)
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "select"));
-	prompts.push_back(HelpPrompt("start", "close"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("SELECT")));
+	prompts.push_back(HelpPrompt("start", _("CLOSE")));
 	return prompts;
 }

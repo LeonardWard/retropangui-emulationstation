@@ -367,7 +367,7 @@ HelpStyle GuiGamelistOptions::getHelpStyle()
 std::vector<HelpPrompt> GuiGamelistOptions::getHelpPrompts()
 {
 	auto prompts = mMenu.getHelpPrompts();
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "close"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("CLOSE")));
 	return prompts;
 }
 

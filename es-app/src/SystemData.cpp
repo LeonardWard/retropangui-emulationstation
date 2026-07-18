@@ -6,6 +6,7 @@
 #include "FileSorts.h"
 #include "Gamelist.h"
 #include "Log.h"
+#include "LocaleES.h"
 #include "platform.h"
 #include "Settings.h"
 #include "ThemeData.h"
@@ -948,6 +949,9 @@ void SystemData::loadTheme()
 		sysData.insert(std::pair<std::string, std::string>("system.name", getName()));
 		sysData.insert(std::pair<std::string, std::string>("system.theme", getThemeFolder()));
 		sysData.insert(std::pair<std::string, std::string>("system.fullName", getFullName()));
+		// RetroPangui: 테마가 ES 언어 설정(예: ko_KR, en_US)에 반응할 수 있도록 노출
+		// - <include> 경로에 ${system.language}를 넣어 언어별 파일을 분기하는 용도
+		sysData.insert(std::pair<std::string, std::string>("system.language", LocaleES::getLanguage()));
 
 		mTheme->loadFile(sysData, path);
 	} catch(ThemeException& e)

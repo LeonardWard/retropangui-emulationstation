@@ -253,9 +253,9 @@ void GuiBtPairing::render(const Transform4x4f& parentTrans)
 std::vector<HelpPrompt> GuiBtPairing::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
-	prompts.push_back(HelpPrompt("up/down", "choose"));
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "select"));
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "back"));
+	prompts.push_back(HelpPrompt("up/down", _("CHOOSE")));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("SELECT")));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("BACK")));
 	return prompts;
 }
 

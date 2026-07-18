@@ -215,16 +215,16 @@ std::vector<HelpPrompt> BasicGameListView::getHelpPrompts()
 	std::vector<HelpPrompt> prompts;
 
 	if(Settings::getInstance()->getBool("QuickSystemSelect"))
-		prompts.push_back(HelpPrompt("left/right", "system"));
-	prompts.push_back(HelpPrompt("up/down", "choose"));
+		prompts.push_back(HelpPrompt("left/right", _("SYSTEM")));
+	prompts.push_back(HelpPrompt("up/down", _("CHOOSE")));
 
 	// RetroPangui: InputConfig::getActionButton()로 통일(중복 삼항연산자 제거)
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "launch"));
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "back"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("LAUNCH")));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("BACK")));
 	if(!UIModeController::getInstance()->isUIModeKid())
-		prompts.push_back(HelpPrompt("select", "options"));
+		prompts.push_back(HelpPrompt("select", _("OPTIONS")));
 	if(mRoot->getSystem()->isGameSystem())
-		prompts.push_back(HelpPrompt("x", "random"));
+		prompts.push_back(HelpPrompt("x", _("RANDOM")));
 	if(mRoot->getSystem()->isGameSystem() && !UIModeController::getInstance()->isUIModeKid())
 	{
 		// RetroPangui: Translate collection name for help prompt

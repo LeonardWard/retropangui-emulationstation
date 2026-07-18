@@ -129,6 +129,6 @@ std::vector<HelpPrompt> GuiGamelistRefresh::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
 	if (mDone)
-		prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "close"));
+		prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("CLOSE")));
 	return prompts;
 }

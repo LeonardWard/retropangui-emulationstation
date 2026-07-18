@@ -522,16 +522,16 @@ std::vector<HelpPrompt> SystemView::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
 	if (mCarousel.type == VERTICAL || mCarousel.type == VERTICAL_WHEEL)
-		prompts.push_back(HelpPrompt("up/down", "choose"));
+		prompts.push_back(HelpPrompt("up/down", _("CHOOSE")));
 	else
-		prompts.push_back(HelpPrompt("left/right", "choose"));
+		prompts.push_back(HelpPrompt("left/right", _("CHOOSE")));
 
 	// RetroPangui: InputConfig::getActionButton()로 통일(중복 삼항연산자 제거)
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "select"));
-	prompts.push_back(HelpPrompt("x", "random"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("SELECT")));
+	prompts.push_back(HelpPrompt("x", _("RANDOM")));
 
 	if (!UIModeController::getInstance()->isUIModeKid() && Settings::getInstance()->getBool("ScreenSaverControls"))
-		prompts.push_back(HelpPrompt("select", "launch screensaver"));
+		prompts.push_back(HelpPrompt("select", _("LAUNCH SCREENSAVER")));
 
 	return prompts;
 }

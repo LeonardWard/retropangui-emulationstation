@@ -304,6 +304,39 @@ msgstr "선택"
 msgid "CANCEL"
 msgstr "취소"
 
+msgid "LAUNCH"
+msgstr "실행"
+
+msgid "MENU"
+msgstr "메뉴"
+
+msgid "SYSTEM"
+msgstr "시스템"
+
+msgid "RANDOM"
+msgstr "랜덤"
+
+msgid "CHANGE"
+msgstr "변경"
+
+msgid "ADD STAR"
+msgstr "별 추가"
+
+msgid "ACCEPT RESULT"
+msgstr "결과 승인"
+
+msgid "LAUNCH SCREENSAVER"
+msgstr "화면보호기"
+
+msgid "MOVE CURSOR"
+msgstr "커서 이동"
+
+msgid "STOP EDITING"
+msgstr "편집 중지"
+
+msgid "EDIT"
+msgstr "편집"
+
 msgid "YES"
 msgstr "예"
 

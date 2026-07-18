@@ -301,10 +301,10 @@ std::vector<HelpPrompt> TextEditComponent::getHelpPrompts()
 	std::vector<HelpPrompt> prompts;
 	if(mEditing)
 	{
-		prompts.push_back(HelpPrompt("up/down/left/right", "move cursor"));
-		prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "stop editing"));
+		prompts.push_back(HelpPrompt("up/down/left/right", _("MOVE CURSOR")));
+		prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("STOP EDITING")));
 	}else{
-		prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "edit"));
+		prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("EDIT")));
 	}
 	return prompts;
 }

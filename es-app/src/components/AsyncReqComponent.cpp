@@ -48,6 +48,6 @@ void AsyncReqComponent::render(const Transform4x4f& /*parentTrans*/)
 std::vector<HelpPrompt> AsyncReqComponent::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "cancel"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("CANCEL")));
 	return prompts;
 }

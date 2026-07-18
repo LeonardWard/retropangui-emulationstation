@@ -438,6 +438,6 @@ void ImageComponent::applyTheme(const std::shared_ptr<ThemeData>& theme, const s
 std::vector<HelpPrompt> ImageComponent::getHelpPrompts()
 {
 	std::vector<HelpPrompt> ret;
-	ret.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "select"));
+	ret.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("SELECT")));
 	return ret;
 }

@@ -66,8 +66,8 @@ std::vector<HelpPrompt> GuiScreensaverOptions::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts = mMenu.getHelpPrompts();
 
-	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "back"));
-	prompts.push_back(HelpPrompt("start", "close"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("BACK")));
+	prompts.push_back(HelpPrompt("start", _("CLOSE")));
 
 	return prompts;
 }
