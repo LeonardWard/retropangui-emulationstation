@@ -507,10 +507,13 @@ int main(int argc, char* argv[])
 	});
 
 	// RetroPangui: 런타임 중 핫플러그된 미매핑 컨트롤러 알림 (부팅 시 최초 스캔은 트리거 안 됨)
+	// 2026-07-18 정정: GuiInputConfig을 바로 여는 대신 "CONFIGURE INPUT" 메뉴와
+	// 동일하게 GuiDetectDevice를 거치도록 되돌림 - 버튼을 잠깐 눌러 어떤 패드를
+	// 설정할지 시각적으로 확인하는 단계가 실수로 빠져 있었음(사용자 지적).
 	window.setUnconfiguredJoystickCallback([&window](InputConfig* config) {
 		std::string msg = "새 컨트롤러 감지: " + config->getDeviceName() + "\n지금 설정하시겠습니까?";
 		window.pushGui(new GuiMsgBox(&window, msg,
-			"예",     [&window, config]() { window.pushGui(new GuiInputConfig(&window, config, true, nullptr)); },
+			"예",     [&window]() { window.pushGui(new GuiDetectDevice(&window, false, nullptr)); },
 			"아니오", nullptr));
 	});
 

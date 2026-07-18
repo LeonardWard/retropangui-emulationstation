@@ -48,6 +48,34 @@ static const InputConfigStructure GUI_INPUT_CONFIG_LIST[inputCount] =
 //MasterVolUp and MasterVolDown are also hooked up, but do not appear on this screen.
 //If you want, you can manually add them to es_input.cfg.
 
+// RetroPangui: 아날로그 스틱은 한 축의 부호만 반대인 한 쌍이라, 한쪽만 입력받으면
+// 반대쪽은 자동으로 채운다(assign() 참고) - 사용자가 스틱을 반대로 밀 필요 없음.
+struct AnalogAxisPair { const char* a; const char* b; };
+static const AnalogAxisPair ANALOG_AXIS_PAIRS[] = {
+	{ "LeftAnalogUp",  "LeftAnalogDown" },
+	{ "LeftAnalogLeft",  "LeftAnalogRight" },
+	{ "RightAnalogUp",  "RightAnalogDown" },
+	{ "RightAnalogLeft", "RightAnalogRight" },
+};
+
+static const char* getPairedAxisName(const char* name)
+{
+	for (const auto& p : ANALOG_AXIS_PAIRS)
+	{
+		if (strcmp(name, p.a) == 0) return p.b;
+		if (strcmp(name, p.b) == 0) return p.a;
+	}
+	return nullptr;
+}
+
+static int findInputIdByName(const char* name)
+{
+	for (int i = 0; i < inputCount; i++)
+		if (strcmp(GUI_INPUT_CONFIG_LIST[i].name, name) == 0)
+			return i;
+	return -1;
+}
+
 #define HOLD_TO_SKIP_MS 1000
 
 GuiInputConfig::GuiInputConfig(Window* window, InputConfig* target, bool reconfigureAll, const std::function<void()>& okCallback) : GuiComponent(window),
@@ -270,7 +298,21 @@ void GuiInputConfig::rowDone()
 {
 	if(mConfiguringAll)
 	{
-		if(!mList->moveCursor(1)) // try to move to the next one
+		// RetroPangui: ComponentList가 LIST_PAUSE_AT_END라도 moveCursor(1)을
+		// tier 0(단발성 호출)으로 부르면 scroll()의 wrap-around 분기를 타서
+		// 마지막 항목 다음에 0번으로 되돌아가고 true를 반환하는 버그가 있었음
+		// (전체 재매핑 마지막에 HOTKEY ENABLE까지 끝내면 D-PAD UP부터 다시
+		// 시작하는 것처럼 보이던 원인). moveCursor()의 반환값을 믿지 않고
+		// 커서 위치를 직접 계산해서 끝인지 판단한다.
+		//
+		// 겸사겸사, 이미 매핑된 행(위 assign()의 아날로그 스틱 반대 방향
+		// 자동 채우기로 채워진 행)은 사용자 입력을 기다리지 않고 건너뛴다.
+		int nextId = mList->getCursorId() + 1;
+		Input tmp;
+		while(nextId < inputCount && mTargetConfig->getInputByName(GUI_INPUT_CONFIG_LIST[nextId].name, &tmp))
+			nextId++;
+
+		if(nextId >= inputCount)
 		{
 			// at bottom of list, done
 			mConfiguringAll = false;
@@ -278,6 +320,7 @@ void GuiInputConfig::rowDone()
 			mGrid.moveCursor(Vector2i(0, 1));
 		}else{
 			// on another one
+			mList->moveCursor(nextId - mList->getCursorId());
 			setPress(mMappings.at(mList->getCursorId()));
 		}
 	}else{
@@ -328,6 +371,24 @@ bool GuiInputConfig::assign(Input input, int inputId)
 	mTargetConfig->mapInput(GUI_INPUT_CONFIG_LIST[inputId].name, input);
 
 	LOG(LogInfo) << "  Mapping [" << input.string() << "] -> " << GUI_INPUT_CONFIG_LIST[inputId].name;
+
+	// RetroPangui: 아날로그 스틱 반대 방향은 같은 축, 반대 부호일 뿐이라 자동으로
+	// 채운다 - 사용자가 스틱을 물리적으로 반대까지 밀 필요 없음.
+	if(input.type == TYPE_AXIS)
+	{
+		const char* pairedName = getPairedAxisName(GUI_INPUT_CONFIG_LIST[inputId].name);
+		if(pairedName)
+		{
+			int pairedId = findInputIdByName(pairedName);
+			if(pairedId >= 0)
+			{
+				Input opposite(input.device, input.type, input.id, -input.value, true);
+				mTargetConfig->mapInput(pairedName, opposite);
+				setAssignedTo(mMappings.at(pairedId), opposite);
+				LOG(LogInfo) << "  Mapping [" << opposite.string() << "] -> " << pairedName << " (자동, 반대 방향)";
+			}
+		}
+	}
 
 	return true;
 }
