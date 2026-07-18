@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiScreensaverOptions.h"
 
 #include "guis/GuiTextEditPopup.h"

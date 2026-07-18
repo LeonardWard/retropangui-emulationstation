@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "SwitchComponent.h"
 
 #include "resources/Font.h"

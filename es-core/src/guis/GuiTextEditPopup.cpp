@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiTextEditPopup.h"
 
 #include "components/ButtonComponent.h"

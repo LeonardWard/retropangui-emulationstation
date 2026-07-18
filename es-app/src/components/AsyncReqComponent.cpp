@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/AsyncReqComponent.h"
 
 #include "renderers/Renderer.h"

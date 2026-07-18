@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiBtPairing.h"
 
 #include "components/ComponentList.h"

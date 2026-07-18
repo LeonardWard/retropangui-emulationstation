@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiInputConfig.h"
 
 #include "components/ButtonComponent.h"

@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiDetectDevice.h"
 
 #include "components/TextComponent.h"

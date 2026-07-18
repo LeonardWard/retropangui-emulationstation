@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiVideoScreensaverOptions.h"
 
 #include "components/OptionListComponent.h"

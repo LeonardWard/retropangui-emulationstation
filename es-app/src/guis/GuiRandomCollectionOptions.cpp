@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiRandomCollectionOptions.h"
 
 #include "GuiRandomCollectionOptions.h"

@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "views/ViewController.h"
 
 #include "animations/Animation.h"

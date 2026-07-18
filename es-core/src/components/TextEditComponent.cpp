@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/TextEditComponent.h"
 
 #include "resources/Font.h"

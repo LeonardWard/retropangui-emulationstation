@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiScraperStart.h"
 
 #include "components/OptionListComponent.h"

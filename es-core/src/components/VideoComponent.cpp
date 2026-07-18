@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/VideoComponent.h"
 
 #include "resources/ResourceManager.h"

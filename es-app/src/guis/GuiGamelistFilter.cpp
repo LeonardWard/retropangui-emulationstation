@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiGamelistFilter.h"
 
 #include "components/OptionListComponent.h"

@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/RatingComponent.h"
 
 #include "resources/TextureResource.h"

@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiWifiSelect.h"
 #include "guis/GuiArcadeVirtualKeyboard.h"
 #include "components/OptionListComponent.h"

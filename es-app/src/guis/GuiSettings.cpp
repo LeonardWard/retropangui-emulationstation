@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiSettings.h"
 
 #include "views/ViewController.h"

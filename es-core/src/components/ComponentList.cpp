@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/ComponentList.h"
 
 #include "InputManager.h"

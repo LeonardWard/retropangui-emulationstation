@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/SliderComponent.h"
 
 #include "resources/Font.h"

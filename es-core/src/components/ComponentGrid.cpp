@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/ComponentGrid.h"
 
 #include "Settings.h"

@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiSlideshowScreensaverOptions.h"
 
 #include "components/SliderComponent.h"

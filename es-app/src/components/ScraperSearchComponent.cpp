@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "components/ScraperSearchComponent.h"
 
 #include "components/ComponentList.h"

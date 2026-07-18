@@ -1,3 +1,4 @@
+#include "LocaleES.h"
 #include "guis/GuiScraperMulti.h"
 
 #include "components/ButtonComponent.h"
