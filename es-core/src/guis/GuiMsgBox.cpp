@@ -20,7 +20,9 @@ GuiMsgBox::GuiMsgBox(Window* window, const std::string& text,
 	// create the buttons
 	mButtons.push_back(std::make_shared<ButtonComponent>(mWindow, name1, name1, std::bind(&GuiMsgBox::deleteMeAndCall, this, func1)));
 	if(!name2.empty())
-		mButtons.push_back(std::make_shared<ButtonComponent>(mWindow, name2, name3, std::bind(&GuiMsgBox::deleteMeAndCall, this, func2)));
+		// RetroPangui: helpText가 name3(세 번째 버튼 라벨)로 잘못 들어가 있던
+		// 오타 수정 - 아래쪽 도움말에 엉뚱한 라벨이 뜨던 문제.
+		mButtons.push_back(std::make_shared<ButtonComponent>(mWindow, name2, name2, std::bind(&GuiMsgBox::deleteMeAndCall, this, func2)));
 	if(!name3.empty())
 		mButtons.push_back(std::make_shared<ButtonComponent>(mWindow, name3, name3, std::bind(&GuiMsgBox::deleteMeAndCall, this, func3)));
 
@@ -37,6 +39,13 @@ GuiMsgBox::GuiMsgBox(Window* window, const std::string& text,
 				break;
 			}
 		}
+		// RetroPangui: 위 매칭은 영문 "OK"/"NO" 리터럴에만 걸림 - 한국어 등
+		// 번역된 라벨("예"/"아니오")은 절대 안 걸려서 mAcceleratorFunc가 계속
+		// 비어있는 채로 남는 버그가 있었음(입력 장치가 하나도 없을 때 이
+		// 대화상자를 영원히 못 닫는 원인 중 하나). 매칭 실패 시 관례상 마지막
+		// 버튼(보통 취소/아니오)을 기본값으로 사용.
+		if(!mAcceleratorFunc)
+			mAcceleratorFunc = mButtons.back()->getPressedFunc();
 	}
 
 	// put the buttons into a ComponentGrid
@@ -69,7 +78,8 @@ bool GuiMsgBox::input(InputConfig* config, Input input)
 	if(config->getDeviceId() == DEVICE_KEYBOARD && !config->isConfigured() && input.value &&
 		(input.id == SDLK_RETURN || input.id == SDLK_ESCAPE || input.id == SDLK_SPACE))
 	{
-		mAcceleratorFunc();
+		if(mAcceleratorFunc)
+			mAcceleratorFunc();
 		return true;
 	}
 

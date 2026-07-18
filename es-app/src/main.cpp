@@ -507,14 +507,15 @@ int main(int argc, char* argv[])
 	});
 
 	// RetroPangui: 런타임 중 핫플러그된 미매핑 컨트롤러 알림 (부팅 시 최초 스캔은 트리거 안 됨)
-	// 2026-07-18 정정: GuiInputConfig을 바로 여는 대신 "CONFIGURE INPUT" 메뉴와
-	// 동일하게 GuiDetectDevice를 거치도록 되돌림 - 버튼을 잠깐 눌러 어떤 패드를
-	// 설정할지 시각적으로 확인하는 단계가 실수로 빠져 있었음(사용자 지적).
-	window.setUnconfiguredJoystickCallback([&window](InputConfig* config) {
-		std::string msg = "새 컨트롤러 감지: " + config->getDeviceName() + "\n지금 설정하시겠습니까?";
-		window.pushGui(new GuiMsgBox(&window, msg,
-			"예",     [&window]() { window.pushGui(new GuiDetectDevice(&window, false, nullptr)); },
-			"아니오", nullptr));
+	// 2026-07-18 정정: Y/N 확인창 자체를 없앰(사용자 지적) - 패드가 지금 실제로
+	// 연결돼 있으면 GuiDetectDevice의 "버튼 꾹 누르기"가 그 자체로 확인 동작이라
+	// 별도 Y/N이 군더더기였고, 이벤트가 뜬 시점과 실제 화면이 뜨는 시점 사이에
+	// 이미 연결 해제됐으면(케이블 불량 등) 아예 아무것도 안 띄워서 "입력 장치가
+	// 하나도 없는데 Y/N 대화상자만 화면에 남아 영원히 못 닫히는" 상황 자체를
+	// 없앰. 키보드/마우스는 세지 않고 진짜 게임패드가 있을 때만 화면 표시.
+	window.setUnconfiguredJoystickCallback([&window](InputConfig* /*config*/) {
+		if (InputManager::getInstance()->getNumJoysticks() > 0)
+			window.pushGui(new GuiDetectDevice(&window, false, nullptr));
 	});
 
 	// RetroPangui: 이미 매핑된 패드가 런타임 중 연결/해제될 때 짧은 OSD 알림
