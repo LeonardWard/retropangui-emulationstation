@@ -3,5 +3,5 @@
  <!-- RetroPangui: 원래 안에 "SELECT" 글자를 벡터로 그려뒀는데 도움말 바 크기로
       줄이면 뭉개져서 안 보임 - 도움말 바에 옆에 라벨 텍스트가 이미 따로
       나오므로, 아이콘은 단순한 알약 모양 버튼 실루엣만 남김(2026-07-18) -->
- <path id="outline" d="m2 42a7 7 0 0 1 7-7h46a7 7 0 0 1 7 7 7 7 0 0 1-7 7h-46a7 7 0 0 1-7-7z" fill="#fff" stroke="#fff" stroke-linejoin="round" stroke-width="2"/>
+ <path id="outline" d="m2 32a7 7 0 0 1 7-7h46a7 7 0 0 1 7 7 7 7 0 0 1-7 7h-46a7 7 0 0 1-7-7z" fill="#fff" stroke="#fff" stroke-linejoin="round" stroke-width="4"/>
 </svg>
