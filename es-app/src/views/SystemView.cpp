@@ -16,6 +16,7 @@
 #include "Settings.h"
 #include "SystemData.h"
 #include "Window.h"
+#include "utils/FileSystemUtil.h"
 
 // buffer values for scrolling velocity (left, stopped, right)
 const int logoBuffersLeft[] = { -5, -2, -1 };
@@ -321,27 +322,31 @@ void SystemView::updateRecentlyPlayed(SystemViewData& data, SystemData* system)
 	for (int i = 0; i < MAX_RECENT_CARDS; ++i)
 	{
 		bool hasGame = i < (int)games.size();
+		// RetroPangui: 플레이는 했지만 썸네일이 없는 게임(예: 롬이 1개뿐인 시스템)은
+		// 플레이스홀더를 보여주는 대신 카드 자체를 아예 숨김 - 사용자 확인(2026-07-18).
+		std::string thumbnailPath = hasGame ? games[i]->getThumbnailPath() : "";
+		bool hasThumbnail = hasGame && !thumbnailPath.empty() && Utils::FileSystem::exists(thumbnailPath);
 		std::string cardName = "rp-card-" + std::to_string(i + 1);
 
 		if (auto img = dynamic_cast<ImageComponent*>(findNamedExtra(data, cardName)))
 		{
-			img->setVisible(hasGame);
-			if (hasGame)
-				img->setImage(games[i]->getThumbnailPath());
+			img->setVisible(hasThumbnail);
+			if (hasThumbnail)
+				img->setImage(thumbnailPath);
 		}
 
 		// 테마가 카드별 이름 텍스트(예: rp-card-1-name)를 아직 안 뒀으면 nullptr - 안전하게 스킵
 		if (auto nameExtra = findNamedExtra(data, cardName + "-name"))
 		{
-			nameExtra->setVisible(hasGame);
-			if (hasGame)
+			nameExtra->setVisible(hasThumbnail);
+			if (hasThumbnail)
 				nameExtra->setValue(games[i]->getDisplayName());
 		}
 
 		// 테마가 카드별 그림자(예: rp-card-1-shadow)를 뒀으면 카드와 동일하게 보임/숨김
 		// 처리 - 안 뒀으면 nullptr이라 안전하게 스킵.
 		if (auto shadowExtra = findNamedExtra(data, cardName + "-shadow"))
-			shadowExtra->setVisible(hasGame);
+			shadowExtra->setVisible(hasThumbnail);
 	}
 	// 플레이 이력이 하나도 없어도 rp-header("RECENTLY PLAYED" 제목)는 그대로 둠 -
 	// 카드만 하나도 없이 제목만 남는 게 의도된 동작(사용자 확인, 2026-07-06).
