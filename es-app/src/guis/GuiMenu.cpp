@@ -1363,7 +1363,7 @@ void GuiMenu::openControllerSettings()
 		if (!explicitlySet && (p - 1) < numJoy)
 			origIdx = p - 1;
 
-		std::string rowLabel = "PLAYER " + std::to_string(p) + " CONTROLLER";
+		std::string rowLabel = _("PLAYER ") + std::to_string(p) + _(" CONTROLLER");
 		auto padList = std::make_shared< OptionListComponent<std::string> >(mWindow, rowLabel, false);
 
 		padList->add("None", "-1", origIdx < 0);
@@ -1974,7 +1974,7 @@ void GuiMenu::openEmulatorSettings()
 
 		// Create emulator selection list for this system
 		auto emulatorList = std::make_shared<OptionListComponent<std::string>>(mWindow,
-			"DEFAULT EMULATOR", false);
+			_("DEFAULT EMULATOR"), false);
 
 		// Add all available emulators sorted by priority
 		std::string currentDefault = "";

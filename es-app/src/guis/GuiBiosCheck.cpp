@@ -178,7 +178,7 @@ void GuiBiosCheck::checkEntry(BiosEntry& e)
 	if (!Utils::FileSystem::exists(full))
 	{
 		e.status = e.mandatory ? BiosStatus::Missing : BiosStatus::Warning;
-		e.statusText = e.mandatory ? "MISSING" : "MISSING (OPTIONAL)";
+		e.statusText = e.mandatory ? _("MISSING") : _("MISSING (OPTIONAL)");
 		e.detail = e.note;
 		return;
 	}
@@ -195,7 +195,7 @@ void GuiBiosCheck::checkEntry(BiosEntry& e)
 	if (hash.empty())
 	{
 		e.status = BiosStatus::Warning;
-		e.statusText = "MD5 CHECK FAILED";
+		e.statusText = _("MD5 CHECK FAILED");
 		e.detail = e.note;
 		return;
 	}
@@ -212,7 +212,7 @@ void GuiBiosCheck::checkEntry(BiosEntry& e)
 	}
 
 	e.status = e.hashMandatory ? BiosStatus::Missing : BiosStatus::Warning;
-	e.statusText = "MD5 MISMATCH";
+	e.statusText = _("MD5 MISMATCH");
 	// 어떤 파일이 온 건지 사용자가 추적할 수 있게 실측 해시를 상세줄에 노출
 	e.detail = e.note + (e.note.empty() ? "" : " · ") + "md5 " + hash;
 }

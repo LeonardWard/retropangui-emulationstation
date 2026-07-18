@@ -137,7 +137,7 @@ GuiWifiSelect::GuiWifiSelect(Window* window)
 		list->add(networks[i], networks[i], curMatches ? (networks[i] == curSsid) : (i == 0));
 	if (networks.empty())
 		list->add("검색된 네트워크 없음", "", true);
-	addWithLabel("SSID", list);
+	addWithLabel(_("SSID"), list);
 	// 방금 위에서 강제로 골라둔 "기본 선택값" - 사용자가 실제로 다른 걸
 	// 고르지 않았다면 이 값과 같을 것이므로, 그 경우엔 연결 시도를
 	// 하면 안 됨(아래 addSaveFunc 참고).

@@ -703,3 +703,444 @@ msgstr "항상"
 
 msgid "never"
 msgstr "안 함"
+
+# 추가 누락 항목 (전체 코드베이스 gettext 문자열 감사)
+msgid "MIDI HARDWARE OUTPUT"
+msgstr "MIDI 하드웨어 출력"
+
+msgid "OUTPUT RESOLUTION"
+msgstr "출력 해상도"
+
+msgid "SSID"
+msgstr "SSID"
+
+msgid "ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?"
+msgstr "ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?"
+
+# 스크린세이버/컬렉션/스크래퍼/메타데이터 설정 화면 (전체 코드베이스 gettext 감사)
+msgid "SCREENSAVER AFTER"
+msgstr "화면보호기 시작 시간"
+
+msgid "SCREENSAVER CONTROLS"
+msgstr "화면보호기 조작"
+
+msgid "SCREENSAVER BEHAVIOR"
+msgstr "화면보호기 동작"
+
+msgid "SYSTEM SLEEP AFTER"
+msgstr "시스템 절전 시간"
+
+msgid "EXCLUDE GAMES FROM"
+msgstr "제외할 컬렉션"
+
+msgid "MAX GAMES"
+msgstr "최대 게임 수"
+
+msgid "GROUP UNTHEMED CUSTOM COLLECTIONS"
+msgstr "테마 없는 사용자 컬렉션 묶기"
+
+msgid "SORT CUSTOM COLLECTIONS AND SYSTEMS"
+msgstr "사용자 컬렉션과 시스템 정렬"
+
+msgid "SHOW SYSTEM NAME IN COLLECTIONS"
+msgstr "컬렉션에 시스템 이름 표시"
+
+msgid "PRESS (Y) TWICE TO REMOVE FROM FAVS./COLL."
+msgstr "(Y) 두 번 눌러 즐겨찾기/컬렉션에서 제거"
+
+msgid "ADD/REMOVE GAMES WHILE SCREENSAVER TO"
+msgstr "화면보호기 중 게임 추가/제거 대상"
+
+msgid "SWAP VIDEO AFTER (SECS)"
+msgstr "영상 전환 시간(초)"
+
+msgid "STRETCH VIDEO ON SCREENSAVER"
+msgstr "화면보호기 영상 늘리기"
+
+msgid "USE OMX PLAYER FOR SCREENSAVER"
+msgstr "화면보호기에 OMX 플레이어 사용"
+
+msgid "SHOW GAME INFO ON SCREENSAVER"
+msgstr "화면보호기에 게임 정보 표시"
+
+msgid "MUTE SCREENSAVER AUDIO"
+msgstr "화면보호기 음소거"
+
+msgid "VLC: SCREENSAVER VIDEO RESOLUTION"
+msgstr "VLC: 화면보호기 영상 해상도"
+
+msgid "OMX: GAME INFO ALIGNMENT"
+msgstr "OMX: 게임 정보 정렬"
+
+msgid "OMX: GAME INFO FONT SIZE"
+msgstr "OMX: 게임 정보 글꼴 크기"
+
+msgid "Filter"
+msgstr "필터"
+
+msgid "Systems"
+msgstr "시스템"
+
+msgid "User decides on conflicts"
+msgstr "충돌 시 사용자가 선택"
+
+msgid "SCRAPE"
+msgstr "스크랩"
+
+msgid "scrape"
+msgstr "스크랩"
+
+msgid "SAVE"
+msgstr "저장"
+
+msgid "save"
+msgstr "저장"
+
+msgid "DELETE"
+msgstr "삭제"
+
+msgid "delete"
+msgstr "삭제"
+
+msgid "INPUT"
+msgstr "직접 입력"
+
+msgid "search"
+msgstr "검색"
+
+msgid "SKIP"
+msgstr "건너뛰기"
+
+msgid "skip"
+msgstr "건너뛰기"
+
+msgid "STOP"
+msgstr "정지"
+
+msgid "stop (progress saved)"
+msgstr "정지 (진행상황 저장됨)"
+
+msgid "ok"
+msgstr "확인"
+
+msgid "discard changes"
+msgstr "변경사항 취소"
+
+msgid "VIDEO SCREENSAVER SETTINGS"
+msgstr "비디오 화면보호기 설정"
+
+msgid "SLIDESHOW SCREENSAVER SETTINGS"
+msgstr "슬라이드쇼 화면보호기 설정"
+
+msgid "EDIT METADATA"
+msgstr "메타데이터 편집"
+
+msgid "SCRAPING IN PROGRESS"
+msgstr "스크랩 진행 중"
+
+msgid "RATING:"
+msgstr "평점:"
+
+msgid "RELEASED:"
+msgstr "출시일:"
+
+msgid "DEVELOPER:"
+msgstr "개발사:"
+
+msgid "PUBLISHER:"
+msgstr "배급사:"
+
+msgid "GENRE:"
+msgstr "장르:"
+
+msgid "PLAYERS:"
+msgstr "인원:"
+
+msgid "NO GAMES FOUND - SKIP"
+msgstr "게임 없음 - 건너뛰기"
+
+msgid "FINISH EDITING '"
+msgstr "편집 종료: '"
+
+msgid "' COLLECTION"
+msgstr "' 컬렉션"
+
+msgid "CREATE NEW CUSTOM COLLECTION"
+msgstr "새 사용자 컬렉션 만들기"
+
+msgid "WORKING..."
+msgstr "처리 중..."
+
+msgid "HOLD A BUTTON ON YOUR DEVICE TO CONFIGURE IT."
+msgstr "설정할 장치의 버튼을 누르고 있으세요."
+
+msgid "RESET ALL FILTERS"
+msgstr "모든 필터 초기화"
+
+msgid "CONFIGURING"
+msgstr "설정 중"
+
+msgid "HOLD ANY BUTTON TO SKIP"
+msgstr "아무 버튼이나 눌러서 건너뛰기"
+
+msgid "-NOT DEFINED-"
+msgstr "-정의되지 않음-"
+
+msgid "THIS WILL DELETE THE ACTUAL GAME FILE(S)!\nARE YOU SURE?"
+msgstr "실제 게임 파일이 삭제됩니다!\n계속하시겠습니까?"
+
+msgid "SAVE CHANGES?"
+msgstr "변경사항을 저장하시겠습니까?"
+
+msgid "Configured scraper is no longer available.\nPlease change the scraping source in the settings."
+msgstr "설정된 스크래퍼를 더 이상 사용할 수 없습니다.\n설정에서 스크랩 소스를 변경하세요."
+
+msgid "FINISH"
+msgstr "완료"
+
+msgid "The selected UI mode has nothing to show,\n returning to UI mode: FULL"
+msgstr "선택한 UI 모드에 표시할 항목이 없어\nFULL 모드로 되돌아갑니다."
+
+msgid "RETRY"
+msgstr "다시 시도"
+
+msgid "INCLUDE GAMES FROM"
+msgstr "포함할 컬렉션"
+
+msgid "SELECT THEME FOLDER"
+msgstr "테마 폴더 선택"
+
+# 컨트롤러 설정 마법사 (GuiInputConfig)
+msgid "D-PAD UP"
+msgstr "십자키 위"
+
+msgid "D-PAD DOWN"
+msgstr "십자키 아래"
+
+msgid "D-PAD LEFT"
+msgstr "십자키 왼쪽"
+
+msgid "D-PAD RIGHT"
+msgstr "십자키 오른쪽"
+
+msgid "START"
+msgstr "시작"
+
+msgid "BUTTON A / EAST"
+msgstr "버튼 A / 동쪽"
+
+msgid "BUTTON B / SOUTH"
+msgstr "버튼 B / 남쪽"
+
+msgid "BUTTON X / NORTH"
+msgstr "버튼 X / 북쪽"
+
+msgid "BUTTON Y / WEST"
+msgstr "버튼 Y / 서쪽"
+
+msgid "LEFT SHOULDER"
+msgstr "왼쪽 숄더"
+
+msgid "RIGHT SHOULDER"
+msgstr "오른쪽 숄더"
+
+msgid "LEFT TRIGGER"
+msgstr "왼쪽 트리거"
+
+msgid "RIGHT TRIGGER"
+msgstr "오른쪽 트리거"
+
+msgid "LEFT THUMB"
+msgstr "왼쪽 스틱 누름"
+
+msgid "RIGHT THUMB"
+msgstr "오른쪽 스틱 누름"
+
+msgid "LEFT ANALOG UP"
+msgstr "왼쪽 스틱 위"
+
+msgid "LEFT ANALOG DOWN"
+msgstr "왼쪽 스틱 아래"
+
+msgid "LEFT ANALOG LEFT"
+msgstr "왼쪽 스틱 왼쪽"
+
+msgid "LEFT ANALOG RIGHT"
+msgstr "왼쪽 스틱 오른쪽"
+
+msgid "RIGHT ANALOG UP"
+msgstr "오른쪽 스틱 위"
+
+msgid "RIGHT ANALOG DOWN"
+msgstr "오른쪽 스틱 아래"
+
+msgid "RIGHT ANALOG LEFT"
+msgstr "오른쪽 스틱 왼쪽"
+
+msgid "RIGHT ANALOG RIGHT"
+msgstr "오른쪽 스틱 오른쪽"
+
+msgid "HOTKEY ENABLE"
+msgstr "핫키 활성화"
+
+msgid "KEYBOARD"
+msgstr "키보드"
+
+msgid "CEC"
+msgstr "CEC"
+
+msgid "GAMEPAD"
+msgstr "게임패드"
+
+msgid "YOU DIDN'T CHOOSE A HOTKEY ENABLE BUTTON. THIS IS REQUIRED FOR EXITING GAMES WITH A CONTROLLER. DO YOU WANT TO USE THE SELECT BUTTON DEFAULT ? PLEASE ANSWER YES TO USE SELECT OR NO TO NOT SET A HOTKEY ENABLE BUTTON."
+msgstr "핫키 활성화 버튼을 선택하지 않았습니다. 컨트롤러로 게임을 종료하려면 필요합니다. SELECT 버튼을 기본값으로 사용하시겠습니까? 사용하려면 예, 설정하지 않으려면 아니오를 선택하세요."
+
+msgid "PRESS ANYTHING"
+msgstr "아무 버튼이나 누르세요"
+
+msgid "ALREADY TAKEN"
+msgstr "이미 사용 중"
+
+msgid "WELCOME"
+msgstr "환영합니다"
+
+msgid "NO GAMEPADS DETECTED"
+msgstr "게임패드가 감지되지 않았습니다"
+
+msgid "PRESS F4 TO QUIT AT ANY TIME."
+msgstr "언제든지 F4를 눌러 종료할 수 있습니다."
+
+msgid "PRESS ESC TO CANCEL."
+msgstr "ESC를 눌러 취소할 수 있습니다."
+
+# 랜덤/사용자 게임 컬렉션 설정
+msgid "RANDOM COLLECTION"
+msgstr "랜덤 컬렉션"
+
+msgid "INCLUDE SYSTEMS"
+msgstr "포함할 시스템"
+
+msgid "INCLUDE AUTO COLLECTIONS"
+msgstr "자동 컬렉션 포함"
+
+msgid "INCLUDE CUSTOM COLLECTIONS"
+msgstr "사용자 컬렉션 포함"
+
+msgid "RANDOM GAME COLLECTION SETTINGS"
+msgstr "랜덤 게임 컬렉션 설정"
+
+msgid "CREATE NEW CUSTOM COLLECTION FROM THEME"
+msgstr "테마에서 새 사용자 컬렉션 만들기"
+
+msgid "SELECT COLLECTIONS"
+msgstr "컬렉션 선택"
+
+# 게임 목록 필터
+msgid "FILTER GAMELIST BY"
+msgstr "게임 목록 필터"
+
+msgid "FAVORITES"
+msgstr "즐겨찾기"
+
+msgid "GENRE"
+msgstr "장르"
+
+msgid "PLAYERS"
+msgstr "인원"
+
+msgid "PUBLISHER / DEVELOPER"
+msgstr "배급사 / 개발사"
+
+msgid "RATING"
+msgstr "평점"
+
+msgid "KIDGAME"
+msgstr "어린이용"
+
+msgid "HIDDEN"
+msgstr "숨김"
+
+# 메타데이터 편집
+msgid "EMULATOR"
+msgstr "에뮬레이터"
+
+# 슬라이드쇼 화면보호기 설정
+msgid "SWAP MEDIA AFTER (SECS)"
+msgstr "미디어 전환 시간(초)"
+
+msgid "STRETCH MEDIA"
+msgstr "미디어 늘리기"
+
+msgid "BACKGROUND AUDIO"
+msgstr "배경 오디오"
+
+msgid "USE CUSTOM MEDIA"
+msgstr "사용자 미디어 사용"
+
+msgid "CUSTOM MEDIA DIR"
+msgstr "사용자 미디어 폴더"
+
+msgid "CUSTOM MEDIA DIR RECURSIVE"
+msgstr "사용자 미디어 폴더 하위 포함"
+
+msgid "CUSTOM IMAGE FILTER"
+msgstr "사용자 이미지 필터"
+
+msgid "CUSTOM VIDEO FILTER"
+msgstr "사용자 비디오 필터"
+
+msgid "VIDEO SCREENSAVER"
+msgstr "비디오 화면보호기"
+
+msgid "SLIDESHOW SCREENSAVER"
+msgstr "슬라이드쇼 화면보호기"
+
+msgid "NO GAMES WERE SCRAPED."
+msgstr "스크랩된 게임이 없습니다."
+
+msgid "PLAYER "
+msgstr "플레이어 "
+
+msgid " CONTROLLER"
+msgstr "번 컨트롤러"
+
+msgid "DEFAULT EMULATOR"
+msgstr "기본 에뮬레이터"
+
+msgid "SYSTEM INFO"
+msgstr "시스템 정보"
+
+# 비디오 화면보호기 설정
+msgid "SHOW GAME INFO"
+msgstr "게임 정보 표시"
+
+msgid "VIDEO RESOLUTION"
+msgstr "비디오 해상도"
+
+msgid "GAME INFO ALIGNMENT"
+msgstr "게임 정보 정렬"
+
+msgid "OMX: PATH TO FONT FILE"
+msgstr "OMX: 글꼴 파일 경로"
+
+msgid "OMX: PATH TO ITALIC FONT FILE"
+msgstr "OMX: 기울임 글꼴 파일 경로"
+
+msgid "GOT IT!"
+msgstr "확인!"
+
+# 스크래퍼
+msgid "SCRAPE THESE GAMES"
+msgstr "스크랩할 게임"
+
+msgid "SCRAPE THESE SYSTEMS"
+msgstr "스크랩할 시스템"
+
+msgid "NO GAMES FIT THAT CRITERIA."
+msgstr "조건에 맞는 게임이 없습니다."
+
+msgid "SEARCH FOR"
+msgstr "검색어"
+
+msgid "SEARCH"
+msgstr "검색"
