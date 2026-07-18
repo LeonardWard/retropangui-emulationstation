@@ -376,7 +376,9 @@ bool GuiBiosCheck::input(InputConfig* config, Input input)
 		return true;
 	}
 
-	if (input.value != 0 && (config->isMappedTo("a", input) || config->isMappedTo("b", input)))
+	// RetroPangui: isMappedToAction()으로 통일 - 물리 버튼 자체는 동일(East/South
+	// 둘 다 받아주므로 동작 변화 없음), 다른 화면들과 표기 일관성 목적.
+	if (input.value != 0 && (config->isMappedToAction("accept", input) || config->isMappedToAction("back", input)))
 	{
 		delete this;
 		return true;
@@ -391,7 +393,7 @@ std::vector<HelpPrompt> GuiBiosCheck::getHelpPrompts()
 	if (mDone)
 	{
 		prompts.push_back(HelpPrompt("up/down", _("CHOOSE")));
-		prompts.push_back(HelpPrompt("b", _("BACK")));
+		prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("BACK")));
 	}
 	return prompts;
 }

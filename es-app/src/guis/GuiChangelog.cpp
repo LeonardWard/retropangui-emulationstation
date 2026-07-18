@@ -75,8 +75,9 @@ void GuiChangelog::onSizeChanged()
 
 bool GuiChangelog::input(InputConfig* config, Input input)
 {
+    // RetroPangui: isMappedToAction("accept")로 통일 - ButtonLayout에 맞는 확인 버튼 사용.
     if (input.value != 0 &&
-        (config->isMappedTo("a", input) || config->isMappedTo("start", input)))
+        (config->isMappedToAction("accept", input) || config->isMappedTo("start", input)))
     {
         close();
         return true;

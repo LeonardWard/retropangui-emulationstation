@@ -3,6 +3,7 @@
 #define ES_CORE_COMPONENTS_OPTION_LIST_COMPONENT_H
 
 #include "GuiComponent.h"
+#include "InputConfig.h"
 #include "Log.h"
 #include "Window.h"
 #include <type_traits>
@@ -129,7 +130,7 @@ private:
 		std::vector<HelpPrompt> getHelpPrompts() override
 		{
 			auto prompts = mMenu.getHelpPrompts();
-			prompts.push_back(HelpPrompt("b", "back"));
+			prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "back"));
 			return prompts;
 		}
 	};
@@ -394,9 +395,8 @@ private:
 		if(!mMultiSelect)
 			prompts.push_back(HelpPrompt("left/right", "change"));
 
-		// RetroPangui: Use logical button names based on ButtonLayout
-		std::string acceptButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "b" : "a";
-		prompts.push_back(HelpPrompt(acceptButton, "select"));
+		// RetroPangui: InputConfig::getActionButton()로 통일(중복 삼항연산자 제거)
+		prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "select"));
 		return prompts;
 	}
 

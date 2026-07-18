@@ -1,5 +1,6 @@
 #include "views/SystemView.h"
 
+#include "InputConfig.h"
 #include "InputManager.h"
 
 #include "animations/LambdaAnimation.h"
@@ -525,9 +526,8 @@ std::vector<HelpPrompt> SystemView::getHelpPrompts()
 	else
 		prompts.push_back(HelpPrompt("left/right", "choose"));
 
-	// RetroPangui: Use logical button names based on ButtonLayout
-	std::string acceptButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "b" : "a";
-	prompts.push_back(HelpPrompt(acceptButton, "select"));
+	// RetroPangui: InputConfig::getActionButton()로 통일(중복 삼항연산자 제거)
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "select"));
 	prompts.push_back(HelpPrompt("x", "random"));
 
 	if (!UIModeController::getInstance()->isUIModeKid() && Settings::getInstance()->getBool("ScreenSaverControls"))

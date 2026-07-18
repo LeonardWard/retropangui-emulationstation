@@ -254,8 +254,8 @@ std::vector<HelpPrompt> GuiBtPairing::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
 	prompts.push_back(HelpPrompt("up/down", "choose"));
-	prompts.push_back(HelpPrompt("a", "select"));
-	prompts.push_back(HelpPrompt("b", "back"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "select"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "back"));
 	return prompts;
 }
 

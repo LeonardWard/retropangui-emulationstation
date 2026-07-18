@@ -4,6 +4,7 @@
 #include "views/UIModeController.h"
 #include "views/ViewController.h"
 #include "CollectionSystemManager.h"
+#include "InputConfig.h"
 #include "LocaleES.h"
 #include "Settings.h"
 #include "SystemData.h"
@@ -480,12 +481,9 @@ std::vector<HelpPrompt> GridGameListView::getHelpPrompts()
 		prompts.push_back(HelpPrompt("lr", "system"));
 	prompts.push_back(HelpPrompt("up/down/left/right", "choose"));
 
-	// RetroPangui: Use logical button names based on ButtonLayout
-	std::string acceptButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "b" : "a";
-	std::string backButton = Settings::getInstance()->getString("ButtonLayout") == "nintendo" ? "a" : "b";
-
-	prompts.push_back(HelpPrompt(acceptButton, "launch"));
-	prompts.push_back(HelpPrompt(backButton, "back"));
+	// RetroPangui: InputConfig::getActionButton()로 통일(중복 삼항연산자 제거)
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), "launch"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "back"));
 	if(!UIModeController::getInstance()->isUIModeKid())
 		prompts.push_back(HelpPrompt("select", "options"));
 	if(mRoot->getSystem()->isGameSystem())

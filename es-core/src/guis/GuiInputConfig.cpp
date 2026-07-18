@@ -147,10 +147,12 @@ GuiInputConfig::GuiInputConfig(Window* window, InputConfig* target, bool reconfi
 			if(config != mTargetConfig)
 				return false;
 
-			// if we're not configuring, start configuring when A is pressed
+			// if we're not configuring, start configuring when the accept button is pressed
+			// (RetroPangui: isMappedToAction("accept")로 통일 - 물리 East 고정인
+			// isMappedTo("a") 대신 ButtonLayout에 맞는 확인 버튼을 사용)
 			if(!mConfiguringRow)
 			{
-				if(config->isMappedTo("a", input) && input.value)
+				if(config->isMappedToAction("accept", input) && input.value)
 				{
 					mList->stopScrolling();
 					mConfiguringRow = true;

@@ -66,7 +66,10 @@ bool ComponentList::input(InputConfig* config, Input input)
 	// "논리적으로 한 번 누름 = 한 번 진동" 디바운스가 자연스럽게 성립.
 	if(input.value != 0)
 	{
-		if(config->isMappedTo("a", input))
+		// RetroPangui: isMappedTo("a")는 물리 East 고정이라 ButtonLayout이
+		// nintendo(accept=South)일 때 실제 확인 버튼과 다른 곳에서 진동이
+		// 울리던 문제 - isMappedToAction("accept")로 통일.
+		if(config->isMappedToAction("accept", input))
 			InputManager::getInstance()->rumbleSelect(config->getDeviceId());
 		else if(config->isMappedLike("up", input) || config->isMappedLike("down", input)
 			|| config->isMappedLike("leftshoulder", input) || config->isMappedLike("rightshoulder", input))

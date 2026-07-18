@@ -334,7 +334,7 @@ msgid "launch"
 msgstr "실행"
 
 msgid "choose"
-msgstr "선택"
+msgstr "이동"
 
 msgid "options"
 msgstr "옵션"
@@ -572,7 +572,7 @@ msgid "FAILED"
 msgstr "실패"
 
 msgid "CHOOSE"
-msgstr "선택"
+msgstr "이동"
 
 msgid "SAVE STATES"
 msgstr "세이브 스테이트"

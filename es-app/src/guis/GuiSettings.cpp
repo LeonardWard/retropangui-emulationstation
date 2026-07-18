@@ -72,7 +72,7 @@ std::vector<HelpPrompt> GuiSettings::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts = mMenu.getHelpPrompts();
 
-	prompts.push_back(HelpPrompt("b", "back"));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), "back"));
 	prompts.push_back(HelpPrompt("start", "close"));
 
 	return prompts;

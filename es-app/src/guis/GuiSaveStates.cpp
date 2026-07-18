@@ -8,6 +8,7 @@
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
 #include "FileData.h"
+#include "InputConfig.h"
 #include "LocaleES.h"
 #include "SystemData.h"
 #include "Window.h"
@@ -169,13 +170,16 @@ void GuiSaveStates::onSizeChanged()
 
 bool GuiSaveStates::input(InputConfig* config, Input input)
 {
-	if (input.value != 0 && config->isMappedTo("b", input))
+	// RetroPangui: isMappedTo("a"/"b")는 물리 위치(East/South) 고정이라 ButtonLayout
+	// 설정(SWAP BUTTONS A/B)을 무시함 - isMappedToAction("accept"/"back")으로 교체해서
+	// 다른 화면들과 Accept/Back 물리 버튼이 항상 일치하도록 통일(사용자 지적).
+	if (input.value != 0 && config->isMappedToAction("back", input))
 	{
 		delete this; // 실행 취소 - 게임을 시작하지 않고 화면만 닫음
 		return true;
 	}
 
-	if (input.value != 0 && config->isMappedTo("a", input))
+	if (input.value != 0 && config->isMappedToAction("accept", input))
 	{
 		const int cursor = mList->getCursorId();
 		const int slot = (cursor >= 1 && cursor <= (int)mStates.size())
@@ -195,7 +199,7 @@ std::vector<HelpPrompt> GuiSaveStates::getHelpPrompts()
 {
 	std::vector<HelpPrompt> prompts;
 	prompts.push_back(HelpPrompt("up/down", _("CHOOSE")));
-	prompts.push_back(HelpPrompt("a", _("LAUNCH")));
-	prompts.push_back(HelpPrompt("b", _("BACK")));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("accept"), _("LAUNCH")));
+	prompts.push_back(HelpPrompt(InputConfig::getActionButton("back"), _("BACK")));
 	return prompts;
 }
