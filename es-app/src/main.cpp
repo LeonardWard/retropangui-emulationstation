@@ -286,25 +286,25 @@ bool verifyHomeFolderExists()
 }
 
 // Returns true if everything is OK,
-bool loadSystemConfigFile(Window* window, const char** errorString)
+bool loadSystemConfigFile(Window* window, std::string* errorString)
 {
-	*errorString = NULL;
+	errorString->clear();
 
 	if(!SystemData::loadConfig(window))
 	{
 		LOG(LogError) << "Error while parsing systems configuration file!";
-		*errorString = "IT LOOKS LIKE YOUR SYSTEMS CONFIGURATION FILE HAS NOT BEEN SET UP OR IS INVALID. YOU'LL NEED TO DO THIS BY HAND, UNFORTUNATELY.\n\n"
-			"VISIT EMULATIONSTATION.ORG FOR MORE INFORMATION.";
+		*errorString = _("IT LOOKS LIKE YOUR SYSTEMS CONFIGURATION FILE HAS NOT BEEN SET UP OR IS INVALID. YOU'LL NEED TO DO THIS BY HAND, UNFORTUNATELY.\n\n"
+			"VISIT EMULATIONSTATION.ORG FOR MORE INFORMATION.");
 		return false;
 	}
 
 	if(SystemData::sSystemVector.size() == 0)
 	{
 		LOG(LogError) << "No systems found! Does at least one system have a game present? (check that extensions match!)\n(Also, make sure you've updated your es_systems.cfg for XML!)";
-		*errorString = "WE CAN'T FIND ANY SYSTEMS!\n"
+		*errorString = _("WE CAN'T FIND ANY SYSTEMS!\n"
 			"CHECK THAT YOUR PATHS ARE CORRECT IN THE SYSTEMS CONFIGURATION FILE, "
 			"AND YOUR GAME DIRECTORY HAS AT LEAST ONE GAME WITH THE CORRECT EXTENSION.\n\n"
-			"VISIT EMULATIONSTATION.ORG FOR MORE INFORMATION.";
+			"VISIT EMULATIONSTATION.ORG FOR MORE INFORMATION.");
 		return false;
 	}
 
@@ -409,11 +409,11 @@ int main(int argc, char* argv[])
 
 	Log::flush(); // before loading system config
 
-	const char* errorMsg = NULL;
+	std::string errorMsg;
 	if(!loadSystemConfigFile(splashScreen ? &window : nullptr, &errorMsg))
 	{
 		// something went terribly wrong
-		if(errorMsg == NULL)
+		if(errorMsg.empty())
 		{
 			LOG(LogError) << "Unknown error occured while parsing system config file.";
 			if(!scrape_cmdline)
@@ -476,7 +476,7 @@ int main(int argc, char* argv[])
 	});
 
 	//choose which GUI to open depending on if an input configuration already exists
-	if(errorMsg == NULL)
+	if(errorMsg.empty())
 	{
 		auto showChangelogIfPending = [&window]() {
 			if(Utils::FileSystem::exists("/etc/.ota-changelog-pending"))
