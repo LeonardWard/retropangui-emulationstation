@@ -3,6 +3,7 @@
 #include "components/AnimatedImageComponent.h"
 #include "components/ImageComponent.h"
 #include "components/TextComponent.h"
+#include "LocaleES.h"
 
 // animation definition
 AnimationFrame BUSY_ANIMATION_FRAMES[] = {
