@@ -69,6 +69,7 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 		{ "fontSize", RESOLUTION_FLOAT },
 		{ "color", COLOR },
 		{ "alignment", STRING },
+		{ "verticalAlignment", STRING },
 		{ "forceUppercase", BOOLEAN },
 		{ "lineSpacing", FLOAT },
 		{ "value", STRING },

@@ -286,6 +286,19 @@ void TextComponent::applyTheme(const std::shared_ptr<ThemeData>& theme, const st
 			LOG(LogError) << "Unknown text alignment string: " << str;
 	}
 
+	if(properties & ALIGNMENT && elem->has("verticalAlignment"))
+	{
+		std::string str = elem->get<std::string>("verticalAlignment");
+		if(str == "top")
+			setVerticalAlignment(ALIGN_TOP);
+		else if(str == "center")
+			setVerticalAlignment(ALIGN_CENTER);
+		else if(str == "bottom")
+			setVerticalAlignment(ALIGN_BOTTOM);
+		else
+			LOG(LogError) << "Unknown vertical text alignment string: " << str;
+	}
+
 	if(properties & TEXT && elem->has("text"))
 		setText(elem->get<std::string>("text"));
 
