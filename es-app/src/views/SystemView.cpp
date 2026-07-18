@@ -306,6 +306,17 @@ void SystemView::updateRecentlyPlayed(SystemViewData& data, SystemData* system)
 			games.resize(MAX_RECENT_CARDS);
 	}
 
+	// RetroPangui: update()가 매 프레임 호출하므로 위 스캔 자체는 어쩔 수 없이 매번
+	// 돌지만, 그 결과가 지난 프레임과 똑같으면 아래 setImage()/setVisible() 호출은
+	// 건너뜀 - 썸네일이 없는 카드(예: 롬이 1개뿐인 시스템)에서 매 프레임 이미지 없는
+	// setImage("")가 반복 호출되며 깜빡이던 문제 수정(2026-07-18).
+	static SystemData* sLastSystem = nullptr;
+	static std::vector<FileData*> sLastGames;
+	if (system == sLastSystem && games == sLastGames)
+		return;
+	sLastSystem = system;
+	sLastGames = games;
+
 	// 최근 플레이한 게임 수만큼만 카드를 보여줌 - 빈 슬롯을 놔두지 않고 아예 숨김
 	for (int i = 0; i < MAX_RECENT_CARDS; ++i)
 	{
