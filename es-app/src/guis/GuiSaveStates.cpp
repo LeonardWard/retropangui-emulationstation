@@ -120,6 +120,12 @@ GuiSaveStates::GuiSaveStates(Window* window, FileData* game, const std::function
 
 	mList->setCursorChangedCallback([this](CursorState) { updateThumbnail(); });
 
+	// RetroPangui: 이 화면은 ComponentGrid 없이 mList를 직접 addChild()하는
+	// 구조라, 다른 화면들처럼 grid가 자동으로 넘겨주는 onFocusGained() 호출이
+	// 없어서 mList가 계속 mFocused=false로 남아 선택 바(커서 하이라이트)가
+	// 안 그려지고 있었음(사용자 발견) - 명시적으로 포커스를 줘서 고침.
+	mList->onFocusGained();
+
 	setSize(Renderer::getScreenWidth() * 0.75f, Renderer::getScreenHeight() * 0.7f);
 	setPosition((Renderer::getScreenWidth() - mSize.x()) / 2,
 	            (Renderer::getScreenHeight() - mSize.y()) / 2);
