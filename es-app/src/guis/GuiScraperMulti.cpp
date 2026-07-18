@@ -137,14 +137,14 @@ void GuiScraperMulti::finish()
 	{
 		ss << _("NO GAMES WERE SCRAPED.");
 	}else{
-		ss << mTotalSuccessful << " GAME" << ((mTotalSuccessful > 1) ? "S" : "") << " SUCCESSFULLY SCRAPED!";
+		ss << mTotalSuccessful << " " << _("GAME") << ((mTotalSuccessful > 1) ? "S" : "") << " " << _("SUCCESSFULLY SCRAPED!");
 
 		if(mTotalSkipped > 0)
-			ss << "\n" << mTotalSkipped << " GAME" << ((mTotalSkipped > 1) ? "S" : "") << " SKIPPED.";
+			ss << "\n" << mTotalSkipped << " " << _("GAME") << ((mTotalSkipped > 1) ? "S" : "") << " " << _("SKIPPED.");
 	}
 
 	mWindow->pushGui(new GuiMsgBox(mWindow, ss.str(),
-		"OK", [&] { delete this; }));
+		_("OK"), [&] { delete this; }));
 
 	mIsProcessing = false;
 	PowerSaver::resume();

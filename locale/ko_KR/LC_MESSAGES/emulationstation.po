@@ -1144,3 +1144,37 @@ msgstr "검색어"
 
 msgid "SEARCH"
 msgstr "검색"
+
+# 화면보호기/스크래퍼 경고 다이얼로그
+msgid "The \"Random Video\" screensaver shows videos from your gamelist.\n\nIf you do not have videos, or if in several consecutive attempts the games it selects don't have videos it will default to black.\n\nMore options in the \"UI Settings\" > \"Video Screensaver\" menu."
+msgstr "\"랜덤 비디오\" 화면보호기는 게임 목록의 영상을 보여줍니다.\n\n영상이 없거나 연속으로 여러 번 선택한 게임에 영상이 없으면 검은 화면으로 대체됩니다.\n\n더 많은 옵션은 \"UI 설정\" > \"비디오 화면보호기\" 메뉴에 있습니다."
+
+msgid "One time note: Enabling the system sleep time will trigger user-defined scripts."
+msgstr "안내: 시스템 절전 시간을 켜면 사용자 정의 스크립트가 실행됩니다."
+
+msgid "\nPlease see Retropie/Emulationstation Wiki on events for details."
+msgstr "\n자세한 내용은 Retropie/Emulationstation 위키의 이벤트 문서를 참고하세요."
+
+msgid "The system sleep delay is enabled, but is less than or equal to the screen saver start delay."
+msgstr "시스템 절전 지연이 화면보호기 시작 지연보다 짧거나 같게 설정되어 있습니다."
+
+msgid "\n\nAdjusted system sleep time to "
+msgstr "\n\n시스템 절전 시간을 "
+
+msgid " minutes."
+msgstr "분으로 조정했습니다."
+
+msgid "Using OMX Player and displaying Game Info may result in the video flickering in some TV modes. If that happens, consider:\n\n• Disabling the \"Show Game Info\" option;\n• Disabling \"Overscan\" on the Pi configuration menu might help:\nRetroPie > Raspi-Config > Advanced Options > Overscan > \"No\".\n• Disabling the use of OMX Player for the screensaver."
+msgstr "OMX 플레이어 사용 중 게임 정보를 표시하면 일부 TV 모드에서 영상이 깜빡일 수 있습니다. 이럴 때는 다음을 고려하세요:\n\n• \"게임 정보 표시\" 옵션 끄기\n• Pi 설정 메뉴에서 \"Overscan\" 끄기:\nRetroPie > Raspi-Config > Advanced Options > Overscan > \"No\"\n• 화면보호기에 OMX 플레이어 사용 끄기"
+
+msgid "Warning: some of your selected systems do not have a platform set. Results may be even more inaccurate than usual!\nContinue anyway?"
+msgstr "경고: 선택한 시스템 중 일부에 플랫폼이 설정되어 있지 않습니다. 결과가 평소보다 더 부정확할 수 있습니다!\n계속하시겠습니까?"
+
+msgid "GAME"
+msgstr "게임"
+
+msgid "SUCCESSFULLY SCRAPED!"
+msgstr "성공적으로 스크랩됨!"
+
+msgid "SKIPPED."
+msgstr "건너뜀."

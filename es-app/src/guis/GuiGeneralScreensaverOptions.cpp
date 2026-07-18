@@ -39,8 +39,8 @@ GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const
 		if (Settings::getInstance()->getString("ScreenSaverBehavior") != "random video" && screensaver_behavior->getSelected() == "random video") {
 			// if before it wasn't risky but now there's a risk of problems, show warning
 			mWindow->pushGui(new GuiMsgBox(mWindow,
-			"The \"Random Video\" screensaver shows videos from your gamelist.\n\nIf you do not have videos, or if in several consecutive attempts the games it selects don't have videos it will default to black.\n\nMore options in the \"UI Settings\" > \"Video Screensaver\" menu.",
-				"OK", [] { return; }));
+			_("The \"Random Video\" screensaver shows videos from your gamelist.\n\nIf you do not have videos, or if in several consecutive attempts the games it selects don't have videos it will default to black.\n\nMore options in the \"UI Settings\" > \"Video Screensaver\" menu."),
+				_("OK"), [] { return; }));
 		}
 		Settings::getInstance()->setString("ScreenSaverBehavior", screensaver_behavior->getSelected());
 		PowerSaver::updateTimeouts();
@@ -74,16 +74,16 @@ GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const
 			system_sleep_time->setValue((float)adj_system_sleep_time);
 			std::string msg = "";
 			if (!Settings::getInstance()->getBool("SystemSleepTimeHintDisplayed")) {
-				msg += "One time note: Enabling the system sleep time will trigger user-defined scripts.";
-				msg += "\nPlease see Retropie/Emulationstation Wiki on events for details.";
+				msg += _("One time note: Enabling the system sleep time will trigger user-defined scripts.");
+				msg += _("\nPlease see Retropie/Emulationstation Wiki on events for details.");
 				Settings::getInstance()->setBool("SystemSleepTimeHintDisplayed", true);
 			}
 			if (msg.length() > 0) {
 				msg += "\n\n";
 			}
-			msg += "The system sleep delay is enabled, but is less than or equal to the screen saver start delay.";
-			msg	+= "\n\nAdjusted system sleep time to " + std::to_string(adj_system_sleep_time) + " minutes.";
-			mWindow->pushGui(new GuiMsgBox(mWindow, msg, "OK", [] { return; }));
+			msg += _("The system sleep delay is enabled, but is less than or equal to the screen saver start delay.");
+			msg	+= _("\n\nAdjusted system sleep time to ") + std::to_string(adj_system_sleep_time) + _(" minutes.");
+			mWindow->pushGui(new GuiMsgBox(mWindow, msg, _("OK"), [] { return; }));
 		}
 		Settings::getInstance()->setInt("SystemSleepTime", (int)Math::round(system_sleep_time->getValue()) * Settings::ONE_MINUTE_IN_MS);
 	});
