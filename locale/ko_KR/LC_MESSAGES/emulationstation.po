@@ -651,3 +651,55 @@ msgstr "확인됨"
 
 msgid "%i REMOVED"
 msgstr "%i개 제거됨"
+
+# retropangui_features.yml (SYSTEM SETTINGS 메뉴)
+msgid "HOSTNAME"
+msgstr "호스트명"
+
+msgid "TIMEZONE"
+msgstr "시간대"
+
+msgid "AUDIO SETTINGS"
+msgstr "오디오 설정"
+
+msgid "RA AUDIO LATENCY"
+msgstr "RA 오디오 레이턴시"
+
+msgid "SSH"
+msgstr "SSH"
+
+msgid "SAMBA"
+msgstr "삼바 공유"
+
+msgid "WIFI"
+msgstr "Wi-Fi"
+
+msgid "SMOOTH SCALING"
+msgstr "부드러운 스케일링"
+
+msgid "INTEGER SCALING"
+msgstr "정수 스케일링"
+
+msgid "VIDEO DRIVER"
+msgstr "비디오 드라이버"
+
+msgid "REWIND"
+msgstr "되감기"
+
+msgid "AUTO SAVE STATE"
+msgstr "자동 저장"
+
+msgid "AUTO LOAD STATE"
+msgstr "자동 불러오기"
+
+msgid "UNIFIED CONTROLS"
+msgstr "통합 조작"
+
+msgid "on exit"
+msgstr "종료 시"
+
+msgid "always"
+msgstr "항상"
+
+msgid "never"
+msgstr "안 함"
