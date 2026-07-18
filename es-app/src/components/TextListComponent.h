@@ -17,6 +17,9 @@ struct TextListData
 {
 	unsigned int colorId;
 	std::shared_ptr<TextCache> textCache;
+	// RetroPangui: 즐겨찾기 표시(우측 정렬 별표) - 이름 텍스트와 별개로 그려야
+	// 이름 길이와 무관하게 항상 같은 우측 위치에 나옴.
+	bool marker = false;
 };
 
 //A graphical list. Supports multiple colors for rows and scrolling.
@@ -49,7 +52,7 @@ public:
 	void render(const Transform4x4f& parentTrans) override;
 	void applyTheme(const std::shared_ptr<ThemeData>& theme, const std::string& view, const std::string& element, unsigned int properties) override;
 
-	void add(const std::string& name, const T& obj, unsigned int colorId);
+	void add(const std::string& name, const T& obj, unsigned int colorId, bool marker = false);
 
 	enum Alignment
 	{
@@ -84,6 +87,7 @@ public:
 	inline void setSelectedColor(unsigned int color) { mSelectedColor = color; }
 	inline void setColor(unsigned int id, unsigned int color) { mColors[id] = color; }
 	inline void setLineSpacing(float lineSpacing) { mLineSpacing = lineSpacing; }
+	inline void setMarkerColor(unsigned int color) { mMarkerColor = color; }
 
 protected:
 	virtual void onScroll(int /*amt*/) override { if(!mScrollSound.empty()) Sound::get(mScrollSound)->play(); }
@@ -114,6 +118,11 @@ private:
 	unsigned int mColors[COLOR_ID_COUNT];
 	int mViewportHeight;
 	int mCursorPrev = -1;
+
+	// RetroPangui: 즐겨찾기 별표(우측 정렬) - 문자열은 항상 동일("★")하므로
+	// 행마다 새로 만들지 않고 하나만 캐싱해서 재사용.
+	unsigned int mMarkerColor = 0x4A8FE7FF;
+	std::unique_ptr<TextCache> mMarkerCache;
 
 	ImageComponent mSelectorImage;
 };
@@ -247,6 +256,20 @@ void TextListComponent<T>::render(const Transform4x4f& parentTrans)
 			font->renderTextCache(entry.data.textCache.get());
 		}
 
+		// RetroPangui: 즐겨찾기 별표 - 이름 정렬과 무관하게 항상 우측 끝 고정
+		if(entry.data.marker)
+		{
+			if(!mMarkerCache)
+				mMarkerCache = std::unique_ptr<TextCache>(font->buildTextCache("★", 0, 0, 0x000000FF));
+			mMarkerCache->setColor(mMarkerColor);
+
+			Vector3f markerOffset(mSize.x() - mHorizontalMargin - mMarkerCache->metrics.size.x(), y, 0);
+			Transform4x4f markerTrans = trans;
+			markerTrans.translate(markerOffset);
+			Renderer::setMatrix(markerTrans);
+			font->renderTextCache(mMarkerCache.get());
+		}
+
 		y += entrySize;
 	}
 
@@ -370,7 +393,7 @@ void TextListComponent<T>::update(int deltaTime)
 
 //list management stuff
 template <typename T>
-void TextListComponent<T>::add(const std::string& name, const T& obj, unsigned int color)
+void TextListComponent<T>::add(const std::string& name, const T& obj, unsigned int color, bool marker)
 {
 	assert(color < COLOR_ID_COUNT);
 
@@ -378,6 +401,7 @@ void TextListComponent<T>::add(const std::string& name, const T& obj, unsigned i
 	entry.name = name;
 	entry.object = obj;
 	entry.data.colorId = color;
+	entry.data.marker = marker;
 	static_cast<IList< TextListData, T >*>(this)->add(entry);
 }
 
@@ -424,6 +448,8 @@ void TextListComponent<T>::applyTheme(const std::shared_ptr<ThemeData>& theme, c
 			setColor(0, elem->get<unsigned int>("primaryColor"));
 		if(elem->has("secondaryColor"))
 			setColor(1, elem->get<unsigned int>("secondaryColor"));
+		if(elem->has("markerColor"))
+			setMarkerColor(elem->get<unsigned int>("markerColor"));
 	}
 
 	setFont(Font::getFromTheme(elem, properties, mFont));

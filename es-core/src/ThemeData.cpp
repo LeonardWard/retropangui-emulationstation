@@ -90,6 +90,7 @@ std::map<std::string, std::map<std::string, ThemeData::ElementPropertyType>> The
 		{ "selectedColor", COLOR },
 		{ "primaryColor", COLOR },
 		{ "secondaryColor", COLOR },
+		{ "markerColor", COLOR },
 		{ "fontPath", PATH },
 		{ "fontSize", RESOLUTION_FLOAT },
 		{ "scrollSound", PATH },
