@@ -326,6 +326,11 @@ void SystemView::updateRecentlyPlayed(SystemViewData& data, SystemData* system)
 			if (hasGame)
 				nameExtra->setValue(games[i]->getDisplayName());
 		}
+
+		// 테마가 카드별 그림자(예: rp-card-1-shadow)를 뒀으면 카드와 동일하게 보임/숨김
+		// 처리 - 안 뒀으면 nullptr이라 안전하게 스킵.
+		if (auto shadowExtra = findNamedExtra(data, cardName + "-shadow"))
+			shadowExtra->setVisible(hasGame);
 	}
 	// 플레이 이력이 하나도 없어도 rp-header("RECENTLY PLAYED" 제목)는 그대로 둠 -
 	// 카드만 하나도 없이 제목만 남는 게 의도된 동작(사용자 확인, 2026-07-06).
