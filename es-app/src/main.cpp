@@ -380,7 +380,6 @@ int main(int argc, char* argv[])
 
 	// RetroPangui: Initialize locale
 	std::string language = Settings::getInstance()->getString("Language");
-	LOG(LogInfo) << "main() : language read from Settings just before LocaleES::init() = [" << language << "]";
 	LocaleES::init(language);
 
 	Window window;
