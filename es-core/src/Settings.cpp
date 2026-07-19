@@ -308,7 +308,12 @@ void Settings::saveFile()
 		}
 	}
 
-	doc.save_file(path.c_str());
+	// 2026-07-19: saveFile()이 로그엔 찍히는데 실제 파일이 안 바뀌는 버그
+	// 진단용 임시 로그 - save_file()의 반환값을 명시적으로 확인(원래 코드는
+	// 반환값을 버려서 실패해도 조용히 넘어갔음. 원인 특정되면 제거).
+	bool saveOk = doc.save_file(path.c_str());
+	LOG(LogInfo) << "Settings::saveFile() : path = " << path << " save_file() returned = " << (saveOk ? "true" : "false")
+		<< " mStringMap[Language] = " << mStringMap["Language"];
 
 	// retropangui.conf 에 있던 emulationstation.* 키도 현재 값으로 동기화
 	saveRetropanguiConf();
@@ -321,8 +326,17 @@ void Settings::loadFile()
 {
 	const std::string path = Utils::FileSystem::getHomePath() + "/.emulationstation/es_settings.cfg";
 
+	// 2026-07-19: 첫 부팅에 파일에 Language=ko_KR이 이미 있는데도 ES가
+	// 영어로 뜨는 버그 진단용 임시 로그 - 어느 경로를 열었는지, 존재
+	// 여부/파싱 결과를 명시적으로 남긴다(원인 특정되면 제거).
+	LOG(LogInfo) << "Settings::loadFile() : path = " << path
+		<< " exists = " << (Utils::FileSystem::exists(path) ? "true" : "false");
+
 	if(!Utils::FileSystem::exists(path))
+	{
+		LOG(LogInfo) << "Settings::loadFile() : file not found, keeping defaults";
 		return;
+	}
 
 	pugi::xml_document doc;
 	pugi::xml_parse_result result = doc.load_file(path.c_str());
@@ -344,6 +358,8 @@ void Settings::loadFile()
 		setFloat(node.attribute("name").as_string(), node.attribute("value").as_float());
 	for(pugi::xml_node node = root.child("string"); node; node = node.next_sibling("string"))
 		setString(node.attribute("name").as_string(), node.attribute("value").as_string());
+
+	LOG(LogInfo) << "Settings::loadFile() : after parsing, mStringMap[Language] = " << mStringMap["Language"];
 
 	for(pugi::xml_node node = root.child("map"); node; node = node.next_sibling("map"))
 	{
