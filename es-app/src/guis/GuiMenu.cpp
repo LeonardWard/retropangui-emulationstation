@@ -1626,14 +1626,14 @@ void GuiMenu::openSystemSettings()
 	// 공격적인 절전 모드).
 	struct PowerSaverOption { const char* value; const char* label; };
 	static const PowerSaverOption psOptions[] = {
-		{ "disabled", "사용 안 함 (절전 없음, 항상 즉시 반응)" },
-		{ "default",  "기본 (평소 정도 절전, 유휴 10초마다 갱신)" },
-		{ "enhanced", "절전 강화 (유휴 3초마다 갱신, 배터리 더 아낌)" },
-		{ "instant",  "최대 절전 (전환 애니메이션/효과음 꺼짐, 반응은 즉시)" },
+		{ "disabled", "DISABLED (no power saving, always instant response)" },
+		{ "default",  "DEFAULT (normal power saving, refresh every 10s idle)" },
+		{ "enhanced", "ENHANCED (refresh every 3s idle, saves more battery)" },
+		{ "instant",  "INSTANT (no transitions/sounds, most aggressive)" },
 	};
 	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);
 	for (auto& opt : psOptions)
-		power_saver->add(opt.label, opt.value, Settings::getInstance()->getString("PowerSaverMode") == opt.value);
+		power_saver->add(_(opt.label), opt.value, Settings::getInstance()->getString("PowerSaverMode") == opt.value);
 	s->addWithLabel(_("POWER SAVER MODES"), power_saver);
 	s->addSaveFunc([this, power_saver] {
 		if (Settings::getInstance()->getString("PowerSaverMode") != "instant" && power_saver->getSelected() == "instant") {

@@ -481,6 +481,20 @@ void ThemeData::parseElement(const pugi::xml_node& root, const std::map<std::str
 		if(typeIt == typeMap.cend())
 			throw error << "Unknown property type \"" << node.name() << "\" (for element of type " << root.name() << ").";
 
+		// RetroPangui: lang 속성이 있는 노드는 현재 ES 언어(Settings의 Language)와
+		// 접두 매칭될 때만 적용한다. 언어 지정 없는 기본 노드는 항상 적용되므로,
+		// 테마 XML에서 기본(예: 한국어) 노드를 먼저 쓰고 lang="en" 노드를 뒤에
+		// 쓰면 언어가 맞을 때만 나중 값으로 덮어써지는 방식으로 동작함
+		// (2026-07-19, 시스템 소개 문구 등 테마 콘텐츠의 언어별 전환 지원).
+		pugi::xml_attribute langAttr = node.attribute("lang");
+		if (langAttr)
+		{
+			std::string curLang = Settings::getInstance()->getString("Language");
+			std::string wantLang = langAttr.as_string();
+			if (curLang.compare(0, wantLang.size(), wantLang) != 0)
+				continue;
+		}
+
 		std::string str = resolvePlaceholders(node.text().as_string());
 
 		switch(typeIt->second)
