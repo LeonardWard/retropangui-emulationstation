@@ -56,6 +56,10 @@ public:
 	void writeDeviceConfig(InputConfig* config);
 	void doOnFinish();
 	static std::string getConfigPath();
+	// RetroPangui: 사용자가 마법사로 잡은 매핑 전용 파일. 시스템 기본값
+	// es_input.cfg는 메이저 OTA 때 번들로 리셋되므로, 사용자 매핑은 이 파일에
+	// 분리 저장해서 영구 보존한다. 읽기는 사용자 파일 우선, 쓰기는 항상 여기로.
+	static std::string getUserConfigPath();
 	static std::string getTemporaryConfigPath();
 
 	void init();

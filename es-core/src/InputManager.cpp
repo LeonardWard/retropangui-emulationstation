@@ -364,9 +364,8 @@ bool InputManager::parseEvent(const SDL_Event& ev, Window* window)
 	return false;
 }
 
-bool InputManager::loadInputConfig(InputConfig* config)
+static bool loadInputConfigFromFile(const std::string& path, InputConfig* config)
 {
-	std::string path = getConfigPath();
 	if(!Utils::FileSystem::exists(path))
 		return false;
 
@@ -391,6 +390,14 @@ bool InputManager::loadInputConfig(InputConfig* config)
 
 	config->loadFromXML(configNode);
 	return true;
+}
+
+bool InputManager::loadInputConfig(InputConfig* config)
+{
+	// 사용자 파일 우선 - 같은 패드가 양쪽에 있으면 사용자가 마법사로 잡은 쪽을 쓴다
+	if(loadInputConfigFromFile(getUserConfigPath(), config))
+		return true;
+	return loadInputConfigFromFile(getConfigPath(), config);
 }
 
 //used in an "emergency" where no keyboard config could be loaded from the inputmanager config file
@@ -418,7 +425,8 @@ void InputManager::writeDeviceConfig(InputConfig* config)
 {
 	assert(initialized());
 
-	std::string path = getConfigPath();
+	// 사용자 매핑은 항상 전용 파일로 - 시스템 기본 es_input.cfg는 건드리지 않음
+	std::string path = getUserConfigPath();
 
 	pugi::xml_document doc;
 
@@ -525,6 +533,13 @@ std::string InputManager::getConfigPath()
 {
 	std::string path = Utils::FileSystem::getHomePath();
 	path += "/.emulationstation/es_input.cfg";
+	return path;
+}
+
+std::string InputManager::getUserConfigPath()
+{
+	std::string path = Utils::FileSystem::getHomePath();
+	path += "/.emulationstation/es_input_rpui_user.cfg";
 	return path;
 }
 
