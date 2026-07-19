@@ -16,7 +16,11 @@ struct InputConfigStructure
 	const char* icon;
 };
 
-static const int inputCount = 25;
+// 2026-07-20: 아날로그 스틱 반대 방향(Down/Left)은 화면에 별도 행으로 안 보여줌 -
+// Up/Right만 입력받고 반대쪽은 assign()이 항상 자동으로 채움(같은 축 반대 부호일
+// 뿐이라 물리적으로 반대까지 밀 필요가 없는데, 두 방향 다 화면에 뜨면 이미 자동
+// 채워진 행까지 같이 보여서 혼란스럽다는 사용자 피드백 반영).
+static const int inputCount = 21;
 static const InputConfigStructure GUI_INPUT_CONFIG_LIST[inputCount] =
 {
 	{ "Up",               false, "D-PAD UP",           ":/help/dpad_up.svg" },
@@ -36,12 +40,8 @@ static const InputConfigStructure GUI_INPUT_CONFIG_LIST[inputCount] =
 	{ "LeftThumb",        true,  "LEFT THUMB",         ":/help/analog_thumb.svg" },
 	{ "RightThumb",       true,  "RIGHT THUMB",        ":/help/analog_thumb.svg" },
 	{ "LeftAnalogUp",     true,  "LEFT ANALOG UP",     ":/help/analog_up.svg" },
-	{ "LeftAnalogDown",   true,  "LEFT ANALOG DOWN",   ":/help/analog_down.svg" },
-	{ "LeftAnalogLeft",   true,  "LEFT ANALOG LEFT",   ":/help/analog_left.svg" },
 	{ "LeftAnalogRight",  true,  "LEFT ANALOG RIGHT",  ":/help/analog_right.svg" },
 	{ "RightAnalogUp",    true,  "RIGHT ANALOG UP",    ":/help/analog_up.svg" },
-	{ "RightAnalogDown",  true,  "RIGHT ANALOG DOWN",  ":/help/analog_down.svg" },
-	{ "RightAnalogLeft",  true,  "RIGHT ANALOG LEFT",  ":/help/analog_left.svg" },
 	{ "RightAnalogRight", true,  "RIGHT ANALOG RIGHT", ":/help/analog_right.svg" },
 	{ "HotKeyEnable",     true,  "HOTKEY ENABLE",      ":/help/button_hotkey.svg" }
 };
@@ -376,20 +376,23 @@ bool GuiInputConfig::assign(Input input, int inputId)
 	LOG(LogInfo) << "  Mapping [" << input.string() << "] -> " << GUI_INPUT_CONFIG_LIST[inputId].name;
 
 	// RetroPangui: 아날로그 스틱 반대 방향은 같은 축, 반대 부호일 뿐이라 자동으로
-	// 채운다 - 사용자가 스틱을 물리적으로 반대까지 밀 필요 없음.
+	// 채운다 - 사용자가 스틱을 물리적으로 반대까지 밀 필요 없음. 2026-07-20: 반대
+	// 방향(Down/Left)은 이제 화면 목록에 아예 없으므로(위 GUI_INPUT_CONFIG_LIST
+	// 참고), findInputIdByName로 화면에 있는지 확인하는 것과 무관하게 실제 데이터
+	// 매핑(mapInput)은 항상 수행 - 화면 텍스트 갱신(setAssignedTo)만 목록에 그
+	// 행이 남아있을 때만 조건부로 수행.
 	if(input.type == TYPE_AXIS)
 	{
 		const char* pairedName = getPairedAxisName(GUI_INPUT_CONFIG_LIST[inputId].name);
 		if(pairedName)
 		{
+			Input opposite(input.device, input.type, input.id, -input.value, true);
+			mTargetConfig->mapInput(pairedName, opposite);
+			LOG(LogInfo) << "  Mapping [" << opposite.string() << "] -> " << pairedName << " (자동, 반대 방향)";
+
 			int pairedId = findInputIdByName(pairedName);
 			if(pairedId >= 0)
-			{
-				Input opposite(input.device, input.type, input.id, -input.value, true);
-				mTargetConfig->mapInput(pairedName, opposite);
 				setAssignedTo(mMappings.at(pairedId), opposite);
-				LOG(LogInfo) << "  Mapping [" << opposite.string() << "] -> " << pairedName << " (자동, 반대 방향)";
-			}
 		}
 	}
 
