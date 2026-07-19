@@ -963,17 +963,29 @@ void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
 		s->addSaveFunc([item, sw] {
 			bool newVal = sw->getState();
 			cfgWriteKey(rpConfPath(), item.conf_key, newVal ? "true" : "false", false);
-			if (item.conf_key == "emulationstation.EnableSounds") {
-				if (newVal && !Settings::getInstance()->getBool("EnableSounds")
-				    && PowerSaver::getMode() == PowerSaver::INSTANT) {
-					Settings::getInstance()->setString("PowerSaverMode", "default");
-					PowerSaver::init();
-				}
-				Settings::getInstance()->setBool("EnableSounds", newVal);
-			} else if (item.conf_key == "emulationstation.VideoAudio") {
-				Settings::getInstance()->setBool("VideoAudio", newVal);
-			} else if (item.conf_key == "emulationstation.BackgroundMusic") {
-				Settings::getInstance()->setBool("BackgroundMusic", newVal);
+
+			// PowerSaver 전환 판단은 이번에 갱신하기 전의 "이전" 메모리값이
+			// 필요하므로, 아래 일반화된 동기화보다 먼저 확인한다.
+			if (item.conf_key == "emulationstation.EnableSounds"
+			    && newVal && !Settings::getInstance()->getBool("EnableSounds")
+			    && PowerSaver::getMode() == PowerSaver::INSTANT) {
+				Settings::getInstance()->setString("PowerSaverMode", "default");
+				PowerSaver::init();
+			}
+
+			// 2026-07-19: emulationstation.* 토글은 항상 Settings 메모리도 같이
+			// 갱신 - 예전엔 특정 키만 골라서 동기화하다가 SaveStatePreview가
+			// 누락돼서, 켜도 같은 세션 안에서 반영이 안 되고(ViewController::
+			// launch()가 Settings::getBool()로 읽음) saveFile() 호출 시
+			// saveRetropanguiConf()가 stale한 메모리값으로 conf를 다시 덮어써
+			// 재부팅해도 꺼진 채로 되돌아가는 버그로 실기기에서 재현됨. conf_key
+			// 접두사 기준으로 일반화해서 새 토글이 추가돼도 같은 버그가 재발하지
+			// 않게 함.
+			static const std::string ES_PREFIX = "emulationstation.";
+			if (item.conf_key.compare(0, ES_PREFIX.size(), ES_PREFIX) == 0)
+				Settings::getInstance()->setBool(item.conf_key.substr(ES_PREFIX.size()), newVal);
+
+			if (item.conf_key == "emulationstation.BackgroundMusic") {
 				if (newVal) MusicManager::getInstance()->start();
 				else MusicManager::getInstance()->stop();
 			}
