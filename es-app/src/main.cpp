@@ -514,8 +514,16 @@ int main(int argc, char* argv[])
 	// 하나도 없는데 Y/N 대화상자만 화면에 남아 영원히 못 닫히는" 상황 자체를
 	// 없앰. 키보드/마우스는 세지 않고 진짜 게임패드가 있을 때만 화면 표시.
 	window.setUnconfiguredJoystickCallback([&window](InputConfig* /*config*/) {
-		if (InputManager::getInstance()->getNumJoysticks() > 0)
-			window.pushGui(new GuiDetectDevice(&window, false, nullptr));
+		if (InputManager::getInstance()->getNumJoysticks() == 0)
+			return;
+		// 설정 마법사가 이미 떠 있으면 또 띄우지 않음 - 패드가 순간적으로
+		// 끊겼다 붙으면 이 콜백이 재발화해서 마법사가 겹겹이 쌓이고, 매핑을
+		// 끝내도 밑에 깔린 낡은 마법사가 다시 나타나는 문제가 있었음(2026-07-20).
+		GuiComponent* top = window.peekGui();
+		if (dynamic_cast<GuiDetectDevice*>(top) != nullptr
+			|| dynamic_cast<GuiInputConfig*>(top) != nullptr)
+			return;
+		window.pushGui(new GuiDetectDevice(&window, false, nullptr));
 	});
 
 	// RetroPangui: 이미 매핑된 패드가 런타임 중 연결/해제될 때 짧은 OSD 알림
