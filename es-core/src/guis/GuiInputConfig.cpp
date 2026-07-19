@@ -16,8 +16,8 @@ struct InputConfigStructure
 	const char* icon;
 };
 
-// 2026-07-20: 아날로그 스틱 반대 방향(Down/Left)은 화면에 별도 행으로 안 보여줌 -
-// Up/Right만 입력받고 반대쪽은 assign()이 항상 자동으로 채움(같은 축 반대 부호일
+// 2026-07-20: 아날로그 스틱 반대 방향(Down/Right)은 화면에 별도 행으로 안 보여줌 -
+// Up/Left만 입력받고 반대쪽은 assign()이 항상 자동으로 채움(같은 축 반대 부호일
 // 뿐이라 물리적으로 반대까지 밀 필요가 없는데, 두 방향 다 화면에 뜨면 이미 자동
 // 채워진 행까지 같이 보여서 혼란스럽다는 사용자 피드백 반영).
 static const int inputCount = 21;
@@ -40,9 +40,9 @@ static const InputConfigStructure GUI_INPUT_CONFIG_LIST[inputCount] =
 	{ "LeftThumb",        true,  "LEFT THUMB",         ":/help/analog_thumb.svg" },
 	{ "RightThumb",       true,  "RIGHT THUMB",        ":/help/analog_thumb.svg" },
 	{ "LeftAnalogUp",     true,  "LEFT ANALOG UP",     ":/help/analog_up.svg" },
-	{ "LeftAnalogRight",  true,  "LEFT ANALOG RIGHT",  ":/help/analog_right.svg" },
+	{ "LeftAnalogLeft",   true,  "LEFT ANALOG LEFT",   ":/help/analog_left.svg" },
 	{ "RightAnalogUp",    true,  "RIGHT ANALOG UP",    ":/help/analog_up.svg" },
-	{ "RightAnalogRight", true,  "RIGHT ANALOG RIGHT", ":/help/analog_right.svg" },
+	{ "RightAnalogLeft",  true,  "RIGHT ANALOG LEFT",  ":/help/analog_left.svg" },
 	{ "HotKeyEnable",     true,  "HOTKEY ENABLE",      ":/help/button_hotkey.svg" }
 };
 
