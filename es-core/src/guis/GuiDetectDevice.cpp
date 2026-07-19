@@ -11,7 +11,9 @@
 
 #define HOLD_TIME 1000
 
-GuiDetectDevice::GuiDetectDevice(Window* window, bool firstRun, const std::function<void()>& doneCallback) : GuiComponent(window), mFirstRun(firstRun),
+GuiDetectDevice::GuiDetectDevice(Window* window, bool firstRun, const std::function<void()>& doneCallback,
+	bool autoDismissIfConfigured) : GuiComponent(window), mFirstRun(firstRun),
+	mAutoDismissIfConfigured(autoDismissIfConfigured),
 	mBackground(window, ":/frame.png"), mGrid(window, Vector2i(1, 5))
 {
 	mHoldingConfig = NULL;
@@ -102,7 +104,11 @@ void GuiDetectDevice::update(int deltaTime)
 	if(mHoldingConfig)
 	{
 		// If ES starts and if a known device is connected after startup skip controller configuration
-		if(mFirstRun && Utils::FileSystem::exists(InputManager::getConfigPath()) && InputManager::getInstance()->getNumConfiguredDevices() > 0)
+		// RetroPangui: 핫플러그로 자동으로 뜬 창(mAutoDismissIfConfigured)은 버튼을 누른
+		// 패드가 이미 매핑돼 있으면 같은 방식으로 자체 종료 - 창이 떠 있는 동안 패드가
+		// 끊겼다 붙어 다른 창에서 매핑을 마친 경우 등, 낡은 창이 남는 상황의 안전망.
+		if((mFirstRun && Utils::FileSystem::exists(InputManager::getConfigPath()) && InputManager::getInstance()->getNumConfiguredDevices() > 0)
+			|| (mAutoDismissIfConfigured && mHoldingConfig->isConfigured()))
 		{
 			if(mDoneCallback)
 				mDoneCallback();

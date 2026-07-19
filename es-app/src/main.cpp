@@ -523,7 +523,8 @@ int main(int argc, char* argv[])
 		if (dynamic_cast<GuiDetectDevice*>(top) != nullptr
 			|| dynamic_cast<GuiInputConfig*>(top) != nullptr)
 			return;
-		window.pushGui(new GuiDetectDevice(&window, false, nullptr));
+		// autoDismissIfConfigured=true: 이미 매핑된 패드가 버튼을 누르면 창 자체 종료
+		window.pushGui(new GuiDetectDevice(&window, false, nullptr, true));
 	});
 
 	// RetroPangui: 이미 매핑된 패드가 런타임 중 연결/해제될 때 짧은 OSD 알림
