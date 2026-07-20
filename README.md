@@ -5,7 +5,7 @@ RetroPangui EmulationStation
 **Odroid C5 기반 RetroPangui OS** 전용으로 수정된 버전입니다.
 컨트롤러 네비게이션을 지원하는 그래픽 에뮬레이터 프론트엔드입니다.
 
-이 저장소의 `main` 브랜치가 [retropangui-c5](https://github.com/LeonardWard/retropangui-c5)
+이 저장소의 `main` 브랜치가 [retropangui](https://github.com/LeonardWard/retropangui)
 Buildroot 패키지의 소스로 사용됩니다.
 
 주요 특징 (원본 대비 변경사항)
@@ -168,7 +168,7 @@ cmake --build build --target emulationstation -- -j$(nproc)
 - `-DOMX=On` — Raspberry Pi omxplayer 전용
 - `-DUSE_MESA_GLES=On` — Raspberry Pi Mesa VC4/V3D 전용
 
-전체 OS 이미지 빌드는 [retropangui-c5](https://github.com/LeonardWard/retropangui-c5)를 참고하세요.
+전체 OS 이미지 빌드는 [retropangui](https://github.com/LeonardWard/retropangui)를 참고하세요.
 
 
 설정하기
