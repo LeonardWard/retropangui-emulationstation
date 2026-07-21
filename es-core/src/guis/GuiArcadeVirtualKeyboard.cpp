@@ -66,10 +66,8 @@ GuiArcadeVirtualKeyboard::GuiArcadeVirtualKeyboard(
     unsigned int screenW = Renderer::getScreenWidth();
     unsigned int baseSize = (unsigned int)(0.055f * std::min(screenH, screenW));
 
-    mWheelFontFar      = Font::get((unsigned int)(baseSize * 0.7f));
     mWheelFont         = Font::get(baseSize);
-    mWheelFontNear     = Font::get((unsigned int)(baseSize * 1.2f));
-    mWheelFontSelected = Font::get((unsigned int)(baseSize * 1.7f));
+    mWheelFontSelected = Font::get((unsigned int)(baseSize * 1.6f));
     mTextFont          = Font::get((unsigned int)(baseSize * 0.7f));
     mHelpFont          = Font::get((unsigned int)(baseSize * 0.5f));
 
@@ -419,19 +417,14 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
     float screenH = (float)Renderer::getScreenHeight();
     float centerX = screenW / 2.f;
     float centerY = screenH * 0.62f;  // 화면 아래쪽에 배치
-    // 2026-07-22: 토성 고리 - 4차 시도. 3차(세로 0.10H로 크게 납작하게)는
-    // 방향은 맞았지만 너무 심하게 눌러서 타원 양 끝(좌우 꼭짓점 근처)에서
-    // 글자 간격이 극단적으로 좁아져 서로 겹쳐 안 보이는 문제 발생(실기기
-    // 스크린샷으로 직접 확인). 원래 비율(가로 0.38W·세로 0.28H)에 가깝게
-    // 되돌리고 세로만 살짝만 줄여서 안전하게 - 입체감은 폰트 티어/알파로
-    // 이미 표현되고 있으니 타원 자체는 무리하게 안 눌러도 됨.
+    // 2026-07-22: "토성 고리" 모양 실험 전부 되돌림 - 여러 차례 시도(원형처럼
+    // 보임/글자 겹침/판독성 저하)했으나 결국 실기기에서 만족스럽지 않았음.
+    // 원래 값(가로 0.38W·세로 0.28H)으로 복귀.
     float xRadius = screenW * 0.38f;
-    float yRadius = screenH * 0.24f;
+    float yRadius = screenH * 0.28f;
 
     int count = getCharCount(wheelIdx);
     int selectedIdx = getCurrentCharIndex(wheelIdx);
-    double section = (2.0 * M_PI) / (double)count;
-    double morphRange = 2.0 * section;
 
     for (int i = 0; i < count; i++)
     {
@@ -447,13 +440,23 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         if (y < screenH * 0.27f || y > screenH * 0.97f) continue;
 
         // 선택 문자와의 거리 계산 (색상/크기 모핑용)
-        double dist = std::abs(angle - M_PI / 2.0);
-        if (dist > M_PI) dist = 2.0 * M_PI - dist;
-        double ratio = std::max(0.0, 1.0 - dist / morphRange);
+        // 2026-07-22: 기존엔 각도(angle, 기준 π/2)로 거리를 계산했는데,
+        // 실제로 "선택된 문자"를 정하는 getCurrentCharIndex()는 전혀 다른
+        // 기준 각도(2π)를 씀 - 두 기준의 차이가 정확히 count/4칸이라 26개
+        // 알파벳 기준 선택 문자(a)에서 6~7칸 떨어진 g/h가 "가장 가까움"으로
+        // 잘못 계산되고 있었음(실기기 스크린샷으로 확인). 인덱스 거리로
+        // 직접 계산해서 선택 문자(selectedIdx)와 항상 일치하도록 수정.
+        int idxDist = std::abs(i - selectedIdx);
+        if (idxDist > count / 2) idxDist = count - idxDist;
+        double ratio = std::max(0.0, 1.0 - (double)idxDist / 2.0);
 
-        // 색상: 회색 → 옅은 회색 → 빨강(선택)
-        unsigned int baseColor = 0x666666FF;
-        unsigned int midColor  = 0x999999FF;
+        // 2026-07-22: "입체감" 실험(4단계 폰트 + 알파 페이드 + near 강조)이
+        // 실기기에서 계속 문제였음(원형처럼 보임, 글자 겹침, 너무 흐려짐,
+        // 선택 아닌데 튀는 글자로 혼동) - 전부 되돌리고 원래의 단순한 방식
+        // (선택 문자만 크고 빨강, 나머지는 거리에 따라 회색↔흰색 블렌드)으로
+        // 복귀.
+        unsigned int baseColor = 0x444444FF;
+        unsigned int midColor  = 0xCCCCCCFF;
         unsigned int selColor  = 0xFF4444FF;
         unsigned int color;
         if (i == selectedIdx)
@@ -461,24 +464,12 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         else
             color = blendColor(baseColor, midColor, ratio);
 
-        // 2026-07-22: 입체감(가까울수록 또렷, 멀수록 흐리게) - dimAlpha 위에
-        // ratio 기반 페이드를 곱해서 먼 문자일수록 더 옅게 보이게 함.
-        // 처음엔 최저치 0.4로 뒀는데 baseColor 어두움과 겹쳐서 먼 글자가
-        // 거의 안 보일 정도로 흐려짐(실기기 피드백) - 페이드 폭을 줄임.
-        double depthAlpha = 0.75 + 0.25 * ratio;
-        unsigned int alpha = (unsigned int)(255.0 * dimAlpha * depthAlpha);
+        // dimAlpha 적용
+        unsigned int alpha = (unsigned int)(255.0 * dimAlpha);
         color = (color & 0xFFFFFF00) | (((color & 0xFF) * alpha) / 255);
 
-        // 선택 지점에 가까울수록 큰 폰트 - 4단계(멀리/보통/가까이/선택)로
-        // 나눠서 토성 고리처럼 가까운 문자가 크고 뚜렷하게 보이도록 함.
-        // 2026-07-22: near 기준(0.66)이 너무 낮아서 선택 문자 바로 옆까지
-        // "가까이" 티어로 크게 그려져 선택 문자와 헷갈림 - 문턱을 높여서
-        // near 티어는 진짜 선택 문자 바로 인접한 극소수에만 적용.
-        std::shared_ptr<Font> font;
-        if (i == selectedIdx)      font = mWheelFontSelected;
-        else if (ratio > 0.85)     font = mWheelFontNear;
-        else if (ratio > 0.33)     font = mWheelFont;
-        else                       font = mWheelFontFar;
+        // 선택 문자는 큰 폰트, 나머지는 일반 폰트
+        std::shared_ptr<Font> font = (i == selectedIdx) ? mWheelFontSelected : mWheelFont;
         std::string charStr = wcharToUtf8(sWheelChars[wheelIdx][i]);
         Vector2f charSize = font->sizeText(charStr);
         TextCache* tc = font->buildTextCache(charStr,
