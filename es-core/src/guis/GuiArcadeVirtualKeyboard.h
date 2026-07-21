@@ -84,7 +84,7 @@ private:
     static constexpr double sTrigFastestMs  = 25.0;  // 세기/유지시간 최대일 때
     static constexpr double sTrigRampMs     = 900.0; // 이 시간만큼 쥐고 있으면 최고 속도 도달
     bool mWasTrigActive = false; // 트리거를 막 뗀 순간을 감지해 관성으로 넘기기 위함
-    void pollTriggers(int deltaTime);
+    bool pollTriggers(int deltaTime);
 
     // 2026-07-22: 짧게 누르면 정확히 1칸만 이동, 2칸 이상 넘어갈 만큼
     // 길게 누르면 관성 회전으로 넘어가도록(사용자 요청 - 관성이 너무
