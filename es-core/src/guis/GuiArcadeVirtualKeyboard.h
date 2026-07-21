@@ -80,8 +80,9 @@ private:
     static constexpr int    sTrigAxisRight  = 5;
     static constexpr int    sTrigDeadzone   = 8000;
     static constexpr int    sTrigMaxMag     = 60000; // 대략적인 최대 편차
-    static constexpr double sTrigSlowestMs  = 160.0; // 세기 최소일 때 1칸당 ms
-    static constexpr double sTrigFastestMs  = 25.0;  // 세기/유지시간 최대일 때
+    // 2026-07-22: 회전이 너무 빠르다는 피드백 - 전체적으로 늦춤.
+    static constexpr double sTrigSlowestMs  = 280.0; // 세기 최소일 때 1칸당 ms
+    static constexpr double sTrigFastestMs  = 60.0;  // 세기/유지시간 최대일 때
     static constexpr double sTrigRampMs     = 900.0; // 이 시간만큼 쥐고 있으면 최고 속도 도달
     bool mWasTrigActive = false; // 트리거를 막 뗀 순간을 감지해 관성으로 넘기기 위함
     bool pollTriggers(int deltaTime);
