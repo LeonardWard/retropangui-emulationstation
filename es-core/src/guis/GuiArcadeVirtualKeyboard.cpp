@@ -1,6 +1,7 @@
 #include "guis/GuiArcadeVirtualKeyboard.h"
 
 #include "InputConfig.h"
+#include "InputManager.h"
 #include "Log.h"
 #include "renderers/Renderer.h"
 #include "utils/StringUtil.h"
@@ -55,6 +56,7 @@ GuiArcadeVirtualKeyboard::GuiArcadeVirtualKeyboard(
     // 각도 초기화
     for (int i = 0; i < sWheelCount; i++)
         mAngles[i] = 0.0;
+    mLastRumbleIdx = getCurrentCharIndex(mCurrentWheel); // 열자마자 진동 안 나게
 
     // initValue를 wstring으로 변환 (간단한 ASCII 처리)
     for (unsigned char c : initValue)
@@ -266,6 +268,8 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     }
 
     // ── 게임패드 ─────────────────────────────────────────────────────────────
+    mLastDeviceId = config->getDeviceId(); // update()의 회전 중 진동에 사용
+
     // 2026-07-22: LB/RB(커서 처음/끝)가 안 먹는다는 실기기 리포트 진단용 -
     // 이 화면에서 눌린 모든 게임패드 버튼의 원시 type/id/value를 그대로
     // 로그로 남김. LB/RB를 눌렀을 때 로그에 아예 안 찍히면 다른 화면(메뉴)이
@@ -374,6 +378,16 @@ void GuiArcadeVirtualKeyboard::update(int deltaTime)
             while (mAngles[mCurrentWheel] >= 2.0 * M_PI) mAngles[mCurrentWheel] -= 2.0 * M_PI;
             while (mAngles[mCurrentWheel] <  0.0)         mAngles[mCurrentWheel] += 2.0 * M_PI;
         }
+    }
+
+    // 2026-07-22: 선택 문자(빨강)가 바뀔 때마다 진동 - 버튼 입력이 아니라
+    // 회전 중 새 문자에 걸릴 때마다(수동 회전/관성 감속 전부 포함).
+    int curRumbleIdx = getCurrentCharIndex(mCurrentWheel);
+    if (curRumbleIdx != mLastRumbleIdx)
+    {
+        if (mLastDeviceId >= 0)
+            InputManager::getInstance()->rumbleNav(mLastDeviceId);
+        mLastRumbleIdx = curRumbleIdx;
     }
 }
 

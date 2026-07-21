@@ -57,6 +57,12 @@ private:
     double mAngleVelocity = 0.0;       // rad/ms, 마지막 회전 속도(감속 시작값)
     static constexpr double sInertiaFriction = 0.88; // 16ms당 속도 유지 비율
 
+    // 2026-07-22: 선택 문자(빨강)가 바뀔 때마다 진동(사용자 요청 - 버튼
+    // 입력이 아니라 회전 중 새 문자에 걸릴 때마다). MENU RUMBLE 설정을
+    // 그대로 재사용(InputManager::rumbleNav).
+    int mLastRumbleIdx;
+    int mLastDeviceId = -1;
+
     // 콜백 및 제목
     OkCallback     mOkCallback;
     CancelCallback mCancelCallback;
