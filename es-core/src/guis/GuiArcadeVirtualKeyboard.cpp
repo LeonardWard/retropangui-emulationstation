@@ -272,15 +272,6 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     // ── 게임패드 ─────────────────────────────────────────────────────────────
     mLastDeviceId = config->getDeviceId(); // update()의 회전 중 진동에 사용
 
-    // 2026-07-22: L2/R2가 여전히 안 먹는다는 실기기 리포트 진단용(임시) -
-    // 이 화면에서 눌린 모든 게임패드 입력의 원시 type/id/value를 로그로
-    // 남김. l2 별칭까지 추가했는데도 안 되면, 이 패드는 트리거를 버튼이
-    // 아니라 축(axis)으로 보내고 있을 가능성이 큼(다른 세션에서 이미
-    // 확인된 이 패드의 SDL-실측 불일치 전례).
-    if (pressed && input.type != TYPE_KEY)
-        LOG(LogDebug) << "GuiArcadeVirtualKeyboard: raw input type=" << input.type
-                      << " id=" << input.id << " value=" << input.value;
-
     // Start → 확인
     if (config->isMappedTo("start", input) && pressed)
     { if (mOkCallback) mOkCallback(wstrToUtf8(mText)); delete this; return true; }
