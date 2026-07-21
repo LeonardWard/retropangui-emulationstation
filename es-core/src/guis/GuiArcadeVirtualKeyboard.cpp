@@ -282,11 +282,14 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     if (config->isMappedToAction("accept", input) && pressed)
     { addCurrentChar(); return true; }
 
-    // Y → 백스페이스
-    if (config->isMappedTo("y", input) && pressed) { backspace(); return true; }
+    // 2026-07-22: 실기기 테스트 결과 X가 Backspace, Y가 Delete로 동작함
+    // (이 패드의 es_input.cfg에서 x/y 물리 버튼이 이름과 반대로 기록돼
+    // 있는 것으로 보임 - 사용자 실측대로 맞춤).
+    // X → 백스페이스
+    if (config->isMappedTo("x", input) && pressed) { backspace(); return true; }
 
-    // X → Delete
-    if (config->isMappedTo("x", input) && pressed) { deleteChar(); return true; }
+    // Y → Delete
+    if (config->isMappedTo("y", input) && pressed) { deleteChar(); return true; }
 
     // Up/Down → 휠 세트 전환
     if (config->isMappedLike("up", input) && pressed)   { changeWheel(-1); return true; }
@@ -300,9 +303,13 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     if (config->isMappedLike("rightshoulder", input) && pressed)
     { mCursor = std::min((int)mText.size(), mCursor + 1); return true; }
 
-    if (config->isMappedTo("lefttrigger", input) && pressed)
+    // 2026-07-22: L2/R2가 안 먹는다는 실기기 리포트 - 일부 컨트롤러는
+    // es_input.cfg에 트리거가 "lefttrigger"가 아니라 구식 이름 "l2"로만
+    // 기록돼 있어서(RetroPie 계보 - leftshoulder/pageup처럼 별칭이 필요)
+    // 양쪽 다 확인.
+    if ((config->isMappedTo("lefttrigger", input) || config->isMappedTo("l2", input)) && pressed)
     { mCursor = 0; return true; }
-    if (config->isMappedTo("righttrigger", input) && pressed)
+    if ((config->isMappedTo("righttrigger", input) || config->isMappedTo("r2", input)) && pressed)
     { mCursor = (int)mText.size(); return true; }
 
     // Left/Right D-pad / 아날로그 → 휠 회전
@@ -584,7 +591,8 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
         { "◀▶", "회전" },
         { "▲▼", "세트" },
         { acceptBtn, "입력" },
-        { "Y",  "Backspace" },
+        { "X",  "Backspace" },
+        { "Y",  "Delete" },
         { "LB/RB", "커서 이동" },
         { "L2/R2", "커서 Home/End" },
         { "Start", "확인" },
