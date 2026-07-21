@@ -1,4 +1,5 @@
 #include "guis/GuiOtaUpdate.h"
+#include "components/ImageComponent.h"
 #include "renderers/Renderer.h"
 #include "resources/Font.h"
 #include <algorithm>
