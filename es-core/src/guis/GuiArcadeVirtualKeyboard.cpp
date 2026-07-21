@@ -316,6 +316,11 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     // (이 패드의 es_input.cfg에서 x/y 물리 버튼이 이름과 반대로 기록돼
     // 있는 것으로 보임 - 사용자 실측대로 맞춤).
     // X → 백스페이스
+    // 2026-07-22: "X가 backspace 작동 안한다"는 리포트 진단용(임시) - 코드
+    // 정적 분석으론 원인 못 찾음, 실측 로그로 확인.
+    if (config->isMappedTo("x", input))
+        LOG(LogDebug) << "GuiArcadeVirtualKeyboard: X matched, pressed=" << pressed
+                      << " mCursor=" << mCursor << " textLen=" << mText.size();
     if (config->isMappedTo("x", input) && pressed) { backspace(); return true; }
 
     // Y → Delete
@@ -340,14 +345,29 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     // 패드가 있어(트리거가 축으로만 들어오는데 es_input.cfg엔 버튼으로
     // 잘못 기록돼 있음) 이 패드에서 실측한 축 번호(L2=축2, R2=축5)를
     // 폴백으로 직접 확인 - 일반적인 해법은 아니고 이 패드 한정 임시조치.
-    bool leftTrig  = config->isMappedTo("lefttrigger", input) || config->isMappedTo("l2", input)
-                    || (input.type == TYPE_AXIS && input.id == 2 && input.value > 0);
-    bool rightTrig = config->isMappedTo("righttrigger", input) || config->isMappedTo("r2", input)
-                    || (input.type == TYPE_AXIS && input.id == 5 && input.value > 0);
-    if (leftTrig)
-    { if (pressed) startMoving(true, false); else if (released) stopMoving(); return true; }
-    if (rightTrig)
-    { if (pressed) startMoving(false, false); else if (released) stopMoving(); return true; }
+    //
+    // 2026-07-22: "한 번만 눌러도 무한정 이동한다"는 리포트 - 버튼과 달리
+    // 트리거 축은 "안 누른 상태"가 값 0이 아닐 수 있어(예: 쉬는 값이
+    // 음수), value!=0을 누름/value==0을 뗌으로 보는 기존 pressed/released
+    // 판정이 트리거엔 안 맞음. 축 이벤트는 부호로 직접 판정
+    // (양수=눌림, 그 외=뗌)해서 반드시 멈추도록 함.
+    bool isLeftTrigAxis  = (input.type == TYPE_AXIS && input.id == 2);
+    bool isRightTrigAxis = (input.type == TYPE_AXIS && input.id == 5);
+    bool leftTrigNamed   = config->isMappedTo("lefttrigger", input) || config->isMappedTo("l2", input);
+    bool rightTrigNamed  = config->isMappedTo("righttrigger", input) || config->isMappedTo("r2", input);
+
+    if (isLeftTrigAxis || leftTrigNamed)
+    {
+        bool trigPressed = isLeftTrigAxis ? (input.value > 0) : pressed;
+        if (trigPressed) startMoving(true, false); else stopMoving();
+        return true;
+    }
+    if (isRightTrigAxis || rightTrigNamed)
+    {
+        bool trigPressed = isRightTrigAxis ? (input.value > 0) : pressed;
+        if (trigPressed) startMoving(false, false); else stopMoving();
+        return true;
+    }
 
     return true;
 }
@@ -614,12 +634,31 @@ void GuiArcadeVirtualKeyboard::renderHelpRow(const HelpEntry* entries, int entry
         segs.push_back({ iw, lw });
         glyphW += iw + lw;
     }
-    float margin = screenW * 0.015f;
-    float available = std::max(0.f, screenW - margin * 2.f - glyphW);
-    int gapCount = std::max(1, entryCount - 1);
-    float gapUnit = available / (float)gapCount;
-    float spacing = std::min(screenW * 0.018f, gapUnit * 0.25f);
-    float sepW    = std::max(0.f, (gapUnit - spacing) / 3.f);
+    // 2026-07-22: 이전엔 남는 공간을 전부 간격에 배분해서 화면 전체를
+    // 억지로 채우는 식이었음("어설프게 늘어나 지저분하다"는 피드백) -
+    // 고정된 작은 간격만 쓰고, 화면 밖으로 넘칠 때만 그만큼 줄임. 화면을
+    // 채우려 하지 않고 내용물 크기 그대로 중앙에 모아서 배치.
+    float margin  = screenW * 0.015f;
+    int gapCount  = std::max(1, entryCount - 1);
+    float desiredSpacing = screenW * 0.012f;
+    float desiredSepW    = screenW * 0.008f;
+    float desiredTotalW  = glyphW + desiredSpacing * (float)entryCount;
+    if (entryCount > 1) desiredTotalW += desiredSepW * 3.f * (float)(entryCount - 1);
+
+    float spacing, sepW;
+    float available = screenW - margin * 2.f;
+    if (desiredTotalW <= available)
+    {
+        spacing = desiredSpacing;
+        sepW    = desiredSepW;
+    }
+    else
+    {
+        // 화면보다 넓을 때만 줄임
+        float gapUnit = std::max(0.f, (available - glyphW)) / (float)gapCount;
+        spacing = std::min(desiredSpacing, gapUnit * 0.25f);
+        sepW    = std::max(0.f, (gapUnit - spacing) / 3.f);
+    }
 
     float totalW = glyphW + spacing * (float)entryCount;
     if (entryCount > 1) totalW += sepW * 3.f * (float)(entryCount - 1);
