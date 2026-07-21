@@ -593,7 +593,7 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
         { acceptBtn, "입력" },
         { "X",  "Backspace" },
         { "Y",  "Delete" },
-        { "LB/RB", "커서 이동" },
+        { "L1/R1", "커서 이동" },
         { "L2/R2", "커서 Home/End" },
         { "Start", "확인" },
         { backBtn, "취소" },
