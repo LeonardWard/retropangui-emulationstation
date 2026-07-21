@@ -597,46 +597,13 @@ void GuiArcadeVirtualKeyboard::render(const Transform4x4f& parentTrans)
 // ---------------------------------------------------------------------------
 // Help bar – 하단에 직접 렌더링 (ES help bar 위에 겹쳐서 덮음)
 // ---------------------------------------------------------------------------
-void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
+// 한 줄 분량의 항목을 중앙 정렬로 그림 - 항목이 늘어나면 간격을 줄여서
+// 화면 밖으로 넘치지 않게 함(항목끼리 붙는 건 허용, 화면 밖으로 나가면
+// 안 됨 - 실기기 피드백, 2026-07-22).
+void GuiArcadeVirtualKeyboard::renderHelpRow(const HelpEntry* entries, int entryCount, float y)
 {
-    Renderer::setMatrix(trans);
     float screenW = (float)Renderer::getScreenWidth();
-    float screenH = (float)Renderer::getScreenHeight();
 
-    float barH = mHelpFont->getHeight() * 1.6f;
-    float barY = screenH - barH;
-
-    // 기존 ES help bar를 덮는 반투명 어두운 배경
-    Renderer::drawRect(0.f, barY, screenW, barH, 0x00000000, 0x000000E0);
-
-    // 도움말 항목: [아이콘문자] 텍스트 형태로 나열
-    // A/B는 SWAP BUTTONS A/B(ButtonLayout) 설정에 따라 accept/back이 서로
-    // 다른 물리 버튼에 배정되므로, 하드코딩하지 않고 InputConfig::getActionButton()으로
-    // 실제 배정된 물리 버튼을 조회해서 표시(GuiSaveStates.cpp와 동일 패턴,
-    // 실기기 피드백으로 발견 - 2026-07-22).
-    std::string acceptBtn = Utils::String::toUpper(InputConfig::getActionButton("accept"));
-    std::string backBtn   = Utils::String::toUpper(InputConfig::getActionButton("back"));
-
-    // 2026-07-22: 컨트롤 스킴 재설계에 맞춰 라벨도 갱신 - 회전은 L2/R2,
-    // 휠 세트 전환은 L1/R1, 커서 이동/Home-End는 D-pad로 이동함.
-    struct HelpEntry { std::string icon; const char* label; };
-    const HelpEntry entries[] = {
-        { "L2/R2", "회전" },
-        { "L1/R1", "세트" },
-        { acceptBtn, "입력" },
-        { "X",  "Backspace" },
-        { "Y",  "Delete" },
-        { "◀▶", "커서 이동" },
-        { "▲▼", "Home/End" },
-        { "Start", "확인" },
-        { backBtn, "취소" },
-    };
-    const int entryCount = (int)(sizeof(entries) / sizeof(entries[0]));
-
-    // 2026-07-22: 항목이 늘면 자동으로 간격을 줄여서 화면 안에 반드시
-    // 들어오게 함(넘치면 안 됨 - 항목끼리 붙는 건 괜찮음, 실기기 피드백).
-    // 아이콘/라벨 자체 폭(줄일 수 없는 부분)을 먼저 구하고, 남는 폭을
-    // 간격에 배분 - 모자라면 간격이 0까지 줄어듦.
     struct Segment { float iconW; float labelW; };
     std::vector<Segment> segs;
     float glyphW = 0.f;
@@ -650,42 +617,76 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
     float margin = screenW * 0.015f;
     float available = std::max(0.f, screenW - margin * 2.f - glyphW);
     int gapCount = std::max(1, entryCount - 1);
-    // 간격 1개 = (아이콘-라벨 사이 spacing) + (구분자 폭 sepW*3), 비율 1:3으로 배분
     float gapUnit = available / (float)gapCount;
     float spacing = std::min(screenW * 0.018f, gapUnit * 0.25f);
     float sepW    = std::max(0.f, (gapUnit - spacing) / 3.f);
 
-    // 전체 너비 계산 후 중앙 정렬
     float totalW = glyphW + spacing * (float)entryCount;
     if (entryCount > 1) totalW += sepW * 3.f * (float)(entryCount - 1);
 
-    // 그래도 화면보다 넓으면 최소한 왼쪽 끝이라도 화면 안에 남게 함
     float x = std::max(4.f, (screenW - totalW) / 2.f);
-    float textY = barY + (barH - mHelpFont->getHeight()) / 2.f;
 
     for (int i = 0; i < entryCount; i++)
     {
-        // 아이콘 (노란색)
-        TextCache* ic = mHelpFont->buildTextCache(entries[i].icon, x, textY, 0xFFDD44FF);
+        TextCache* ic = mHelpFont->buildTextCache(entries[i].icon, x, y, 0xFFDD44FF);
         mHelpFont->renderTextCache(ic);
         delete ic;
         x += segs[i].iconW + spacing;
 
-        // 레이블 (흰색)
-        TextCache* lc = mHelpFont->buildTextCache(entries[i].label, x, textY, 0xFFFFFFFF);
+        TextCache* lc = mHelpFont->buildTextCache(entries[i].label, x, y, 0xFFFFFFFF);
         mHelpFont->renderTextCache(lc);
         delete lc;
         x += segs[i].labelW;
 
-        // 구분자
         if (i < entryCount - 1)
         {
-            TextCache* sc = mHelpFont->buildTextCache(" | ", x, textY, 0x444444FF);
+            TextCache* sc = mHelpFont->buildTextCache(" | ", x, y, 0x444444FF);
             mHelpFont->renderTextCache(sc);
             delete sc;
             x += sepW * 3.f;
         }
     }
+}
+
+void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
+{
+    Renderer::setMatrix(trans);
+    float screenH = (float)Renderer::getScreenHeight();
+
+    float lineH = mHelpFont->getHeight();
+    float barH  = lineH * 2.6f; // 2줄
+    float barY  = screenH - barH;
+
+    // 기존 ES help bar를 덮는 반투명 어두운 배경
+    Renderer::drawRect(0.f, barY, (float)Renderer::getScreenWidth(), barH, 0x00000000, 0x000000E0);
+
+    // A/B는 SWAP BUTTONS A/B(ButtonLayout) 설정에 따라 accept/back이 서로
+    // 다른 물리 버튼에 배정되므로, 하드코딩하지 않고 InputConfig::getActionButton()으로
+    // 실제 배정된 물리 버튼을 조회해서 표시(GuiSaveStates.cpp와 동일 패턴,
+    // 실기기 피드백으로 발견 - 2026-07-22).
+    std::string acceptBtn = Utils::String::toUpper(InputConfig::getActionButton("accept"));
+    std::string backBtn   = Utils::String::toUpper(InputConfig::getActionButton("back"));
+
+    // 2026-07-22: 2줄로 나눔(사용자 요청) - 위 줄은 커서류(텍스트 편집),
+    // 아래 줄은 문자류(휠 선택/확정).
+    const HelpEntry cursorRow[] = {
+        { "◀▶", "커서 이동" },
+        { "▲▼", "Home/End" },
+        { "X",  "Backspace" },
+        { "Y",  "Delete" },
+    };
+    const HelpEntry charRow[] = {
+        { "L2/R2", "회전" },
+        { "L1/R1", "세트" },
+        { acceptBtn, "입력" },
+        { "Start", "확인" },
+        { backBtn, "취소" },
+    };
+
+    float y1 = barY + lineH * 0.3f;
+    float y2 = barY + lineH * 1.6f;
+    renderHelpRow(cursorRow, (int)(sizeof(cursorRow) / sizeof(cursorRow[0])), y1);
+    renderHelpRow(charRow,   (int)(sizeof(charRow)   / sizeof(charRow[0])),   y2);
 }
 
 // ---------------------------------------------------------------------------

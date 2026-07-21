@@ -113,7 +113,11 @@ private:
     void renderCurrentText(const Transform4x4f& trans);
     void renderWheel(const Transform4x4f& trans, int wheelIdx, double dimAlpha);
     void renderHelpBar(const Transform4x4f& trans);
+    struct HelpEntry;
+    void renderHelpRow(const HelpEntry* entries, int entryCount, float y);
     unsigned int blendColor(unsigned int a, unsigned int b, double t) const;
 };
+
+struct GuiArcadeVirtualKeyboard::HelpEntry { std::string icon; const char* label; };
 
 #endif // ES_CORE_GUIS_GUI_ARCADE_VIRTUAL_KEYBOARD_H
