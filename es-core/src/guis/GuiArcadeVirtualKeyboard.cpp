@@ -66,9 +66,11 @@ GuiArcadeVirtualKeyboard::GuiArcadeVirtualKeyboard(
     unsigned int screenW = Renderer::getScreenWidth();
     unsigned int baseSize = (unsigned int)(0.055f * std::min(screenH, screenW));
 
-    mWheelFontFar      = Font::get((unsigned int)(baseSize * 0.65f));
+    mWheelFontFar      = Font::get((unsigned int)(baseSize * 0.55f));
+    mWheelFontMid      = Font::get((unsigned int)(baseSize * 0.75f));
     mWheelFont         = Font::get(baseSize);
-    mWheelFontNear     = Font::get((unsigned int)(baseSize * 1.3f));
+    mWheelFontNear2    = Font::get((unsigned int)(baseSize * 1.3f));
+    mWheelFontNear     = Font::get((unsigned int)(baseSize * 1.65f));
     mWheelFontSelected = Font::get((unsigned int)(baseSize * 2.1f));
     mTextFont          = Font::get((unsigned int)(baseSize * 0.7f));
     mHelpFont          = Font::get((unsigned int)(baseSize * 0.5f));
@@ -451,7 +453,8 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         // 직접 계산해서 선택 문자(selectedIdx)와 항상 일치하도록 수정.
         int idxDist = std::abs(i - selectedIdx);
         if (idxDist > count / 2) idxDist = count - idxDist;
-        double ratio = std::max(0.0, 1.0 - (double)idxDist / 2.0);
+        // 6단계 폰트 크기 범위(idxDist 0~5)에 맞춰 색상도 같이 서서히 옅어지게
+        double ratio = std::max(0.0, 1.0 - (double)idxDist / 5.0);
 
         // 2026-07-22: "입체감" 실험(4단계 폰트 + 알파 페이드 + near 강조)이
         // 실기기에서 계속 문제였음(원형처럼 보임, 글자 겹침, 너무 흐려짐,
@@ -471,13 +474,15 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         unsigned int alpha = (unsigned int)(255.0 * dimAlpha);
         color = (color & 0xFFFFFF00) | (((color & 0xFF) * alpha) / 255);
 
-        // 2026-07-22: 선택 문자에서 멀어질수록(idxDist) 작아지도록 4단계 -
+        // 2026-07-22: 선택 문자에서 멀어질수록(idxDist) 작아지도록 6단계 -
         // idxDist 계산이 이제 selectedIdx와 정확히 일치하므로(위 수정)
         // 다시 넣어도 엉뚱한 위치에서 커지는 문제 없음.
         std::shared_ptr<Font> font;
         if      (idxDist == 0) font = mWheelFontSelected;
         else if (idxDist == 1) font = mWheelFontNear;
-        else if (idxDist <= 3) font = mWheelFont;
+        else if (idxDist == 2) font = mWheelFontNear2;
+        else if (idxDist == 3) font = mWheelFont;
+        else if (idxDist == 4) font = mWheelFontMid;
         else                   font = mWheelFontFar;
         std::string charStr = wcharToUtf8(sWheelChars[wheelIdx][i]);
         Vector2f charSize = font->sizeText(charStr);
