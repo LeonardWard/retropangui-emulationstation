@@ -419,10 +419,13 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
     float screenH = (float)Renderer::getScreenHeight();
     float centerX = screenW / 2.f;
     float centerY = screenH * 0.62f;  // 화면 아래쪽에 배치
-    // 2026-07-22: 토성 고리처럼 보이도록 타원을 더 좁게(가로 반경 축소) -
-    // 기존 0.38f는 옆으로 너무 퍼져서 밋밋해 보인다는 피드백.
-    float xRadius = screenW  * 0.20f;
-    float yRadius = screenH  * 0.30f;
+    // 2026-07-22: 토성 고리처럼 보이도록 타원을 더 좁게 - 1차 시도(가로만
+    // screenW 기준으로 축소)는 화면이 보통 가로로 긴 탓에 세로 반경(screenH
+    // 기준)과 픽셀값이 비슷해져 오히려 완전한 원이 되어버림(실기기 피드백).
+    // 가로/세로 반경을 같은 축(screenH) 기준으로 잡아 화면 비율과 무관하게
+    // 세로로 긴 타원(가로:세로 ≈ 1:2)이 되도록 함.
+    float yRadius = screenH * 0.30f;
+    float xRadius = screenH * 0.14f;
 
     int count = getCharCount(wheelIdx);
     int selectedIdx = getCurrentCharIndex(wheelIdx);
@@ -447,9 +450,12 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         if (dist > M_PI) dist = 2.0 * M_PI - dist;
         double ratio = std::max(0.0, 1.0 - dist / morphRange);
 
-        // 색상: 회색 → 흰색 → 빨강(선택)
+        // 색상: 회색 → 옅은 회색 → 빨강(선택)
+        // 2026-07-22: midColor가 거의 흰색(0xCCCCCC)이라 진짜 선택 문자(빨강)
+        // 바로 옆에 흰색으로 강조된 문자가 또 있는 것처럼 보여 혼동된다는
+        // 피드백 - 선택 아닌 문자는 밝기를 확실히 낮춤.
         unsigned int baseColor = 0x444444FF;
-        unsigned int midColor  = 0xCCCCCCFF;
+        unsigned int midColor  = 0x999999FF;
         unsigned int selColor  = 0xFF4444FF;
         unsigned int color;
         if (i == selectedIdx)
@@ -465,9 +471,12 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
 
         // 선택 지점에 가까울수록 큰 폰트 - 4단계(멀리/보통/가까이/선택)로
         // 나눠서 토성 고리처럼 가까운 문자가 크고 뚜렷하게 보이도록 함.
+        // 2026-07-22: near 기준(0.66)이 너무 낮아서 선택 문자 바로 옆까지
+        // "가까이" 티어로 크게 그려져 선택 문자와 헷갈림 - 문턱을 높여서
+        // near 티어는 진짜 선택 문자 바로 인접한 극소수에만 적용.
         std::shared_ptr<Font> font;
         if (i == selectedIdx)      font = mWheelFontSelected;
-        else if (ratio > 0.66)     font = mWheelFontNear;
+        else if (ratio > 0.85)     font = mWheelFontNear;
         else if (ratio > 0.33)     font = mWheelFont;
         else                       font = mWheelFontFar;
         std::string charStr = wcharToUtf8(sWheelChars[wheelIdx][i]);
