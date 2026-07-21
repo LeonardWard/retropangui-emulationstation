@@ -75,9 +75,8 @@ GuiArcadeVirtualKeyboard::GuiArcadeVirtualKeyboard(
     mWheelFontNear     = Font::get((unsigned int)(baseSize * 1.65f));
     mWheelFontSelected = Font::get((unsigned int)(baseSize * 2.1f));
     mTextFont          = Font::get((unsigned int)(baseSize * 0.7f));
-    // 2026-07-22: 항목이 늘어나서 줄였던 걸 사용자 요청으로 되돌림 -
-    // 화면 밖으로 좀 넘쳐도 되니 글자 크기 우선.
-    mHelpFont          = Font::get((unsigned int)(baseSize * 0.5f));
+    // 2026-07-22: 0.5x는 화면 끝에서 잘림 - 0.38x와 0.5x 사이 절충.
+    mHelpFont          = Font::get((unsigned int)(baseSize * 0.44f));
 
     // 전체 화면 크기로 설정
     setSize((float)screenW, (float)screenH);
@@ -178,15 +177,44 @@ void GuiArcadeVirtualKeyboard::startMoving(bool left, bool fast)
     mMoveOn        = true;
     mMoveTimer     = sFirstRepeatMs;
     mInertiaActive = false; // 다시 누르면 관성 취소하고 즉시 직접 조작으로 복귀
+    mPressStartIdx = getCurrentCharIndex(mCurrentWheel);
 }
 
 void GuiArcadeVirtualKeyboard::stopMoving()
 {
-    // 2026-07-22: 버튼을 떼는 순간 즉시 멈추지 않고, 그 순간의 회전 속도를
-    // 이어받아 서서히 감속하다 가장 가까운 문자에 스냅됨(사용자 요청 -
-    // "회전 관성 효과"). mAngleVelocity는 mMoveOn 상태였던 동안 update()가
-    // 매 프레임 갱신해둔 마지막 속도를 그대로 씀.
-    mInertiaActive = (mMoveOn && mMoveDir != Direction::None);
+    // 2026-07-22: 짧게 누르면(2칸 미만 이동) 정확히 1칸만 이동, 길게 눌러
+    // 2칸 이상 넘어가면 관성 회전(사용자 요청). idx 기준 몇 칸 지나왔는지로
+    // 판단 - 짧은 입력이면 연속 회전 결과를 버리고 시작 지점에서 정확히
+    // 1칸 옮긴 각도로 스냅.
+    bool wasMoving = mMoveOn && mMoveDir != Direction::None;
+    if (wasMoving)
+    {
+        int count = getCharCount(mCurrentWheel);
+        int curIdx = getCurrentCharIndex(mCurrentWheel);
+        int delta = curIdx - mPressStartIdx;
+        if (delta > count / 2)  delta -= count;
+        if (delta < -count / 2) delta += count;
+
+        if (std::abs(delta) < 2)
+        {
+            double section = (2.0 * M_PI) / (double)count;
+            int step = (mMoveDir == Direction::Left) ? -1 : 1;
+            int targetIdx = ((mPressStartIdx + step) % count + count) % count;
+            double angle = 2.0 * M_PI - (double)targetIdx * section;
+            while (angle >= 2.0 * M_PI) angle -= 2.0 * M_PI;
+            while (angle <  0.0)        angle += 2.0 * M_PI;
+            mAngles[mCurrentWheel] = angle;
+            mInertiaActive = false;
+        }
+        else
+        {
+            mInertiaActive = true;
+        }
+    }
+    else
+    {
+        mInertiaActive = false;
+    }
     mMoveOn  = false;
     mMoveDir = Direction::None;
 }
@@ -293,31 +321,32 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     // Y → Delete
     if (config->isMappedTo("y", input) && pressed) { deleteChar(); return true; }
 
-    // Up/Down → 휠 세트 전환
-    if (config->isMappedLike("up", input) && pressed)   { changeWheel(-1); return true; }
-    if (config->isMappedLike("down", input) && pressed) { changeWheel(1);  return true; }
+    // 2026-07-22: 사용자 요청으로 컨트롤 스킴 재설계.
+    // Up/Down(D-pad) → 커서 Home/End (위=Home, 아래=End)
+    if (config->isMappedLike("up", input) && pressed)   { mCursor = 0; return true; }
+    if (config->isMappedLike("down", input) && pressed) { mCursor = (int)mText.size(); return true; }
 
-    // 2026-07-22: 사용자 요청으로 역할 분리 - L1/R1(LB/RB, 숄더)은 커서
-    // 한 칸 이동, L2/R2(트리거)는 커서 Home/End로 나눔(기존엔 숄더/트리거
-    // 전부 Home/End 하나로 묶여 있었음).
-    if (config->isMappedLike("leftshoulder", input) && pressed)
+    // Left/Right(D-pad) → 커서 한 칸 이동
+    if (config->isMappedLike("left", input) && pressed)
     { mCursor = std::max(0, mCursor - 1); return true; }
-    if (config->isMappedLike("rightshoulder", input) && pressed)
+    if (config->isMappedLike("right", input) && pressed)
     { mCursor = std::min((int)mText.size(), mCursor + 1); return true; }
 
-    // 2026-07-22: L2/R2가 안 먹는다는 실기기 리포트 - 일부 컨트롤러는
-    // es_input.cfg에 트리거가 "lefttrigger"가 아니라 구식 이름 "l2"로만
-    // 기록돼 있어서(RetroPie 계보 - leftshoulder/pageup처럼 별칭이 필요)
-    // 양쪽 다 확인.
-    if ((config->isMappedTo("lefttrigger", input) || config->isMappedTo("l2", input)) && pressed)
-    { mCursor = 0; return true; }
-    if ((config->isMappedTo("righttrigger", input) || config->isMappedTo("r2", input)) && pressed)
-    { mCursor = (int)mText.size(); return true; }
+    // L1/R1(숄더) → 휠 세트 전환
+    if (config->isMappedLike("leftshoulder", input) && pressed)  { changeWheel(-1); return true; }
+    if (config->isMappedLike("rightshoulder", input) && pressed) { changeWheel(1);  return true; }
 
-    // Left/Right D-pad / 아날로그 → 휠 회전
-    if (config->isMappedLike("left", input))
+    // L2/R2(트리거) → 휠 회전. 이름 조회("lefttrigger"/"l2")가 안 되는
+    // 패드가 있어(트리거가 축으로만 들어오는데 es_input.cfg엔 버튼으로
+    // 잘못 기록돼 있음) 이 패드에서 실측한 축 번호(L2=축2, R2=축5)를
+    // 폴백으로 직접 확인 - 일반적인 해법은 아니고 이 패드 한정 임시조치.
+    bool leftTrig  = config->isMappedTo("lefttrigger", input) || config->isMappedTo("l2", input)
+                    || (input.type == TYPE_AXIS && input.id == 2 && input.value > 0);
+    bool rightTrig = config->isMappedTo("righttrigger", input) || config->isMappedTo("r2", input)
+                    || (input.type == TYPE_AXIS && input.id == 5 && input.value > 0);
+    if (leftTrig)
     { if (pressed) startMoving(true, false); else if (released) stopMoving(); return true; }
-    if (config->isMappedLike("right", input))
+    if (rightTrig)
     { if (pressed) startMoving(false, false); else if (released) stopMoving(); return true; }
 
     return true;

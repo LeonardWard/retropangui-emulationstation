@@ -65,6 +65,11 @@ private:
     int mLastRumbleIdx;
     int mLastDeviceId = -1;
 
+    // 2026-07-22: 짧게 누르면 정확히 1칸만 이동, 2칸 이상 넘어갈 만큼
+    // 길게 누르면 관성 회전으로 넘어가도록(사용자 요청 - 관성이 너무
+    // 유연해서 짧은 입력으로 정확히 고르기 어렵다는 피드백).
+    int mPressStartIdx = 0;
+
     // 콜백 및 제목
     OkCallback     mOkCallback;
     CancelCallback mCancelCallback;
