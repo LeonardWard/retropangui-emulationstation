@@ -419,12 +419,14 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
     float screenH = (float)Renderer::getScreenHeight();
     float centerX = screenW / 2.f;
     float centerY = screenH * 0.62f;  // 화면 아래쪽에 배치
-    // 2026-07-22: 토성 고리 - 3차 시도. 1/2차는 방향을 거꾸로 잡았음(세로로
-    // 긴 타원으로 만들어서 완전 엉뚱한 모양이 됨, 실기기 피드백). 토성
-    // 고리는 옆에서 보면 세로로는 아주 얇고 가로로 넓게 퍼진 납작한 띠
-    // 모양 - 가로는 넓게 유지하고 세로 반경을 크게 줄여 납작하게 만듦.
-    float xRadius = screenW * 0.42f;
-    float yRadius = screenH * 0.10f;
+    // 2026-07-22: 토성 고리 - 4차 시도. 3차(세로 0.10H로 크게 납작하게)는
+    // 방향은 맞았지만 너무 심하게 눌러서 타원 양 끝(좌우 꼭짓점 근처)에서
+    // 글자 간격이 극단적으로 좁아져 서로 겹쳐 안 보이는 문제 발생(실기기
+    // 스크린샷으로 직접 확인). 원래 비율(가로 0.38W·세로 0.28H)에 가깝게
+    // 되돌리고 세로만 살짝만 줄여서 안전하게 - 입체감은 폰트 티어/알파로
+    // 이미 표현되고 있으니 타원 자체는 무리하게 안 눌러도 됨.
+    float xRadius = screenW * 0.38f;
+    float yRadius = screenH * 0.24f;
 
     int count = getCharCount(wheelIdx);
     int selectedIdx = getCurrentCharIndex(wheelIdx);
