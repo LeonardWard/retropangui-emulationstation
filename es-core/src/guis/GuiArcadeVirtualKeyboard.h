@@ -57,8 +57,12 @@ private:
     std::string    mTitle;
 
     // 폰트
+    // 2026-07-22: 토성 고리 같은 입체감(가까운 문자는 크고 또렷, 먼 문자는
+    // 작고 흐리게) 요청 - 기존 2단(일반/선택) 대신 4단으로 늘림.
+    std::shared_ptr<Font> mWheelFontFar;      // 선택 지점에서 먼 문자 (가장 작게)
     std::shared_ptr<Font> mWheelFont;         // 휠 일반 문자
-    std::shared_ptr<Font> mWheelFontSelected; // 선택된 문자 (크게)
+    std::shared_ptr<Font> mWheelFontNear;     // 선택 지점에 가까운 문자
+    std::shared_ptr<Font> mWheelFontSelected; // 선택된 문자 (가장 크게)
     std::shared_ptr<Font> mTextFont;          // 입력 텍스트 표시
     std::shared_ptr<Font> mHelpFont;          // 하단 도움말
 

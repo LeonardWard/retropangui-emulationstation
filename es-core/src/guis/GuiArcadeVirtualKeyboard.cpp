@@ -3,6 +3,7 @@
 #include "InputConfig.h"
 #include "Log.h"
 #include "renderers/Renderer.h"
+#include "utils/StringUtil.h"
 #include <SDL_events.h>
 #include <SDL_keyboard.h>
 #include <cmath>
@@ -65,8 +66,10 @@ GuiArcadeVirtualKeyboard::GuiArcadeVirtualKeyboard(
     unsigned int screenW = Renderer::getScreenWidth();
     unsigned int baseSize = (unsigned int)(0.055f * std::min(screenH, screenW));
 
+    mWheelFontFar      = Font::get((unsigned int)(baseSize * 0.7f));
     mWheelFont         = Font::get(baseSize);
-    mWheelFontSelected = Font::get((unsigned int)(baseSize * 1.6f));
+    mWheelFontNear     = Font::get((unsigned int)(baseSize * 1.2f));
+    mWheelFontSelected = Font::get((unsigned int)(baseSize * 1.7f));
     mTextFont          = Font::get((unsigned int)(baseSize * 0.7f));
     mHelpFont          = Font::get((unsigned int)(baseSize * 0.5f));
 
@@ -255,6 +258,15 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     }
 
     // ── 게임패드 ─────────────────────────────────────────────────────────────
+    // 2026-07-22: LB/RB(커서 처음/끝)가 안 먹는다는 실기기 리포트 진단용 -
+    // 이 화면에서 눌린 모든 게임패드 버튼의 원시 type/id/value를 그대로
+    // 로그로 남김. LB/RB를 눌렀을 때 로그에 아예 안 찍히면 다른 화면(메뉴)이
+    // 이벤트를 먼저 가로챈다는 뜻이고, 찍히는데 id가 es_input.cfg의 pageup/
+    // pagedown(각각 id=4/5)과 다르면 이 패드의 es_input.cfg 자체가 잘못된 것.
+    if (pressed && input.type != TYPE_KEY)
+        LOG(LogDebug) << "GuiArcadeVirtualKeyboard: raw input type=" << input.type
+                      << " id=" << input.id << " value=" << input.value;
+
     // Start → 확인
     if (config->isMappedTo("start", input) && pressed)
     { if (mOkCallback) mOkCallback(wstrToUtf8(mText)); delete this; return true; }
@@ -407,8 +419,10 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
     float screenH = (float)Renderer::getScreenHeight();
     float centerX = screenW / 2.f;
     float centerY = screenH * 0.62f;  // 화면 아래쪽에 배치
-    float xRadius = screenW  * 0.38f;
-    float yRadius = screenH  * 0.28f;
+    // 2026-07-22: 토성 고리처럼 보이도록 타원을 더 좁게(가로 반경 축소) -
+    // 기존 0.38f는 옆으로 너무 퍼져서 밋밋해 보인다는 피드백.
+    float xRadius = screenW  * 0.20f;
+    float yRadius = screenH  * 0.30f;
 
     int count = getCharCount(wheelIdx);
     int selectedIdx = getCurrentCharIndex(wheelIdx);
@@ -443,12 +457,19 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         else
             color = blendColor(baseColor, midColor, ratio);
 
-        // dimAlpha 적용
-        unsigned int alpha = (unsigned int)(255.0 * dimAlpha);
+        // 2026-07-22: 입체감(가까울수록 또렷, 멀수록 흐리게) - dimAlpha 위에
+        // ratio 기반 페이드를 곱해서 먼 문자일수록 더 옅게 보이게 함.
+        double depthAlpha = 0.4 + 0.6 * ratio;
+        unsigned int alpha = (unsigned int)(255.0 * dimAlpha * depthAlpha);
         color = (color & 0xFFFFFF00) | (((color & 0xFF) * alpha) / 255);
 
-        // 선택 문자는 큰 폰트, 나머지는 일반 폰트
-        auto& font = (i == selectedIdx) ? mWheelFontSelected : mWheelFont;
+        // 선택 지점에 가까울수록 큰 폰트 - 4단계(멀리/보통/가까이/선택)로
+        // 나눠서 토성 고리처럼 가까운 문자가 크고 뚜렷하게 보이도록 함.
+        std::shared_ptr<Font> font;
+        if (i == selectedIdx)      font = mWheelFontSelected;
+        else if (ratio > 0.66)     font = mWheelFontNear;
+        else if (ratio > 0.33)     font = mWheelFont;
+        else                       font = mWheelFontFar;
         std::string charStr = wcharToUtf8(sWheelChars[wheelIdx][i]);
         Vector2f charSize = font->sizeText(charStr);
         TextCache* tc = font->buildTextCache(charStr,
@@ -501,17 +522,24 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
     Renderer::drawRect(0.f, barY, screenW, barH, 0x00000000, 0x000000E0);
 
     // 도움말 항목: [아이콘문자] 텍스트 형태로 나열
-    struct HelpEntry { const char* icon; const char* label; };
-    static const HelpEntry entries[] = {
+    // A/B는 SWAP BUTTONS A/B(ButtonLayout) 설정에 따라 accept/back이 서로
+    // 다른 물리 버튼에 배정되므로, 하드코딩하지 않고 InputConfig::getActionButton()으로
+    // 실제 배정된 물리 버튼을 조회해서 표시(GuiSaveStates.cpp와 동일 패턴,
+    // 실기기 피드백으로 발견 - 2026-07-22).
+    std::string acceptBtn = Utils::String::toUpper(InputConfig::getActionButton("accept"));
+    std::string backBtn   = Utils::String::toUpper(InputConfig::getActionButton("back"));
+
+    struct HelpEntry { std::string icon; const char* label; };
+    const HelpEntry entries[] = {
         { "◀▶", "회전" },
         { "▲▼", "세트" },
-        { "A",  "입력" },
+        { acceptBtn, "입력" },
         { "Y",  "삭제" },
         { "LB/RB", "처음/끝" },
         { "Start", "확인" },
-        { "B",  "취소" },
+        { backBtn, "취소" },
     };
-    static const int entryCount = (int)(sizeof(entries) / sizeof(entries[0]));
+    const int entryCount = (int)(sizeof(entries) / sizeof(entries[0]));
 
     // 전체 너비 계산 후 중앙 정렬
     float totalW = 0.f;
