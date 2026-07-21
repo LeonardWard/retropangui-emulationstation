@@ -617,34 +617,47 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
     std::string acceptBtn = Utils::String::toUpper(InputConfig::getActionButton("accept"));
     std::string backBtn   = Utils::String::toUpper(InputConfig::getActionButton("back"));
 
+    // 2026-07-22: 컨트롤 스킴 재설계에 맞춰 라벨도 갱신 - 회전은 L2/R2,
+    // 휠 세트 전환은 L1/R1, 커서 이동/Home-End는 D-pad로 이동함.
     struct HelpEntry { std::string icon; const char* label; };
     const HelpEntry entries[] = {
-        { "◀▶", "회전" },
-        { "▲▼", "세트" },
+        { "L2/R2", "회전" },
+        { "L1/R1", "세트" },
         { acceptBtn, "입력" },
         { "X",  "Backspace" },
         { "Y",  "Delete" },
-        { "L1/R1", "커서 이동" },
-        { "L2/R2", "커서 Home/End" },
+        { "◀▶", "커서 이동" },
+        { "▲▼", "Home/End" },
         { "Start", "확인" },
         { backBtn, "취소" },
     };
     const int entryCount = (int)(sizeof(entries) / sizeof(entries[0]));
 
-    // 전체 너비 계산 후 중앙 정렬
-    float totalW = 0.f;
-    float spacing = screenW * 0.018f;
-    float sepW    = screenW * 0.012f;
+    // 2026-07-22: 항목이 늘면 자동으로 간격을 줄여서 화면 안에 반드시
+    // 들어오게 함(넘치면 안 됨 - 항목끼리 붙는 건 괜찮음, 실기기 피드백).
+    // 아이콘/라벨 자체 폭(줄일 수 없는 부분)을 먼저 구하고, 남는 폭을
+    // 간격에 배분 - 모자라면 간격이 0까지 줄어듦.
     struct Segment { float iconW; float labelW; };
     std::vector<Segment> segs;
+    float glyphW = 0.f;
     for (int i = 0; i < entryCount; i++)
     {
         float iw = mHelpFont->sizeText(entries[i].icon).x();
         float lw = mHelpFont->sizeText(entries[i].label).x();
         segs.push_back({ iw, lw });
-        totalW += iw + spacing + lw;
-        if (i < entryCount - 1) totalW += sepW * 3.f;
+        glyphW += iw + lw;
     }
+    float margin = screenW * 0.015f;
+    float available = std::max(0.f, screenW - margin * 2.f - glyphW);
+    int gapCount = std::max(1, entryCount - 1);
+    // 간격 1개 = (아이콘-라벨 사이 spacing) + (구분자 폭 sepW*3), 비율 1:3으로 배분
+    float gapUnit = available / (float)gapCount;
+    float spacing = std::min(screenW * 0.018f, gapUnit * 0.25f);
+    float sepW    = std::max(0.f, (gapUnit - spacing) / 3.f);
+
+    // 전체 너비 계산 후 중앙 정렬
+    float totalW = glyphW + spacing * (float)entryCount;
+    if (entryCount > 1) totalW += sepW * 3.f * (float)(entryCount - 1);
 
     // 그래도 화면보다 넓으면 최소한 왼쪽 끝이라도 화면 안에 남게 함
     float x = std::max(4.f, (screenW - totalW) / 2.f);
