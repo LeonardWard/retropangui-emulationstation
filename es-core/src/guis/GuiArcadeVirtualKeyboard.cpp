@@ -169,14 +169,20 @@ void GuiArcadeVirtualKeyboard::changeWheel(int delta)
 
 void GuiArcadeVirtualKeyboard::startMoving(bool left, bool fast)
 {
-    mMoveDir   = left ? Direction::Left : Direction::Right;
-    mMoveFast  = fast;
-    mMoveOn    = true;
-    mMoveTimer = sFirstRepeatMs;
+    mMoveDir       = left ? Direction::Left : Direction::Right;
+    mMoveFast      = fast;
+    mMoveOn        = true;
+    mMoveTimer     = sFirstRepeatMs;
+    mInertiaActive = false; // 다시 누르면 관성 취소하고 즉시 직접 조작으로 복귀
 }
 
 void GuiArcadeVirtualKeyboard::stopMoving()
 {
+    // 2026-07-22: 버튼을 떼는 순간 즉시 멈추지 않고, 그 순간의 회전 속도를
+    // 이어받아 서서히 감속하다 가장 가까운 문자에 스냅됨(사용자 요청 -
+    // "회전 관성 효과"). mAngleVelocity는 mMoveOn 상태였던 동안 update()가
+    // 매 프레임 갱신해둔 마지막 속도를 그대로 씀.
+    mInertiaActive = (mMoveOn && mMoveDir != Direction::None);
     mMoveOn  = false;
     mMoveDir = Direction::None;
 }
@@ -318,37 +324,55 @@ void GuiArcadeVirtualKeyboard::update(int deltaTime)
         mWheelChangeAnim = std::max(0, mWheelChangeAnim - deltaTime);
 
     // 회전 처리
+    int count = getCharCount(mCurrentWheel);
+    double section = (2.0 * M_PI) / (double)count;
+
     if (mMoveOn && mMoveDir != Direction::None)
     {
-        int count = getCharCount(mCurrentWheel);
-        double section = (2.0 * M_PI) / (double)count;
         double speed = mMoveFast ? sRotateFastMs : sRotateSlowMs;
         double direction = (mMoveDir == Direction::Left) ? 1.0 : -1.0;
 
-        mAngles[mCurrentWheel] += direction * section * (double)deltaTime / speed;
+        // 매 프레임 속도를 갱신해둠 - stopMoving()이 이 마지막 값을 관성
+        // 시작 속도로 그대로 이어받음.
+        mAngleVelocity = direction * section / speed;
+        mAngles[mCurrentWheel] += mAngleVelocity * (double)deltaTime;
 
         // 각도 범위 유지
         while (mAngles[mCurrentWheel] >  2.0 * M_PI) mAngles[mCurrentWheel] -= 2.0 * M_PI;
         while (mAngles[mCurrentWheel] <  0.0)         mAngles[mCurrentWheel] += 2.0 * M_PI;
     }
-    else if (mMoveDir != Direction::None)
+    else if (mInertiaActive)
     {
-        // 버튼 뗐을 때 가장 가까운 문자로 스냅
-        int count = getCharCount(mCurrentWheel);
-        double section = (2.0 * M_PI) / (double)count;
+        // 2026-07-22: 회전 관성 - 속도를 유지한 채 굴러가다 마찰로 서서히
+        // 감속. 충분히 느려지면 관성을 끝내고 스냅 단계로 넘어감.
+        mAngles[mCurrentWheel] += mAngleVelocity * (double)deltaTime;
+        while (mAngles[mCurrentWheel] >  2.0 * M_PI) mAngles[mCurrentWheel] -= 2.0 * M_PI;
+        while (mAngles[mCurrentWheel] <  0.0)         mAngles[mCurrentWheel] += 2.0 * M_PI;
+
+        mAngleVelocity *= pow(sInertiaFriction, (double)deltaTime / 16.0);
+
+        if (std::abs(mAngleVelocity) < section / 400.0)
+        {
+            mInertiaActive = false;
+            mAngleVelocity = 0.0;
+        }
+    }
+    else
+    {
+        // 회전도 관성도 없을 때 - 가장 가까운 문자로 스냅(이미 스냅된
+        // 상태에서는 diff가 0에 가까워 사실상 아무 일도 안 함).
         double pos = mAngles[mCurrentWheel] / section;
         double nearest = std::round(pos) * section;
         double diff = nearest - mAngles[mCurrentWheel];
-        if (std::abs(diff) < 0.001)
+        if (std::abs(diff) >= 0.001)
+        {
+            mAngles[mCurrentWheel] += diff * 0.25;
+        }
+        else
         {
             mAngles[mCurrentWheel] = nearest;
             while (mAngles[mCurrentWheel] >= 2.0 * M_PI) mAngles[mCurrentWheel] -= 2.0 * M_PI;
             while (mAngles[mCurrentWheel] <  0.0)         mAngles[mCurrentWheel] += 2.0 * M_PI;
-            mMoveDir = Direction::None;
-        }
-        else
-        {
-            mAngles[mCurrentWheel] += diff * 0.25;
         }
     }
 }

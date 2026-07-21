@@ -51,6 +51,12 @@ private:
     bool      mMoveOn;
     int       mMoveTimer;              // 키 반복 타이머
 
+    // 2026-07-22: 회전 관성(사용자 요청) - 버튼을 떼도 즉시 멈추지 않고
+    // 서서히 감속하다 가장 가까운 문자에 스냅됨.
+    bool   mInertiaActive = false;
+    double mAngleVelocity = 0.0;       // rad/ms, 마지막 회전 속도(감속 시작값)
+    static constexpr double sInertiaFriction = 0.88; // 16ms당 속도 유지 비율
+
     // 콜백 및 제목
     OkCallback     mOkCallback;
     CancelCallback mCancelCallback;
