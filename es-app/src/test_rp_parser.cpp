@@ -41,7 +41,7 @@ int main()
         CHECK(lang, "rp.language 항목 없음");
         if (lang) {
             CHECK(lang->type     == "list",            "rp.language type");
-            CHECK(lang->conf_key == "system.language", "rp.language conf_key");
+            CHECK(lang->conf_key == "emulationstation.Language", "rp.language conf_key");
             CHECK(lang->restart  == "es",              "rp.language restart");
             CHECK(lang->options.size() >= 3,           "rp.language options count");
             if (!lang->options.empty())
