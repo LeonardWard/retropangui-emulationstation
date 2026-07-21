@@ -1246,12 +1246,26 @@ void GuiMenu::openGameSettings()
 		bool origBundleShow = cfgReadKey(rpConfPath(), "system.bundlegame_show", "true") != "false";
 		bundlegame_show->setState(origBundleShow);
 		s->addWithLabel(_("SHOW BUNDLED GAMES"), bundlegame_show);
-		s->addSaveFunc([bundlegame_show, origBundleShow] {
+		// 2026-07-21: 아무 안내 없이 바로 ES를 재시작시켜서 크래시로 오인되던
+		// 문제(사용자 지적) - OUTPUT RESOLUTION과 동일한 확인 다이얼로그로
+		// 통일. CANCEL을 누르면 conf도 안 쓰고 재시작도 안 하고, 스위치
+		// 표시도 원래 값으로 되돌림(OUTPUT RESOLUTION은 리스트라 다음에
+		// 메뉴 들어가면 알아서 원복되지만, 스위치는 같은 화면에서 계속
+		// 보이므로 즉시 되돌려야 함).
+		s->addSaveFunc([this, bundlegame_show, origBundleShow] {
 			bool newState = bundlegame_show->getState();
 			if (newState == origBundleShow) return;
-			cfgWriteKey(rpConfPath(), "system.bundlegame_show", newState ? "true" : "false", false);
-			::system(newState ? "rpui-bundlegame show" : "rpui-bundlegame hide");
-			quitES(QuitMode::RESTART);
+			mWindow->pushGui(new GuiMsgBox(mWindow,
+				_("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?"),
+				_("OK"), [newState, origBundleShow] {
+					cfgWriteKey(rpConfPath(), "system.bundlegame_show", newState ? "true" : "false", false);
+					::system(newState ? "rpui-bundlegame show" : "rpui-bundlegame hide");
+					quitES(QuitMode::RESTART);
+				},
+				_("CANCEL"), [bundlegame_show, origBundleShow] {
+					bundlegame_show->setState(origBundleShow);
+				}
+			));
 		});
 	}
 
