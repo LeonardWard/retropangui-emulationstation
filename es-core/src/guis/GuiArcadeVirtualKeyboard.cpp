@@ -292,12 +292,17 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     if (config->isMappedLike("up", input) && pressed)   { changeWheel(-1); return true; }
     if (config->isMappedLike("down", input) && pressed) { changeWheel(1);  return true; }
 
-    // L1/LB/L2 → 커서 처음, R1/RB/R2 → 커서 끝
-    // es_input.cfg 에 따라 컨트롤러마다 L1이 leftshoulder 또는 lefttrigger 로
-    // 등록될 수 있으므로 양쪽 모두 처리한다.
-    if ((config->isMappedLike("leftshoulder", input) || config->isMappedTo("lefttrigger", input)) && pressed)
+    // 2026-07-22: 사용자 요청으로 역할 분리 - L1/R1(LB/RB, 숄더)은 커서
+    // 한 칸 이동, L2/R2(트리거)는 커서 Home/End로 나눔(기존엔 숄더/트리거
+    // 전부 Home/End 하나로 묶여 있었음).
+    if (config->isMappedLike("leftshoulder", input) && pressed)
+    { mCursor = std::max(0, mCursor - 1); return true; }
+    if (config->isMappedLike("rightshoulder", input) && pressed)
+    { mCursor = std::min((int)mText.size(), mCursor + 1); return true; }
+
+    if (config->isMappedTo("lefttrigger", input) && pressed)
     { mCursor = 0; return true; }
-    if ((config->isMappedLike("rightshoulder", input) || config->isMappedTo("righttrigger", input)) && pressed)
+    if (config->isMappedTo("righttrigger", input) && pressed)
     { mCursor = (int)mText.size(); return true; }
 
     // Left/Right D-pad / 아날로그 → 휠 회전
@@ -579,8 +584,9 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
         { "◀▶", "회전" },
         { "▲▼", "세트" },
         { acceptBtn, "입력" },
-        { "Y",  "삭제" },
-        { "LB/RB", "커서 Home/End" },
+        { "Y",  "Backspace" },
+        { "LB/RB", "커서 이동" },
+        { "L2/R2", "커서 Home/End" },
         { "Start", "확인" },
         { backBtn, "취소" },
     };
