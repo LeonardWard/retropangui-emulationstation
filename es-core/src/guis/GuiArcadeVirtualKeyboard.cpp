@@ -385,8 +385,10 @@ void GuiArcadeVirtualKeyboard::update(int deltaTime)
     int curRumbleIdx = getCurrentCharIndex(mCurrentWheel);
     if (curRumbleIdx != mLastRumbleIdx)
     {
+        // 2026-07-22: rumbleNav(0.6, 60ms)는 너무 약하다는 피드백 -
+        // rumbleSelect와 같은 최대 세기로 직접 호출.
         if (mLastDeviceId >= 0)
-            InputManager::getInstance()->rumbleNav(mLastDeviceId);
+            InputManager::getInstance()->rumble(mLastDeviceId, 1.0f, 90);
         mLastRumbleIdx = curRumbleIdx;
     }
 }

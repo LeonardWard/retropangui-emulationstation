@@ -55,7 +55,9 @@ private:
     // 서서히 감속하다 가장 가까운 문자에 스냅됨.
     bool   mInertiaActive = false;
     double mAngleVelocity = 0.0;       // rad/ms, 마지막 회전 속도(감속 시작값)
-    static constexpr double sInertiaFriction = 0.88; // 16ms당 속도 유지 비율
+    // 2026-07-22: 0.88는 너무 뻑뻑하다는 실기기 피드백 - 감쇠를 늦춰서
+    // 더 오래, 더 유연하게 굴러가도록 함.
+    static constexpr double sInertiaFriction = 0.95; // 16ms당 속도 유지 비율
 
     // 2026-07-22: 선택 문자(빨강)가 바뀔 때마다 진동(사용자 요청 - 버튼
     // 입력이 아니라 회전 중 새 문자에 걸릴 때마다). MENU RUMBLE 설정을
@@ -79,7 +81,8 @@ private:
     std::shared_ptr<Font> mHelpFont;          // 하단 도움말
 
     // 타이밍 상수 (ms)
-    static constexpr int sRotateSlowMs    = 150;
+    // 2026-07-22: 회전 중 이동이 답답하다는 피드백 - 기본 속도를 올림.
+    static constexpr int sRotateSlowMs    = 90;
     static constexpr int sRotateFastMs    = 80;
     static constexpr int sFirstRepeatMs   = 500;
     static constexpr int sRepeatMs        = 150;
