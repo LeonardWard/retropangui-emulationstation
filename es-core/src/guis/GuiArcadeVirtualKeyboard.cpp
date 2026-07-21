@@ -75,9 +75,9 @@ GuiArcadeVirtualKeyboard::GuiArcadeVirtualKeyboard(
     mWheelFontNear     = Font::get((unsigned int)(baseSize * 1.65f));
     mWheelFontSelected = Font::get((unsigned int)(baseSize * 2.1f));
     mTextFont          = Font::get((unsigned int)(baseSize * 0.7f));
-    // 2026-07-22: 항목이 9개(X/Y, L1/R1, L2/R2 추가)로 늘어나서 화면 밖으로
-    // 넘치던 문제 - 폰트를 줄임(간격도 renderHelpBar에서 같이 줄임).
-    mHelpFont          = Font::get((unsigned int)(baseSize * 0.38f));
+    // 2026-07-22: 항목이 늘어나서 줄였던 걸 사용자 요청으로 되돌림 -
+    // 화면 밖으로 좀 넘쳐도 되니 글자 크기 우선.
+    mHelpFont          = Font::get((unsigned int)(baseSize * 0.5f));
 
     // 전체 화면 크기로 설정
     setSize((float)screenW, (float)screenH);
@@ -613,8 +613,8 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
 
     // 전체 너비 계산 후 중앙 정렬
     float totalW = 0.f;
-    float spacing = screenW * 0.010f;
-    float sepW    = screenW * 0.006f;
+    float spacing = screenW * 0.018f;
+    float sepW    = screenW * 0.012f;
     struct Segment { float iconW; float labelW; };
     std::vector<Segment> segs;
     for (int i = 0; i < entryCount; i++)
