@@ -452,10 +452,7 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         double ratio = std::max(0.0, 1.0 - dist / morphRange);
 
         // 색상: 회색 → 옅은 회색 → 빨강(선택)
-        // 2026-07-22: midColor가 거의 흰색(0xCCCCCC)이라 진짜 선택 문자(빨강)
-        // 바로 옆에 흰색으로 강조된 문자가 또 있는 것처럼 보여 혼동된다는
-        // 피드백 - 선택 아닌 문자는 밝기를 확실히 낮춤.
-        unsigned int baseColor = 0x444444FF;
+        unsigned int baseColor = 0x666666FF;
         unsigned int midColor  = 0x999999FF;
         unsigned int selColor  = 0xFF4444FF;
         unsigned int color;
@@ -466,7 +463,9 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
 
         // 2026-07-22: 입체감(가까울수록 또렷, 멀수록 흐리게) - dimAlpha 위에
         // ratio 기반 페이드를 곱해서 먼 문자일수록 더 옅게 보이게 함.
-        double depthAlpha = 0.4 + 0.6 * ratio;
+        // 처음엔 최저치 0.4로 뒀는데 baseColor 어두움과 겹쳐서 먼 글자가
+        // 거의 안 보일 정도로 흐려짐(실기기 피드백) - 페이드 폭을 줄임.
+        double depthAlpha = 0.75 + 0.25 * ratio;
         unsigned int alpha = (unsigned int)(255.0 * dimAlpha * depthAlpha);
         color = (color & 0xFFFFFF00) | (((color & 0xFF) * alpha) / 255);
 
