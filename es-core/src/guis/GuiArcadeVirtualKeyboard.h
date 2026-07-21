@@ -56,9 +56,11 @@ private:
     CancelCallback mCancelCallback;
     std::string    mTitle;
 
-    // 폰트
+    // 폰트 - 선택 문자에서 멀어질수록 작아지도록 4단계
+    std::shared_ptr<Font> mWheelFontFar;      // 선택 지점에서 먼 문자 (가장 작게)
     std::shared_ptr<Font> mWheelFont;         // 휠 일반 문자
-    std::shared_ptr<Font> mWheelFontSelected; // 선택된 문자 (크게)
+    std::shared_ptr<Font> mWheelFontNear;     // 선택 지점 바로 옆 문자
+    std::shared_ptr<Font> mWheelFontSelected; // 선택된 문자 (가장 크게)
     std::shared_ptr<Font> mTextFont;          // 입력 텍스트 표시
     std::shared_ptr<Font> mHelpFont;          // 하단 도움말
 

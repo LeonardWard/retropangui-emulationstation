@@ -66,8 +66,10 @@ GuiArcadeVirtualKeyboard::GuiArcadeVirtualKeyboard(
     unsigned int screenW = Renderer::getScreenWidth();
     unsigned int baseSize = (unsigned int)(0.055f * std::min(screenH, screenW));
 
+    mWheelFontFar      = Font::get((unsigned int)(baseSize * 0.65f));
     mWheelFont         = Font::get(baseSize);
-    mWheelFontSelected = Font::get((unsigned int)(baseSize * 1.6f));
+    mWheelFontNear     = Font::get((unsigned int)(baseSize * 1.3f));
+    mWheelFontSelected = Font::get((unsigned int)(baseSize * 2.1f));
     mTextFont          = Font::get((unsigned int)(baseSize * 0.7f));
     mHelpFont          = Font::get((unsigned int)(baseSize * 0.5f));
 
@@ -417,11 +419,12 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
     float screenH = (float)Renderer::getScreenHeight();
     float centerX = screenW / 2.f;
     float centerY = screenH * 0.62f;  // 화면 아래쪽에 배치
-    // 2026-07-22: "토성 고리" 모양 실험 전부 되돌림 - 여러 차례 시도(원형처럼
-    // 보임/글자 겹침/판독성 저하)했으나 결국 실기기에서 만족스럽지 않았음.
-    // 원래 값(가로 0.38W·세로 0.28H)으로 복귀.
+    // 2026-07-22: 선택 문자를 크게 키운 만큼(2.1x) 타원도 세로로 더 찌그러뜨림
+    // - idxDist 버그를 고쳐서 이제 선택 문자를 중심으로 정확히 대칭 축소되므로
+    // 안전하게 납작하게 가능(예전 실패는 축 자체를 잘못 잡은 것과 idxDist
+    // 버그가 겹친 결과였음).
     float xRadius = screenW * 0.38f;
-    float yRadius = screenH * 0.28f;
+    float yRadius = screenH * 0.20f;
 
     int count = getCharCount(wheelIdx);
     int selectedIdx = getCurrentCharIndex(wheelIdx);
@@ -468,8 +471,14 @@ void GuiArcadeVirtualKeyboard::renderWheel(const Transform4x4f& trans, int wheel
         unsigned int alpha = (unsigned int)(255.0 * dimAlpha);
         color = (color & 0xFFFFFF00) | (((color & 0xFF) * alpha) / 255);
 
-        // 선택 문자는 큰 폰트, 나머지는 일반 폰트
-        std::shared_ptr<Font> font = (i == selectedIdx) ? mWheelFontSelected : mWheelFont;
+        // 2026-07-22: 선택 문자에서 멀어질수록(idxDist) 작아지도록 4단계 -
+        // idxDist 계산이 이제 selectedIdx와 정확히 일치하므로(위 수정)
+        // 다시 넣어도 엉뚱한 위치에서 커지는 문제 없음.
+        std::shared_ptr<Font> font;
+        if      (idxDist == 0) font = mWheelFontSelected;
+        else if (idxDist == 1) font = mWheelFontNear;
+        else if (idxDist <= 3) font = mWheelFont;
+        else                   font = mWheelFontFar;
         std::string charStr = wcharToUtf8(sWheelChars[wheelIdx][i]);
         Vector2f charSize = font->sizeText(charStr);
         TextCache* tc = font->buildTextCache(charStr,
