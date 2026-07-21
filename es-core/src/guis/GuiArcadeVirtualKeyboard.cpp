@@ -270,15 +270,6 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     // ── 게임패드 ─────────────────────────────────────────────────────────────
     mLastDeviceId = config->getDeviceId(); // update()의 회전 중 진동에 사용
 
-    // 2026-07-22: LB/RB(커서 처음/끝)가 안 먹는다는 실기기 리포트 진단용 -
-    // 이 화면에서 눌린 모든 게임패드 버튼의 원시 type/id/value를 그대로
-    // 로그로 남김. LB/RB를 눌렀을 때 로그에 아예 안 찍히면 다른 화면(메뉴)이
-    // 이벤트를 먼저 가로챈다는 뜻이고, 찍히는데 id가 es_input.cfg의 pageup/
-    // pagedown(각각 id=4/5)과 다르면 이 패드의 es_input.cfg 자체가 잘못된 것.
-    if (pressed && input.type != TYPE_KEY)
-        LOG(LogDebug) << "GuiArcadeVirtualKeyboard: raw input type=" << input.type
-                      << " id=" << input.id << " value=" << input.value;
-
     // Start → 확인
     if (config->isMappedTo("start", input) && pressed)
     { if (mOkCallback) mOkCallback(wstrToUtf8(mText)); delete this; return true; }
@@ -589,7 +580,7 @@ void GuiArcadeVirtualKeyboard::renderHelpBar(const Transform4x4f& trans)
         { "▲▼", "세트" },
         { acceptBtn, "입력" },
         { "Y",  "삭제" },
-        { "LB/RB", "처음/끝" },
+        { "LB/RB", "커서 Home/End" },
         { "Start", "확인" },
         { backBtn, "취소" },
     };
