@@ -4,6 +4,7 @@
 
 #include "GuiComponent.h"
 #include "Window.h"
+#include "components/AnimatedImageComponent.h"
 #include "components/NinePatchComponent.h"
 #include "components/TextComponent.h"
 #include <future>
@@ -27,6 +28,7 @@ public:
 
 private:
 	NinePatchComponent mBackground;
+	std::shared_ptr<AnimatedImageComponent> mSpinner;
 	std::shared_ptr<TextComponent> mMsg;
 	std::future<int> mFuture;
 	std::function<void(bool)> mDoneFn;
@@ -48,6 +50,7 @@ public:
 
 private:
 	NinePatchComponent mBackground;
+	std::shared_ptr<AnimatedImageComponent> mSpinner;
 	std::shared_ptr<TextComponent> mMsg;
 	std::future<std::string> mFuture;
 	std::function<void(std::string)> mDoneFn;
