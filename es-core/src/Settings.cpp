@@ -169,7 +169,7 @@ void Settings::setDefaults()
 	mStringMap["ShowFolders"] = "SCRAPED";
 
 	// RetroPangui: Button Layout (nintendo, sony, xbox) — xbox 기본 (A=확인, B=취소)
-	mStringMap["ButtonLayout"] = "xbox";
+	mStringMap["ButtonLayout"] = "nintendo";
 
 	mBoolMap["ScreenSaverControls"] = true;
 	mStringMap["ScreenSaverGameInfo"] = "never";
