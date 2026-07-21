@@ -65,6 +65,27 @@ private:
     int mLastRumbleIdx;
     int mLastDeviceId = -1;
 
+    // 2026-07-22: L2/R2 트리거 세기별 회전 속도(사용자 요청) - ES 이벤트
+    // 시스템이 축 값을 -1/0/1로 뭉개서 세기 정보가 없어(InputManager.cpp),
+    // SDL 조이스틱 API로 매 프레임 원본 값을 직접 폴링(pollTriggers() 참고).
+    // 세게 누르면 즉시 빠르고, 살짝 눌러도 계속 쥐고 있으면 시간이 지나며
+    // 최고 속도까지 올라감(사용자 요청 - "지속적으로 누르면 가장 높은
+    // 값이 되도록").
+    bool mTrigRestCaptured = false;
+    int  mLeftTrigRest  = 0;
+    int  mRightTrigRest = 0;
+    double mLeftTrigHoldMs  = 0.0;
+    double mRightTrigHoldMs = 0.0;
+    static constexpr int    sTrigAxisLeft   = 2;  // 이 패드 실측값 - 축 번호
+    static constexpr int    sTrigAxisRight  = 5;
+    static constexpr int    sTrigDeadzone   = 8000;
+    static constexpr int    sTrigMaxMag     = 60000; // 대략적인 최대 편차
+    static constexpr double sTrigSlowestMs  = 160.0; // 세기 최소일 때 1칸당 ms
+    static constexpr double sTrigFastestMs  = 25.0;  // 세기/유지시간 최대일 때
+    static constexpr double sTrigRampMs     = 900.0; // 이 시간만큼 쥐고 있으면 최고 속도 도달
+    bool mWasTrigActive = false; // 트리거를 막 뗀 순간을 감지해 관성으로 넘기기 위함
+    void pollTriggers(int deltaTime);
+
     // 2026-07-22: 짧게 누르면 정확히 1칸만 이동, 2칸 이상 넘어갈 만큼
     // 길게 누르면 관성 회전으로 넘어가도록(사용자 요청 - 관성이 너무
     // 유연해서 짧은 입력으로 정확히 고르기 어렵다는 피드백).

@@ -7,6 +7,7 @@
 #include "utils/StringUtil.h"
 #include <SDL_events.h>
 #include <SDL_keyboard.h>
+#include <SDL_joystick.h>
 #include <cmath>
 #include <algorithm>
 #include <vector>
@@ -316,11 +317,6 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     // (이 패드의 es_input.cfg에서 x/y 물리 버튼이 이름과 반대로 기록돼
     // 있는 것으로 보임 - 사용자 실측대로 맞춤).
     // X → 백스페이스
-    // 2026-07-22: "X가 backspace 작동 안한다"는 리포트 진단용(임시) - 코드
-    // 정적 분석으론 원인 못 찾음, 실측 로그로 확인.
-    if (config->isMappedTo("x", input))
-        LOG(LogDebug) << "GuiArcadeVirtualKeyboard: X matched, pressed=" << pressed
-                      << " mCursor=" << mCursor << " textLen=" << mText.size();
     if (config->isMappedTo("x", input) && pressed) { backspace(); return true; }
 
     // Y → Delete
@@ -341,33 +337,16 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
     if (config->isMappedLike("leftshoulder", input) && pressed)  { changeWheel(-1); return true; }
     if (config->isMappedLike("rightshoulder", input) && pressed) { changeWheel(1);  return true; }
 
-    // L2/R2(트리거) → 휠 회전. 이름 조회("lefttrigger"/"l2")가 안 되는
-    // 패드가 있어(트리거가 축으로만 들어오는데 es_input.cfg엔 버튼으로
-    // 잘못 기록돼 있음) 이 패드에서 실측한 축 번호(L2=축2, R2=축5)를
-    // 폴백으로 직접 확인 - 일반적인 해법은 아니고 이 패드 한정 임시조치.
-    //
-    // 2026-07-22: "한 번만 눌러도 무한정 이동한다"는 리포트 - 버튼과 달리
-    // 트리거 축은 "안 누른 상태"가 값 0이 아닐 수 있어(예: 쉬는 값이
-    // 음수), value!=0을 누름/value==0을 뗌으로 보는 기존 pressed/released
-    // 판정이 트리거엔 안 맞음. 축 이벤트는 부호로 직접 판정
-    // (양수=눌림, 그 외=뗌)해서 반드시 멈추도록 함.
-    bool isLeftTrigAxis  = (input.type == TYPE_AXIS && input.id == 2);
-    bool isRightTrigAxis = (input.type == TYPE_AXIS && input.id == 5);
-    bool leftTrigNamed   = config->isMappedTo("lefttrigger", input) || config->isMappedTo("l2", input);
-    bool rightTrigNamed  = config->isMappedTo("righttrigger", input) || config->isMappedTo("r2", input);
-
-    if (isLeftTrigAxis || leftTrigNamed)
-    {
-        bool trigPressed = isLeftTrigAxis ? (input.value > 0) : pressed;
-        if (trigPressed) startMoving(true, false); else stopMoving();
-        return true;
-    }
-    if (isRightTrigAxis || rightTrigNamed)
-    {
-        bool trigPressed = isRightTrigAxis ? (input.value > 0) : pressed;
-        if (trigPressed) startMoving(false, false); else stopMoving();
-        return true;
-    }
+    // L2/R2(트리거) → 휠 회전, 세기별 속도.
+    // 2026-07-22: 이름 조회("lefttrigger"/"l2")가 정상 동작하는 패드용으로
+    // 이벤트 기반 시작/정지만 남겨둠(단순 on/off) - 세기 기반 속도 조절은
+    // 이벤트로 못 하므로(ES가 축 값을 -1/0/1로 뭉갬) update()에서 SDL로
+    // 원본 값을 직접 폴링해서 처리(pollTriggers() 참고). 이 분기가 도달
+    // 안 되는 패드(이 세션 테스트 패드 포함)는 update()의 폴링이 전담.
+    if ((config->isMappedTo("lefttrigger", input) || config->isMappedTo("l2", input)) && input.type != TYPE_AXIS)
+    { if (pressed) startMoving(true, false); else if (released) stopMoving(); return true; }
+    if ((config->isMappedTo("righttrigger", input) || config->isMappedTo("r2", input)) && input.type != TYPE_AXIS)
+    { if (pressed) startMoving(false, false); else if (released) stopMoving(); return true; }
 
     return true;
 }
@@ -375,6 +354,54 @@ bool GuiArcadeVirtualKeyboard::input(InputConfig* config, Input input)
 // ---------------------------------------------------------------------------
 // Update
 // ---------------------------------------------------------------------------
+// 2026-07-22: L2/R2 트리거 세기별 회전(사용자 요청). ES 이벤트 시스템은
+// 축 값을 -1/0/1로 뭉개서(InputManager.cpp) 세기 정보가 없으므로, SDL
+// 조이스틱 API로 매 프레임 원본 값을 직접 읽는다. 세게 누를수록 빠르고,
+// 살짝 눌러도 계속 쥐고 있으면 시간이 지나며 최고 속도까지 올라감.
+bool GuiArcadeVirtualKeyboard::pollTriggers(int deltaTime)
+{
+    if (mLastDeviceId < 0) return false;
+    SDL_Joystick* joy = SDL_JoystickFromInstanceID((SDL_JoystickID)mLastDeviceId);
+    if (!joy) return false;
+
+    int lRaw = SDL_JoystickGetAxis(joy, sTrigAxisLeft);
+    int rRaw = SDL_JoystickGetAxis(joy, sTrigAxisRight);
+    if (!mTrigRestCaptured)
+    {
+        mLeftTrigRest  = lRaw;
+        mRightTrigRest = rRaw;
+        mTrigRestCaptured = true;
+    }
+    int lMag = lRaw - mLeftTrigRest;
+    int rMag = rRaw - mRightTrigRest;
+
+    bool lActive = lMag > sTrigDeadzone;
+    bool rActive = rMag > sTrigDeadzone;
+
+    mLeftTrigHoldMs  = lActive ? (mLeftTrigHoldMs  + deltaTime) : 0.0;
+    mRightTrigHoldMs = rActive ? (mRightTrigHoldMs + deltaTime) : 0.0;
+
+    if (!lActive && !rActive)
+        return false;
+
+    int    mag    = lActive ? lMag : rMag;
+    double holdMs = lActive ? mLeftTrigHoldMs : mRightTrigHoldMs;
+
+    double intensityFactor = std::min(1.0, (double)(mag - sTrigDeadzone) / (double)(sTrigMaxMag - sTrigDeadzone));
+    double timeFactor      = std::min(1.0, holdMs / sTrigRampMs);
+    double factor = std::max(intensityFactor, timeFactor);
+    double msPerStep = sTrigSlowestMs + (sTrigFastestMs - sTrigSlowestMs) * factor;
+
+    int count = getCharCount(mCurrentWheel);
+    double section = (2.0 * M_PI) / (double)count;
+    double dir = lActive ? 1.0 : -1.0; // L2=Left(각도 증가), R2=Right(각도 감소)
+    mAngleVelocity = dir * section / msPerStep;
+    mAngles[mCurrentWheel] += mAngleVelocity * (double)deltaTime;
+    while (mAngles[mCurrentWheel] >  2.0 * M_PI) mAngles[mCurrentWheel] -= 2.0 * M_PI;
+    while (mAngles[mCurrentWheel] <  0.0)         mAngles[mCurrentWheel] += 2.0 * M_PI;
+    return true;
+}
+
 void GuiArcadeVirtualKeyboard::update(int deltaTime)
 {
     // 휠 전환 애니메이션
@@ -385,7 +412,29 @@ void GuiArcadeVirtualKeyboard::update(int deltaTime)
     int count = getCharCount(mCurrentWheel);
     double section = (2.0 * M_PI) / (double)count;
 
-    if (mMoveOn && mMoveDir != Direction::None)
+    // 2026-07-22: 트리거는 손을 떼면 관성 없이 즉시 멈추도록(사용자 요청) -
+    // D-pad 회전과 달리 손을 떼는 순간 바로 스냅 단계로 넘어감(관성 시작
+    // 안 함). mAngleVelocity를 0으로 비워 관성 분기가 혹시라도 걸리지
+    // 않게 함.
+    bool trigActive = pollTriggers(deltaTime);
+    if (trigActive)
+    {
+        mInertiaActive = false;
+        mMoveOn  = false;
+        mMoveDir = Direction::None;
+    }
+    else if (mWasTrigActive)
+    {
+        mAngleVelocity = 0.0;
+        mInertiaActive = false;
+    }
+    mWasTrigActive = trigActive;
+
+    if (trigActive)
+    {
+        // pollTriggers()가 이미 회전을 적용함 - 아래 D-pad/관성/스냅 분기는 건너뜀
+    }
+    else if (mMoveOn && mMoveDir != Direction::None)
     {
         double speed = mMoveFast ? sRotateFastMs : sRotateSlowMs;
         double direction = (mMoveDir == Direction::Left) ? 1.0 : -1.0;
