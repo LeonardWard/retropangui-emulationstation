@@ -1642,20 +1642,20 @@ void GuiMenu::openSystemSettings()
 	addSubmenuEntry(s, _("NETWORK"), [this] { openNetworkSettings(); });
 
 	// power saver
-	// 2026-07-11: 예전엔 "disabled/default/enhanced/instant" 영어 단어를
-	// 번역도 없이 그대로 보여줘서 뭘 하는 옵션인지 전혀 알 수 없었음.
-	// PowerSaver.cpp 기준 실제 동작: 유휴 상태에서 화면을 얼마나 뜸하게
-	// 다시 그릴지(ms) 정하는 값이 커질수록 절전 효과가 큼(disabled=-1은
-	// 그 기능 자체를 끔 = 절전 없음, instant=200ms는 대기 간격은 가장
-	// 짧지만 대신 전환 애니메이션/캐러셀 이동/효과음을 아예 꺼서(아래
-	// addSaveFunc) 렌더링 자체를 줄이는 방식이라 종합적으로는 가장
-	// 공격적인 절전 모드).
+	// 2026-07-22: 각 옵션 뜻을 풀어쓴 긴 영문 설명을 항목명 자체로 쓰던 것
+	// 제거(불필요하다는 사용자 피드백) - 짧은 라벨로 되돌리고 대신 번역이
+	// 제대로 붙게 함. PowerSaver.cpp 기준 실제 동작: 유휴 상태에서 화면을
+	// 얼마나 뜸하게 다시 그릴지(ms) 정하는 값이 커질수록 절전 효과가 큼
+	// (disabled=-1은 그 기능 자체를 끔 = 절전 없음, instant=200ms는 대기
+	// 간격은 가장 짧지만 대신 전환 애니메이션/캐러셀 이동/효과음을 아예
+	// 꺼서(아래 addSaveFunc) 렌더링 자체를 줄이는 방식이라 종합적으로는
+	// 가장 공격적인 절전 모드).
 	struct PowerSaverOption { const char* value; const char* label; };
 	static const PowerSaverOption psOptions[] = {
-		{ "disabled", "DISABLED (no power saving, always instant response)" },
-		{ "default",  "DEFAULT (normal power saving, refresh every 10s idle)" },
-		{ "enhanced", "ENHANCED (refresh every 3s idle, saves more battery)" },
-		{ "instant",  "INSTANT (no transitions/sounds, most aggressive)" },
+		{ "disabled", "DISABLED" },
+		{ "default",  "DEFAULT" },
+		{ "enhanced", "ENHANCED" },
+		{ "instant",  "INSTANT" },
 	};
 	auto power_saver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("POWER SAVER MODES"), false);
 	for (auto& opt : psOptions)

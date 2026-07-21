@@ -127,17 +127,14 @@ msgstr "VRAM 제한"
 msgid "POWER SAVER MODES"
 msgstr "절전 모드"
 
-msgid "DISABLED (no power saving, always instant response)"
-msgstr "사용 안 함 (절전 없음, 항상 즉시 반응)"
+msgid "DEFAULT"
+msgstr "기본"
 
-msgid "DEFAULT (normal power saving, refresh every 10s idle)"
-msgstr "기본 (평소 정도 절전, 유휴 10초마다 갱신)"
+msgid "ENHANCED"
+msgstr "절전 강화"
 
-msgid "ENHANCED (refresh every 3s idle, saves more battery)"
-msgstr "절전 강화 (유휴 3초마다 갱신, 배터리 더 아낌)"
-
-msgid "INSTANT (no transitions/sounds, most aggressive)"
-msgstr "최대 절전 (전환 애니메이션/효과음 꺼짐, 반응은 즉시)"
+msgid "INSTANT"
+msgstr "최대 절전"
 
 msgid "SAVE METADATA"
 msgstr "메타데이터 저장"

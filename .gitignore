@@ -3,6 +3,13 @@
 *.lo
 *.o
 
+# 컴파일된 gettext 번역(.mo)은 CMakeLists.txt가 매 빌드 .po에서 자동
+# 생성함(add_custom_command DEPENDS ${PO_FILE}) - 커밋해두면 git 체크아웃이
+# 타임스탬프를 뒤섞어서 이 의존성 추적이 무력화되고 오래된 .mo가 그대로
+# 쓰이는 문제가 생김(2026-07-22, 절전모드 한글 번역이 안 나오던 원인 -
+# .po엔 있는데 커밋된 .mo가 하루 전 것이라 없었음). .po만 소스로 유지.
+*.mo
+
 # Compiled Dynamic libraries
 *.so
 
