@@ -633,12 +633,11 @@ void FileData::launchGame(Window* window, int entrySlot)
 	// S60display/S99emulationstation과 동일하게 그 값을 그대로 재적용하면
 	// 됨. window->init()이 SDL_GetDesktopDisplayMode()로 그 순간의 실제
 	// DRM 상태를 새로 조회하므로(캐시 아님), 반드시 그 호출 전에 실행해야 함.
-	system(
-		"HDMI_MODE=\"$(python3 /usr/share/retropangui/hdmi-set-resolution.py "
-		"2>>/var/log/hdmi-resolution.log)\"; "
-		"[ -z \"$HDMI_MODE\" ] && HDMI_MODE=\"1080p60hz\"; "
-		"odroid-drm-fbset -outputmode \"$HDMI_MODE\" 2>/dev/null "
-		"|| odroid-drm-fbset -outputmode 1080p60hz 2>/dev/null || true");
+	// 2026-07-21: 공용 시퀀스로 통합(apply-resolution.sh) - S60display/
+	// S99emulationstation/ES 두 호출처(여기, main.cpp SIGUSR1 핸들러)가
+	// 각자 인라인으로 들고 있던 동일 로직을 하나로 합침. 상세:
+	// todo-20260713-display-followups.html 2번 항목.
+	system("/usr/share/retropangui/apply-resolution.sh 2>/dev/null || true");
 
 	window->init();
 	InputManager::getInstance()->init();

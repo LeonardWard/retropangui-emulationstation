@@ -570,13 +570,9 @@ int main(int argc, char* argv[])
 			// 새 모니터의 EDID 기준으로 해상도 재적용 (3단 폴백 - 교체
 			// 직후엔 화면이 안 보여서 사람이 개입할 수 없으므로 어떤
 			// 모니터든 반드시 화면이 나오는 데까지 자동으로 내려감)
-			system(
-				"HDMI_MODE=\"$(python3 /usr/share/retropangui/hdmi-set-resolution.py "
-				"2>>/var/log/hdmi-resolution.log)\"; "
-				"[ -z \"$HDMI_MODE\" ] && HDMI_MODE=\"1080p60hz\"; "
-				"odroid-drm-fbset -outputmode \"$HDMI_MODE\" 2>/dev/null "
-				"|| odroid-drm-fbset -outputmode 1080p60hz 2>/dev/null "
-				"|| odroid-drm-fbset -outputmode 720p60hz 2>/dev/null || true");
+			// 2026-07-21: 공용 시퀀스로 통합(apply-resolution.sh) - 상세:
+			// todo-20260713-display-followups.html 2번 항목.
+			system("/usr/share/retropangui/apply-resolution.sh 2>/dev/null || true");
 			window.init();
 			InputManager::getInstance()->init();
 			VolumeControl::getInstance()->init();
