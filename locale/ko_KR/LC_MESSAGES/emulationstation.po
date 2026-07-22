@@ -93,6 +93,9 @@ msgstr "네트워크 설정은 아직 구현되지 않았습니다."
 msgid "UPDATES & DOWNLOADS ARE NOT YET IMPLEMENTED."
 msgstr "업데이트 & 다운로드는 아직 구현되지 않았습니다."
 
+msgid "Checking for updates...\nPlease wait."
+msgstr "버전 확인 중...\n잠시 기다려주세요."
+
 msgid "SYSTEM SETTINGS"
 msgstr "시스템 설정"
 
@@ -105,11 +108,86 @@ msgstr "블루투스 오디오 기기 페어링"
 msgid "BLUETOOTH DEVICES"
 msgstr "블루투스 기기 목록"
 
+msgid "PAIRED DEVICES"
+msgstr "페어링된 기기"
+
+msgid "No paired devices"
+msgstr "페어링된 기기 없음"
+
+msgid "DEVICE"
+msgstr "기기"
+
+msgid "Disconnect the selected device?\n"
+msgstr "선택한 기기를 연결 해제하시겠습니까?\n"
+
 msgid "REMOVE ALL BLUETOOTH PAIRINGS"
 msgstr "블루투스 페어링 기록 전체 삭제"
 
 msgid "REMOVE ALL BLUETOOTH PAIRINGS?"
 msgstr "블루투스 페어링 기록을 전부 삭제하시겠습니까?"
+
+msgid "  Signal: -"
+msgstr "  신호 세기: -"
+
+msgid "  Vendor: -"
+msgstr "  제조사: -"
+
+msgid "  Battery: Unknown"
+msgstr "  배터리: 정보 없음"
+
+msgid "  Status: -"
+msgstr "  상태: -"
+
+msgid "Scanning..."
+msgstr "탐색 중..."
+
+msgid "No devices found"
+msgstr "기기를 찾지 못했습니다"
+
+msgid "Scan finished"
+msgstr "탐색 종료됨"
+
+msgid "Connected: "
+msgstr "연결됨: "
+
+msgid "Trusting: "
+msgstr "신뢰 설정 중: "
+
+msgid "Pairing: "
+msgstr "페어링 중: "
+
+msgid "Connecting: "
+msgstr "연결 중: "
+
+msgid "  No devices found"
+msgstr "  검색된 기기 없음"
+
+msgid "  [Connected] "
+msgstr "  [연결됨] "
+
+msgid "  [Paired] "
+msgstr "  [등록됨] "
+
+msgid "  Signal: "
+msgstr "  신호 세기: "
+
+msgid "  Signal: Unknown"
+msgstr "  신호 세기: 정보 없음"
+
+msgid "  Vendor: Unknown"
+msgstr "  제조사: 제조사 불명"
+
+msgid "  Vendor: "
+msgstr "  제조사: "
+
+msgid "  Status: Connected"
+msgstr "  상태: 연결됨"
+
+msgid "  Status: Paired (not connected)"
+msgstr "  상태: 등록됨(연결 안 됨)"
+
+msgid "  Status: Not paired"
+msgstr "  상태: 미등록"
 
 msgid "OTHER SETTINGS"
 msgstr "기타 설정"
@@ -503,6 +581,18 @@ msgstr "정말로 종료하시겠습니까?"
 
 msgid "STORAGE DEVICE"
 msgstr "저장장치"
+
+msgid "SELECT STORAGE DEVICE"
+msgstr "저장장치 선택"
+
+msgid "No devices detected"
+msgstr "감지된 장치 없음"
+
+msgid "PARTITION"
+msgstr "파티션"
+
+msgid "Share will switch to the new storage device after reboot.\nReboot now?"
+msgstr "재부팅 후 새 저장장치로 share가 전환됩니다.\n지금 재부팅하시겠습니까?"
 
 msgid "VERSION"
 msgstr "버전"

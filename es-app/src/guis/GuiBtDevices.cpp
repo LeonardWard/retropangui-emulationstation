@@ -1,5 +1,6 @@
 #include "guis/GuiBtDevices.h"
 #include "guis/GuiMsgBox.h"
+#include "LocaleES.h"
 #include "components/OptionListComponent.h"
 #include <cstdio>
 #include <unistd.h>
@@ -49,7 +50,7 @@ static void removeDevice(const std::string& mac)
 }
 
 GuiBtDevices::GuiBtDevices(Window* window)
-	: GuiSettings(window, "블루투스 기기")
+	: GuiSettings(window, _("BLUETOOTH DEVICES"))
 {
 	auto devices = pairedDevices();
 
@@ -57,15 +58,15 @@ GuiBtDevices::GuiBtDevices(Window* window)
 	// 원인(OptionListComponent::getSelected()는 정확히 1개 selected를
 	// 요구, 없으면 Back 시 크래시 → ES 재시작처럼 보임). 첫 항목을 항상
 	// selected로 강제.
-	auto list = std::make_shared<OptionListComponent<std::string>>(window, "페어링된 기기", false);
+	auto list = std::make_shared<OptionListComponent<std::string>>(window, _("PAIRED DEVICES"), false);
 	bool first = true;
 	for (const auto& d : devices) {
 		list->add(d.name + " (" + d.mac + ")", d.mac, first);
 		first = false;
 	}
 	if (devices.empty())
-		list->add("페어링된 기기 없음", "", true);
-	addWithLabel("기기", list);
+		list->add(_("No paired devices"), "", true);
+	addWithLabel(_("DEVICE"), list);
 	// 2026-07-12: GuiStorageSelect/GuiWifiSelect와 동일한 이유 - 뭔가는
 	// 항상 selected가 되므로, 기본 선택값과 달라진 경우에만 연결 해제
 	// 확인창을 띄움(아무것도 안 바꾸고 나가도 뜨던 문제 방지).
@@ -77,8 +78,8 @@ GuiBtDevices::GuiBtDevices(Window* window)
 		if (mac.empty() || mac == effectiveOrig) return;
 
 		win->pushGui(new GuiMsgBox(win,
-			"선택한 기기를 연결 해제하시겠습니까?\n" + mac,
-			"예", [mac]() { removeDevice(mac); },
-			"아니오", nullptr));
+			_("Disconnect the selected device?\n") + mac,
+			_("YES"), [mac]() { removeDevice(mac); },
+			_("NO"),  nullptr));
 	});
 }

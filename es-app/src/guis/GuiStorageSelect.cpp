@@ -1,5 +1,6 @@
 #include "guis/GuiStorageSelect.h"
 #include "guis/GuiMsgBox.h"
+#include "LocaleES.h"
 #include "components/OptionListComponent.h"
 #include <fstream>
 #include <sstream>
@@ -65,12 +66,12 @@ std::vector<GuiStorageSelect::DeviceInfo> GuiStorageSelect::readDevicesJson(std:
 }
 
 GuiStorageSelect::GuiStorageSelect(Window* window)
-	: GuiSettings(window, "저장장치 선택")
+	: GuiSettings(window, _("SELECT STORAGE DEVICE"))
 {
 	std::string current;
 	auto devices = readDevicesJson(current);
 
-	auto list = std::make_shared<OptionListComponent<std::string>>(window, "저장장치", false);
+	auto list = std::make_shared<OptionListComponent<std::string>>(window, _("STORAGE DEVICE"), false);
 
 	// 2026-07-11: 전부 selected=false로 추가하던 버그 - 단일 선택
 	// OptionListComponent::getSelected()는 정확히 1개가 selected여야
@@ -95,9 +96,9 @@ GuiStorageSelect::GuiStorageSelect(Window* window)
 	}
 
 	if (devices.empty())
-		list->add("감지된 장치 없음", "", true);
+		list->add(_("No devices detected"), "", true);
 
-	addWithLabel("파티션", list);
+	addWithLabel(_("PARTITION"), list);
 	// 2026-07-12: 위 크래시 수정으로 뭔가는 항상 selected가 되기 때문에,
 	// GuiWifiSelect와 동일한 이유로 "선택 안 됨=id.empty()"만으로는 더 이상
 	// "사용자가 실제로 다른 장치를 고름"을 판별할 수 없음 - 화면에 처음
@@ -115,8 +116,8 @@ GuiStorageSelect::GuiStorageSelect(Window* window)
 		cmd.close();
 
 		window->pushGui(new GuiMsgBox(window,
-			"재부팅 후 새 저장장치로 share가 전환됩니다.\n지금 재부팅하시겠습니까?",
-			"예",     []() { ::system("reboot"); },
-			"아니오", nullptr));
+			_("Share will switch to the new storage device after reboot.\nReboot now?"),
+			_("YES"), []() { ::system("reboot"); },
+			_("NO"),  nullptr));
 	});
 }

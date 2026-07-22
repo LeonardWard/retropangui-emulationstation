@@ -1,4 +1,5 @@
 #include "guis/GuiOtaUpdate.h"
+#include "LocaleES.h"
 #include "components/ImageComponent.h"
 #include "renderers/Renderer.h"
 #include "resources/Font.h"
@@ -76,7 +77,7 @@ GuiOtaCheck::GuiOtaCheck(Window* window,
 	  mBackground(window, ":/frame.png"),
 	  mSpinner(std::make_shared<AnimatedImageComponent>(window)),
 	  mMsg(std::make_shared<TextComponent>(window,
-	       "버전 확인 중...\n잠시 기다려주세요.",
+	       _("Checking for updates...\nPlease wait."),
 	       Font::get(FONT_SIZE_MEDIUM), 0x777777FF, ALIGN_CENTER)),
 	  mFuture(std::async(std::launch::async, check_fn)),
 	  mDoneFn(done_fn)

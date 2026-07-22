@@ -95,7 +95,7 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 	const unsigned int textColor = 0x777777FF;
 
 	// 헤더: 창 제목(고정) — iconFilter로 컨트롤러/오디오 구분
-	std::string title = (iconFilter == "input-gaming") ? "블루투스 컨트롤러 페어링" : "블루투스 오디오 기기 페어링";
+	std::string title = (iconFilter == "input-gaming") ? _("PAIR A BLUETOOTH CONTROLLER") : _("PAIR A BLUETOOTH AUDIO DEVICE");
 	mTitleText = std::make_shared<TextComponent>(mWindow, title, Font::get(FONT_SIZE_MEDIUM), textColor, ALIGN_CENTER);
 	mGrid.setEntry(mTitleText, Vector2i(0, 0), false, false, Vector2i(2, 1), GridFlags::BORDER_BOTTOM);
 
@@ -109,10 +109,10 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 	// 우측: 선택된 기기의 상세 정보
 	auto detailGrid = std::make_shared<ComponentGrid>(mWindow, Vector2i(1, 5));
 	mDetailMac     = std::make_shared<TextComponent>(mWindow, "  MAC: -", font, textColor);
-	mDetailRssi    = std::make_shared<TextComponent>(mWindow, "  신호 세기: -", font, textColor);
-	mDetailVendor  = std::make_shared<TextComponent>(mWindow, "  제조사: -", font, textColor);
-	mDetailBattery = std::make_shared<TextComponent>(mWindow, "  배터리: 정보 없음", font, textColor);
-	mDetailStatus  = std::make_shared<TextComponent>(mWindow, "  상태: -", font, textColor);
+	mDetailRssi    = std::make_shared<TextComponent>(mWindow, _("  Signal: -"), font, textColor);
+	mDetailVendor  = std::make_shared<TextComponent>(mWindow, _("  Vendor: -"), font, textColor);
+	mDetailBattery = std::make_shared<TextComponent>(mWindow, _("  Battery: Unknown"), font, textColor);
+	mDetailStatus  = std::make_shared<TextComponent>(mWindow, _("  Status: -"), font, textColor);
 	detailGrid->setEntry(mDetailMac,     Vector2i(0, 0), false, true);
 	detailGrid->setEntry(mDetailRssi,    Vector2i(0, 1), false, true);
 	detailGrid->setEntry(mDetailVendor,  Vector2i(0, 2), false, true);
@@ -129,7 +129,7 @@ GuiBtPairing::GuiBtPairing(Window* window, const std::string& iconFilter, const 
 	// 배치·렌더링(render() 오버라이드에서 클리핑+마퀴 오프셋 적용해야 하므로).
 	mSpinner = std::make_shared<AnimatedImageComponent>(mWindow);
 	mSpinner->load(&BT_SCAN_ANIM_DEF);
-	mFooterStatus = std::make_shared<TextComponent>(mWindow, "탐색 중...", font, textColor, ALIGN_LEFT);
+	mFooterStatus = std::make_shared<TextComponent>(mWindow, _("Scanning..."), font, textColor, ALIGN_LEFT);
 
 	addChild(&mBackground);
 	addChild(&mGrid);
@@ -325,19 +325,19 @@ void GuiBtPairing::pollPairingStatus()
 
 	std::string text;
 	if (line.empty() || line == "SCANNING")
-		text = "탐색 중...";
+		text = _("Scanning...");
 	else if (line == "TIMEOUT")
-		text = "기기를 찾지 못했습니다";
+		text = _("No devices found");
 	else if (line == "STOPPED")
-		text = "탐색 종료됨";
+		text = _("Scan finished");
 	else if (line.rfind("CONNECTED", 0) == 0)
-		text = "연결됨: " + afterPrefix(line, 10);
+		text = _("Connected: ") + afterPrefix(line, 10);
 	else if (line.rfind("TRUSTING", 0) == 0)
-		text = "신뢰 설정 중: " + afterPrefix(line, 9);
+		text = _("Trusting: ") + afterPrefix(line, 9);
 	else if (line.rfind("PAIRING", 0) == 0)
-		text = "페어링 중: " + afterPrefix(line, 8);
+		text = _("Pairing: ") + afterPrefix(line, 8);
 	else if (line.rfind("CONNECTING", 0) == 0)
-		text = "연결 중: " + afterPrefix(line, 11);
+		text = _("Connecting: ") + afterPrefix(line, 11);
 	else
 		text = line; // "실패: ..." 등은 이미 한글이므로 그대로 표시
 
@@ -359,7 +359,7 @@ void GuiBtPairing::rebuildList()
 	mList->clear();
 
 	if (mDevices.empty()) {
-		auto placeholder = std::make_shared<TextComponent>(mWindow, "  검색된 기기 없음", Font::get(FONT_SIZE_SMALL), 0x999999FF);
+		auto placeholder = std::make_shared<TextComponent>(mWindow, _("  No devices found"), Font::get(FONT_SIZE_SMALL), 0x999999FF);
 		ComponentListRow row;
 		row.addElement(placeholder, true);
 		mList->addRow(row, true);
@@ -371,8 +371,8 @@ void GuiBtPairing::rebuildList()
 		const DiscoveredDevice& d = mDevices[i];
 
 		std::string label;
-		if (d.connected)     label = "  [연결됨] ";
-		else if (d.paired)   label = "  [등록됨] ";
+		if (d.connected)     label = _("  [Connected] ");
+		else if (d.paired)   label = _("  [Paired] ");
 		label += d.name.empty() ? d.mac : d.name;
 
 		auto text = std::make_shared<TextComponent>(mWindow, label, Font::get(FONT_SIZE_SMALL), 0x777777FF);
@@ -396,10 +396,10 @@ void GuiBtPairing::updateDetailPane()
 
 	if (mDevices.empty() || !mList || mList->size() == 0) {
 		mDetailMac->setText("  MAC: -");
-		mDetailRssi->setText("  신호 세기: -");
-		mDetailVendor->setText("  제조사: -");
-		mDetailBattery->setText("  배터리: 정보 없음");
-		mDetailStatus->setText("  상태: -");
+		mDetailRssi->setText(_("  Signal: -"));
+		mDetailVendor->setText(_("  Vendor: -"));
+		mDetailBattery->setText(_("  Battery: Unknown"));
+		mDetailStatus->setText(_("  Status: -"));
 		return;
 	}
 
@@ -408,11 +408,11 @@ void GuiBtPairing::updateDetailPane()
 	const DiscoveredDevice& d = mDevices[idx];
 
 	mDetailMac->setText("  MAC: " + d.mac);
-	mDetailRssi->setText(d.hasRssi ? ("  신호 세기: " + std::to_string(d.rssi) + " dBm") : "  신호 세기: 정보 없음");
-	mDetailVendor->setText(d.vendor.empty() ? "  제조사: 제조사 불명" : ("  제조사: " + d.vendor));
+	mDetailRssi->setText(d.hasRssi ? (_("  Signal: ") + std::to_string(d.rssi) + " dBm") : _("  Signal: Unknown"));
+	mDetailVendor->setText(d.vendor.empty() ? _("  Vendor: Unknown") : (_("  Vendor: ") + d.vendor));
 	// Battery1 D-Bus 인터페이스 지원 기기가 나오면 추후 rpui-bt 데몬에 필드 추가 필요 (현재 범위 밖) — 항상 "정보 없음"
-	mDetailBattery->setText("  배터리: 정보 없음");
-	mDetailStatus->setText(d.connected ? "  상태: 연결됨" : (d.paired ? "  상태: 등록됨(연결 안 됨)" : "  상태: 미등록"));
+	mDetailBattery->setText(_("  Battery: Unknown"));
+	mDetailStatus->setText(d.connected ? _("  Status: Connected") : (d.paired ? _("  Status: Paired (not connected)") : _("  Status: Not paired")));
 }
 
 void GuiBtPairing::selectDevice(const std::string& mac)
