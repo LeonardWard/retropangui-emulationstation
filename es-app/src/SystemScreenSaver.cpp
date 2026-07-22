@@ -17,6 +17,11 @@
 #include "Scripting.h"
 #include "Sound.h"
 #include "SystemData.h"
+#include "AudioManager.h"
+#include "InputManager.h"
+#include "VolumeControl.h"
+#include "MusicManager.h"
+#include "platform.h"
 #include <algorithm>
 #include <chrono>
 #include <random>
@@ -149,6 +154,33 @@ void SystemScreenSaver::setVideoScreensaver(std::string& path)
 	mTimer = 0;
 }
 
+// RetroPangui: launchGame()(FileData.cpp)과 완전히 동일한 패턴 - ES의
+// window/input/audio를 전부 deinit해서 DRM master를 넘겨준 뒤, mpv 외부
+// 프로세스가 직접 화면에 그리게 하고, 스크립트가 반환되면(=사용자 입력
+// 감지) 다시 원상복구. 이 함수는 그동안 완전히 블로킹됨(게임 실행과 동일).
+void SystemScreenSaver::runWebStreamScreensaver(const std::string& url)
+{
+	MusicManager::getInstance()->stop();
+	AudioManager::getInstance()->deinit();
+	VolumeControl::getInstance()->deinit();
+	InputManager::getInstance()->deinit();
+	mWindow->deinit();
+
+	std::string command = "/usr/share/retropangui/web-stream-screensaver.sh '" + url + "'";
+	runSystemCommand(command);
+
+	// launchGame()과 동일 - 외부 프로세스 실행 중 바뀌었을 수 있는 해상도를
+	// retropangui.conf 기준으로 재적용한 뒤 window->init() 호출(그 순간의
+	// DRM 상태를 새로 조회하므로 반드시 이 순서 유지).
+	system("/usr/share/retropangui/apply-resolution.sh 2>/dev/null || true");
+
+	mWindow->init();
+	InputManager::getInstance()->init();
+	VolumeControl::getInstance()->init();
+	MusicManager::getInstance()->start();
+	mWindow->normalizeNextUpdate();
+}
+
 void SystemScreenSaver::setImageScreensaver(std::string& path)
 {
 		if (!mImageScreensaver)
@@ -250,28 +282,26 @@ void SystemScreenSaver::startScreenSaver(SystemData* system)
 			return;
 		}
 	}
-	else if (!mVideoScreensaver && (screensaver_behavior == "web stream"))
+	else if (screensaver_behavior == "web stream")
 	{
-		// RetroPangui: 외부 서버(개발서버)가 여러 웹사이트를 헤드리스 브라우저로
-		// 순환 렌더링해서 RTSP 등으로 스트리밍하는 걸 그대로 재생 - 사이트 순환은
-		// 서버 쪽 책임이라 기기는 고정 스트림 주소 하나만 재생하면 됨. VLC가
-		// URL도 그대로 받으므로(VideoVlcComponent 쪽 분기 추가) random video와
-		// 동일한 재생 경로 재사용.
-		mState = PowerSaver::getMode() == PowerSaver::INSTANT
-					? STATE_SCREENSAVER_ACTIVE
-					: STATE_FADE_OUT_WINDOW;
-		// 라이브 스트림은 changeMediaItem()으로 재시작(재연결)할 필요가 없음 -
-		// 매 mSwapTimeout마다 stopScreenSaver+startScreenSaver가 다시 불려서
-		// 화면이 깜빡이는 걸 막기 위해 사실상 비활성화(24시간).
-		mSwapTimeout = 24 * 60 * 60 * 1000;
-		mOpacity = 0.0f;
-
+		// RetroPangui: startScreenSaver()는 Window::render() 도중에 호출됨
+		// (Window.cpp 확인 완료) - 그 안에서 곧바로 window->deinit()/init()을
+		// 부르면 진행 중이던 렌더 호출이 무너진 상태에서 계속 이어지는 재진입
+		// 문제가 생김. 그래서 여기서는 블로킹 실행을 바로 하지 않고 대기
+		// 플래그만 세우고, 훨씬 안전한 지점인 SystemScreenSaver::update()
+		// (Window::update()에서 호출 - render()와 별개 시점)에서 실제로 실행.
 		std::string streamUrl = Settings::getInstance()->getString("WebStreamUrl");
 		if (!streamUrl.empty())
 		{
-			setVideoScreensaver(streamUrl);
-			return;
+			mPendingWebStreamUrl = streamUrl;
+			mState = STATE_SCREENSAVER_ACTIVE;
 		}
+		else
+		{
+			mState = STATE_INACTIVE;
+		}
+		mCurrentGame = NULL;
+		return;
 	}
 	else if (screensaver_behavior == "slideshow")
 	{
@@ -366,7 +396,7 @@ void SystemScreenSaver::stopScreenSaver(bool toResume)
 void SystemScreenSaver::renderScreenSaver()
 {
 	std::string screensaver_behavior = Settings::getInstance()->getString("ScreenSaverBehavior");
-	if (mVideoScreensaver && (screensaver_behavior == "random video" || screensaver_behavior == "slideshow" || screensaver_behavior == "web stream"))
+	if (mVideoScreensaver && (screensaver_behavior == "random video" || screensaver_behavior == "slideshow"))
 	{
 		setBackground();
 
@@ -577,6 +607,18 @@ std::vector<std::string> SystemScreenSaver::getCustomMediaFiles(const std::strin
 
 void SystemScreenSaver::update(int deltaTime)
 {
+	// RetroPangui: "web stream" 모드의 블로킹 실행을 여기서 처리 - Window::update()
+	// 도중 호출되는 지점이라 Window::render() 중간에 window->deinit()을 부르는
+	// 재진입 문제 없이 안전함(startScreenSaver()의 코멘트 참고).
+	if (!mPendingWebStreamUrl.empty())
+	{
+		std::string url = mPendingWebStreamUrl;
+		mPendingWebStreamUrl.clear();
+		runWebStreamScreensaver(url);
+		mState = STATE_INACTIVE;
+		return;
+	}
+
 	// Use this to update the fade value for the current fade stage
 	if (mState == STATE_FADE_OUT_WINDOW)
 	{
