@@ -259,28 +259,38 @@ void VideoVlcComponent::startVideo()
 				: libvlc_media_new_path(mVLC, path.c_str());
 			if (mMedia)
 			{
-				unsigned track_count;
-				// Get the media metadata so we can find the aspect ratio.
-				// 네트워크 URL은 5초 제한(끊긴 스트림이 UI 스레드를 무한정 멈추지 않도록) -
-				// 로컬 파일은 fetch_local + 무제한(-1) 그대로 유지.
+				// RetroPangui: 네트워크 URL(라이브 스트림)은 libvlc_media_parse_with_options의
+				// 트랙 프로빙이 신뢰할 수 없음(2026-07-23 실기기 실측 - ffmpeg 로그에
+				// "frame=1 size=0kB Broken pipe"만 남고 화면은 계속 검은색, 즉 파싱이 끝까지
+				// 안 가서 mVideoWidth/Height가 0으로 남아 아래 재생 블록 자체가 안 돔).
+				// 우리가 직접 만든 스트림이라 해상도를 이미 알고 있으므로(웹 스트림
+				// 스크린세이버 서버 쪽이 항상 1280x720으로 인코딩, start-stream.sh 참고),
+				// 네트워크 URL은 파싱 단계를 건너뛰고 그 값을 바로 씀. 로컬 파일은
+				// 기존 그대로 fetch_local + 트랙 프로빙 유지(이미 검증된 동작, 안 건드림).
 				if (isNetworkUrl)
-					libvlc_media_parse_with_options(mMedia, libvlc_media_parse_network, 5000);
-				else
-					libvlc_media_parse_with_options(mMedia, libvlc_media_fetch_local, -1);
-				while (libvlc_media_get_parsed_status(mMedia) == 0)
-					;
-				libvlc_media_track_t** tracks;
-				track_count = libvlc_media_tracks_get(mMedia, &tracks);
-				for (unsigned track = 0; track < track_count; ++track)
 				{
-					if (tracks[track]->i_type == libvlc_track_video)
-					{
-						mVideoWidth = tracks[track]->video->i_width;
-						mVideoHeight = tracks[track]->video->i_height;
-						break;
-					}
+					mVideoWidth = 1280;
+					mVideoHeight = 720;
 				}
-				libvlc_media_tracks_release(tracks, track_count);
+				else
+				{
+					unsigned track_count;
+					libvlc_media_parse_with_options(mMedia, libvlc_media_fetch_local, -1);
+					while (libvlc_media_get_parsed_status(mMedia) == 0)
+						;
+					libvlc_media_track_t** tracks;
+					track_count = libvlc_media_tracks_get(mMedia, &tracks);
+					for (unsigned track = 0; track < track_count; ++track)
+					{
+						if (tracks[track]->i_type == libvlc_track_video)
+						{
+							mVideoWidth = tracks[track]->video->i_width;
+							mVideoHeight = tracks[track]->video->i_height;
+							break;
+						}
+					}
+					libvlc_media_tracks_release(tracks, track_count);
+				}
 
 				// Make sure we found a valid video track
 				if ((mVideoWidth > 0) && (mVideoHeight > 0))
