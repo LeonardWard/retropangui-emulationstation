@@ -106,8 +106,12 @@ void VideoComponent::onSizeChanged()
 
 bool VideoComponent::setVideo(std::string path)
 {
-	// Convert the path into a generic format
-	std::string fullPath = path.empty() ? path : Utils::FileSystem::getAbsolutePath(path);
+	// RetroPangui: rtsp://, http:// 같은 네트워크 URL은 로컬 파일이 아니므로
+	// getAbsolutePath()(cwd 기준 상대경로 변환)와 fileExists() 검사를 건너뜀 -
+	// 둘 다 URL 문자열을 깨뜨리거나(경로 접두어 붙임) 항상 false를 반환해서
+	// 웹 스트림 스크린세이버가 재생되지 못하는 원인이 됨.
+	bool isNetworkUrl = path.find("://") != std::string::npos;
+	std::string fullPath = (path.empty() || isNetworkUrl) ? path : Utils::FileSystem::getAbsolutePath(path);
 
 	// Check that it's changed
 	if (fullPath == mVideoPath)
@@ -115,6 +119,9 @@ bool VideoComponent::setVideo(std::string path)
 
 	// Store the path
 	mVideoPath = fullPath;
+
+	if (isNetworkUrl)
+		return true;
 
 	// If the file exists then set the new video
 	if (!fullPath.empty() && ResourceManager::getInstance()->fileExists(fullPath))

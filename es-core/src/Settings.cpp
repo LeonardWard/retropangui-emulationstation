@@ -175,6 +175,10 @@ void Settings::setDefaults()
 	mStringMap["ScreenSaverGameInfo"] = "never";
 	mBoolMap["StretchVideoOnScreenSaver"] = false;
 	mStringMap["PowerSaverMode"] = "disabled";
+	// RetroPangui: "web stream" 스크린세이버 모드가 재생할 고정 스트림 주소(RTSP 등) -
+	// retropangui.conf의 emulationstation.WebStreamUrl로 설정. 사이트 목록/순환 주기는
+	// 별도 screensaver.web_stream_urls/interval 키로 관리(외부 스트리밍 서버 쪽에서 읽음).
+	mStringMap["WebStreamUrl"] = "";
 
 	mIntMap["ScreenSaverSwapMediaTimeout"] = 10000;
 	mBoolMap["SlideshowScreenSaverStretch"] = false;

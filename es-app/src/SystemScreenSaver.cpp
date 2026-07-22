@@ -250,6 +250,29 @@ void SystemScreenSaver::startScreenSaver(SystemData* system)
 			return;
 		}
 	}
+	else if (!mVideoScreensaver && (screensaver_behavior == "web stream"))
+	{
+		// RetroPangui: 외부 서버(개발서버)가 여러 웹사이트를 헤드리스 브라우저로
+		// 순환 렌더링해서 RTSP 등으로 스트리밍하는 걸 그대로 재생 - 사이트 순환은
+		// 서버 쪽 책임이라 기기는 고정 스트림 주소 하나만 재생하면 됨. VLC가
+		// URL도 그대로 받으므로(VideoVlcComponent 쪽 분기 추가) random video와
+		// 동일한 재생 경로 재사용.
+		mState = PowerSaver::getMode() == PowerSaver::INSTANT
+					? STATE_SCREENSAVER_ACTIVE
+					: STATE_FADE_OUT_WINDOW;
+		// 라이브 스트림은 changeMediaItem()으로 재시작(재연결)할 필요가 없음 -
+		// 매 mSwapTimeout마다 stopScreenSaver+startScreenSaver가 다시 불려서
+		// 화면이 깜빡이는 걸 막기 위해 사실상 비활성화(24시간).
+		mSwapTimeout = 24 * 60 * 60 * 1000;
+		mOpacity = 0.0f;
+
+		std::string streamUrl = Settings::getInstance()->getString("WebStreamUrl");
+		if (!streamUrl.empty())
+		{
+			setVideoScreensaver(streamUrl);
+			return;
+		}
+	}
 	else if (screensaver_behavior == "slideshow")
 	{
 		// Configure to fade out the windows, Skip Fading if Instant mode
@@ -343,7 +366,7 @@ void SystemScreenSaver::stopScreenSaver(bool toResume)
 void SystemScreenSaver::renderScreenSaver()
 {
 	std::string screensaver_behavior = Settings::getInstance()->getString("ScreenSaverBehavior");
-	if (mVideoScreensaver && (screensaver_behavior == "random video" || screensaver_behavior == "slideshow"))
+	if (mVideoScreensaver && (screensaver_behavior == "random video" || screensaver_behavior == "slideshow" || screensaver_behavior == "web stream"))
 	{
 		setBackground();
 

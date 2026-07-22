@@ -248,13 +248,25 @@ void VideoVlcComponent::startVideo()
 			// Set the video that we are going to be playing so we don't attempt to restart it
 			mPlayingVideoPath = mVideoPath;
 
+			// RetroPangui: 웹 스트림 스크린세이버(rtsp://, http:// 등) 지원 - "://"가 있으면
+			// 네트워크 URL로 보고 new_location + 네트워크 파싱 사용. 로컬 파일은 기존 그대로
+			// new_path + fetch_local(무제한 대기) 유지 - 이미 검증된 동작이라 안 건드림.
+			bool isNetworkUrl = path.find("://") != std::string::npos;
+
 			// Open the media
-			mMedia = libvlc_media_new_path(mVLC, path.c_str());
+			mMedia = isNetworkUrl
+				? libvlc_media_new_location(mVLC, path.c_str())
+				: libvlc_media_new_path(mVLC, path.c_str());
 			if (mMedia)
 			{
 				unsigned track_count;
-				// Get the media metadata so we can find the aspect ratio
-				libvlc_media_parse_with_options(mMedia, libvlc_media_fetch_local, -1);
+				// Get the media metadata so we can find the aspect ratio.
+				// 네트워크 URL은 5초 제한(끊긴 스트림이 UI 스레드를 무한정 멈추지 않도록) -
+				// 로컬 파일은 fetch_local + 무제한(-1) 그대로 유지.
+				if (isNetworkUrl)
+					libvlc_media_parse_with_options(mMedia, libvlc_media_parse_network, 5000);
+				else
+					libvlc_media_parse_with_options(mMedia, libvlc_media_fetch_local, -1);
 				while (libvlc_media_get_parsed_status(mMedia) == 0)
 					;
 				libvlc_media_track_t** tracks;
