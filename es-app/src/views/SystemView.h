@@ -89,6 +89,11 @@ private:
 	// RetroPangui: 하단 푸터 우측 bgmTitle 텍스트에 현재 재생 트랙 제목을 매 프레임 반영
 	void updateBgmTitle(SystemViewData& data);
 
+	// RetroPangui: 메인 화면 우측 상단 시계(clock-time/clock-date, 테마 쪽 이름 있는 extra) -
+	// 1초에 한 번만 텍스트를 다시 그려서 매 프레임 setText() 비용을 피함(2026-07-23)
+	void updateClock(SystemViewData& data, int deltaTime);
+	int mClockAccumulator;
+
 
 	SystemViewCarousel mCarousel;
 	TextComponent mSystemInfo;

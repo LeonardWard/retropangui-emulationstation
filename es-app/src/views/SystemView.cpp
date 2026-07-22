@@ -17,6 +17,7 @@
 #include "SystemData.h"
 #include "Window.h"
 #include "utils/FileSystemUtil.h"
+#include <ctime>
 
 // buffer values for scrolling velocity (left, stopped, right)
 const int logoBuffersLeft[] = { -5, -2, -1 };
@@ -33,6 +34,7 @@ SystemView::SystemView(Window* window) : IList<SystemViewData, SystemData*>(wind
 	mCamOffset = 0;
 	mExtrasCamOffset = 0;
 	mExtrasFadeOpacity = 0.0f;
+	mClockAccumulator = 0;
 
 	setSize((float)Renderer::getScreenWidth(), (float)Renderer::getScreenHeight());
 	populate();
@@ -243,6 +245,7 @@ void SystemView::update(int deltaTime)
 			extra->update(deltaTime);
 		updateRecentlyPlayed(mEntries.at(mCursor).data, mEntries.at(mCursor).object);
 		updateBgmTitle(mEntries.at(mCursor).data);
+		updateClock(mEntries.at(mCursor).data, deltaTime);
 	}
 	GuiComponent::update(deltaTime);
 }
@@ -271,6 +274,59 @@ void SystemView::updateBgmTitle(SystemViewData& data)
 	auto& music = MusicManager::getInstance();
 	std::string title = music->isPlaying() ? music->getCurrentTrackTitle() : "";
 	bgmTitleExtra->setValue(title);
+}
+
+// RetroPangui: 메인 화면 우측 상단 시계(clock-time/clock-date, 테마 쪽 이름 있는 extra) -
+// 요일 이름은 대상 기기에 ko_KR 로케일이 없어 strftime("%A")로는 로케일화가 안 되므로
+// 직접 배열로 관리하고 _()로 번역함(2026-07-23).
+void SystemView::updateClock(SystemViewData& data, int deltaTime)
+{
+	GuiComponent* clockTimeExtra = findNamedExtra(data, "clock-time");
+	GuiComponent* clockDateExtra = findNamedExtra(data, "clock-date");
+	if (clockTimeExtra == nullptr && clockDateExtra == nullptr)
+		return;
+
+	mClockAccumulator += deltaTime;
+	if (mClockAccumulator < 1000)
+		return;
+	mClockAccumulator = 0;
+
+	time_t now = time(nullptr);
+	tm localNow;
+	localtime_r(&now, &localNow);
+
+	if (clockTimeExtra != nullptr)
+	{
+		char buf[8];
+		snprintf(buf, sizeof(buf), "%02d:%02d", localNow.tm_hour, localNow.tm_min);
+		clockTimeExtra->setValue(std::string(buf));
+	}
+
+	if (clockDateExtra != nullptr)
+	{
+		// msgid는 항상 영문 원문(gettext 관례) - ko_KR .po에 "일요일" 등으로 번역 등록
+		static const char* weekdaysEn[7] = {
+			"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
+		};
+		std::string weekday = _(weekdaysEn[localNow.tm_wday]);
+
+		std::string dateStr;
+		if (LocaleES::getLanguage() == "en_US")
+		{
+			static const char* monthsEn[12] = {
+				"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+				"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+			};
+			dateStr = std::string(monthsEn[localNow.tm_mon]) + " " + std::to_string(localNow.tm_mday) +
+				" (" + weekday.substr(0, 3) + ")";
+		}
+		else
+		{
+			dateStr = std::to_string(localNow.tm_mon + 1) + "월 " + std::to_string(localNow.tm_mday) +
+				"일 " + weekday;
+		}
+		clockDateExtra->setValue(dateStr);
+	}
 }
 
 void SystemView::updateRecentlyPlayed(SystemViewData& data, SystemData* system)
