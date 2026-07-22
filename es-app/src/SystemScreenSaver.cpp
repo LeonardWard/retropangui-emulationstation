@@ -155,10 +155,11 @@ void SystemScreenSaver::setVideoScreensaver(std::string& path)
 }
 
 // RetroPangui: launchGame()(FileData.cpp)과 완전히 동일한 패턴 - ES의
-// window/input/audio를 전부 deinit해서 DRM master를 넘겨준 뒤, mpv 외부
-// 프로세스가 직접 화면에 그리게 하고, 스크립트가 반환되면(=사용자 입력
+// window/input/audio를 전부 deinit해서 DRM master를 넘겨준 뒤, cog(wpewebkit)
+// 외부 프로세스가 직접 화면에 그리게 하고, 스크립트가 반환되면(=사용자 입력
 // 감지) 다시 원상복구. 이 함수는 그동안 완전히 블로킹됨(게임 실행과 동일).
-void SystemScreenSaver::runWebStreamScreensaver(const std::string& url)
+// URL 목록/순환 주기는 스크립트가 retropangui.conf를 직접 읽으므로 인자 없음.
+void SystemScreenSaver::runWebStreamScreensaver()
 {
 	MusicManager::getInstance()->stop();
 	AudioManager::getInstance()->deinit();
@@ -166,7 +167,7 @@ void SystemScreenSaver::runWebStreamScreensaver(const std::string& url)
 	InputManager::getInstance()->deinit();
 	mWindow->deinit();
 
-	std::string command = "/usr/share/retropangui/web-stream-screensaver.sh '" + url + "'";
+	std::string command = "python3 /usr/share/retropangui/web-stream-screensaver.py";
 	runSystemCommand(command);
 
 	// launchGame()과 동일 - 외부 프로세스 실행 중 바뀌었을 수 있는 해상도를
@@ -290,16 +291,8 @@ void SystemScreenSaver::startScreenSaver(SystemData* system)
 		// 문제가 생김. 그래서 여기서는 블로킹 실행을 바로 하지 않고 대기
 		// 플래그만 세우고, 훨씬 안전한 지점인 SystemScreenSaver::update()
 		// (Window::update()에서 호출 - render()와 별개 시점)에서 실제로 실행.
-		std::string streamUrl = Settings::getInstance()->getString("WebStreamUrl");
-		if (!streamUrl.empty())
-		{
-			mPendingWebStreamUrl = streamUrl;
-			mState = STATE_SCREENSAVER_ACTIVE;
-		}
-		else
-		{
-			mState = STATE_INACTIVE;
-		}
+		mPendingWebStreamScreensaver = true;
+		mState = STATE_SCREENSAVER_ACTIVE;
 		mCurrentGame = NULL;
 		return;
 	}
@@ -610,11 +603,10 @@ void SystemScreenSaver::update(int deltaTime)
 	// RetroPangui: "web stream" 모드의 블로킹 실행을 여기서 처리 - Window::update()
 	// 도중 호출되는 지점이라 Window::render() 중간에 window->deinit()을 부르는
 	// 재진입 문제 없이 안전함(startScreenSaver()의 코멘트 참고).
-	if (!mPendingWebStreamUrl.empty())
+	if (mPendingWebStreamScreensaver)
 	{
-		std::string url = mPendingWebStreamUrl;
-		mPendingWebStreamUrl.clear();
-		runWebStreamScreensaver(url);
+		mPendingWebStreamScreensaver = false;
+		runWebStreamScreensaver();
 		mState = STATE_INACTIVE;
 		return;
 	}
