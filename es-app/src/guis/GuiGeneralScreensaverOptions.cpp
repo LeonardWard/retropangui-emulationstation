@@ -10,6 +10,67 @@
 #include "Settings.h"
 #include "utils/FileSystemUtil.h"
 
+#include <cstdlib>
+#include <fstream>
+#include <sys/stat.h>
+
+namespace
+{
+	// RetroPangui: GuiMenu.cpp의 getSharePath()/cfgReadKey()와 동일한 경량
+	// key=value 파서 - 헤더로 안 빼고 여기 로컬로 둠(이 파일에서만 필요한
+	// "뉴스 티커 API 키가 하나라도 있나" 체크용, 2026-07-23).
+	std::string getSharePathLocal()
+	{
+		const char* env = std::getenv("RETROPANGUI_SHARE");
+		if (env && env[0] != '\0')
+			return env;
+		struct stat st;
+		if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+			return "/share";
+		const char* home = std::getenv("HOME");
+		return home ? std::string(home) + "/share" : "/share";
+	}
+
+	std::string cfgReadKeyLocal(const std::string& fullKey)
+	{
+		std::ifstream f(getSharePathLocal() + "/system/retropangui.conf");
+		if (!f.is_open())
+			return "";
+		std::string line;
+		while (std::getline(f, line))
+		{
+			if (line.empty() || line[0] == '#')
+				continue;
+			auto eq = line.find('=');
+			if (eq == std::string::npos)
+				continue;
+			std::string k = line.substr(0, eq);
+			while (!k.empty() && (k.back() == ' ' || k.back() == '\t')) k.pop_back();
+			if (k != fullKey)
+				continue;
+			std::string v = line.substr(eq + 1);
+			while (!v.empty() && (v.front() == ' ' || v.front() == '\t' || v.front() == '"')) v.erase(v.begin());
+			while (!v.empty() && (v.back() == ' ' || v.back() == '\t' || v.back() == '"' || v.back() == '\r')) v.pop_back();
+			return v;
+		}
+		return "";
+	}
+
+	// 뉴스 티커 API 키(ticker.*) 6개 중 하나라도 값이 있으면 true
+	bool anyTickerApiKeySet()
+	{
+		static const char* kKeys[] = {
+			"ticker.naver_client_id", "ticker.naver_client_secret",
+			"ticker.krx_api_key",
+			"ticker.weather_service_key", "ticker.weather_nx", "ticker.weather_ny",
+		};
+		for (const char* key : kKeys)
+			if (!cfgReadKeyLocal(key).empty())
+				return true;
+		return false;
+	}
+}
+
 GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const char* title) : GuiScreensaverOptions(window, title)
 {
 	// screensaver time
@@ -42,7 +103,11 @@ GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const
 	// 빌드에 포함하면 이 ES 소스를 안 고쳐도 자동으로 다시 나타남.
 	if (Utils::FileSystem::exists("/usr/bin/cog"))
 		screensavers.push_back("web stream ondevice");
-	screensavers.push_back("news ticker");
+	// RetroPangui: "뉴스 티커"도 마찬가지로 조건부 노출 - ticker.* API 키
+	// 6개가 전부 비어있으면(TICKER SETTINGS 메뉴에서 아무것도 입력 안 한
+	// 기본 상태) 메뉴에서 숨김. 키를 하나라도 입력하면 바로 나타남(2026-07-23).
+	if (anyTickerApiKeySet())
+		screensavers.push_back("news ticker");
 	for(auto it = screensavers.cbegin(); it != screensavers.cend(); it++)
 		screensaver_behavior->add(*it, *it, Settings::getInstance()->getString("ScreenSaverBehavior") == *it);
 	addWithLabel(_("SCREENSAVER BEHAVIOR"), screensaver_behavior);
