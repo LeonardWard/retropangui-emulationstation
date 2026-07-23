@@ -95,7 +95,12 @@ GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const
 	screensavers.push_back("black");
 	screensavers.push_back("random video");
 	screensavers.push_back("slideshow");
-	screensavers.push_back("web stream external");
+	// RetroPangui: "외부 서버 브라우징"도 조건부 노출 - 접속할 스트림 주소
+	// (emulationstation.WebStreamUrl)가 비어있으면(외부 서버를 아직
+	// ~/scripts/rpui-web-stream-external-server.sh로 안 띄운 기본 상태)
+	// 메뉴에서 숨김(2026-07-23).
+	if (!cfgReadKeyLocal("emulationstation.WebStreamUrl").empty())
+		screensavers.push_back("web stream external");
 	// RetroPangui: "온디바이스 브라우징"은 wpewebkit/cog가 실제로 설치된
 	// 빌드에서만 메뉴에 노출 - C5(Mali-G310)는 GPU 버퍼공유 크래시로 상류
 	// 이슈가 해결될 때까지 defconfig에서 아예 안 빌드함(2026-07-23).
