@@ -36,13 +36,12 @@ private:
 	void pickRandomCustomMedia(std::string& path);
 	void setVideoScreensaver(std::string& path);
 	void setImageScreensaver(std::string& path);
-	// RetroPangui: "web stream" 모드 - wpewebkit/cog로 C5가 직접 웹페이지를
-	// DRM에 렌더링(클라우드 서버 없는 온디바이스 구현, 2026-07-23). URL
-	// 목록/순환 주기는 retropangui.conf를 스크립트가 직접 읽으므로 여기서는
-	// 인자 없이 launchGame()과 동일한 패턴(window/input/audio deinit → 외부
-	// 프로세스 → 재init)으로 스크립트만 실행. 사용자 입력이 들어올 때까지
-	// 블로킹됨(게임 실행과 동일).
-	void runWebStreamScreensaver();
+	// RetroPangui: "뉴스 티커" 3가지 방식(외부 서버 브라우징/온디바이스
+	// 브라우징/API 내부처리, 2026-07-23) 공용 실행기. 세 방식 전부 유틸리티
+	// 시스템(bundled-roms/utility/)의 스크립트를 그대로 재사용 - launchGame()과
+	// 동일한 패턴(window/input/audio deinit → 외부 프로세스 → 재init)으로
+	// scriptPath만 실행. 사용자 입력이 들어올 때까지 블로킹됨(게임 실행과 동일).
+	void runExternalScreensaverScript(const std::string& scriptPath);
 	bool isFileVideo(std::string& path);
 	std::vector<std::string> getCustomMediaFiles(const std::string &mediaDir);
 	void getAllGamelistNodes();
@@ -74,10 +73,10 @@ private:
 	bool			mStopBackgroundAudio;
 	std::vector<FileData*>	mAllFiles;
 	std::vector<std::string> mCustomMediaFiles;
-	// RetroPangui: "web stream" 모드 - startScreenSaver()(Window::render() 도중
+	// RetroPangui: 뉴스 티커 3가지 방식 - startScreenSaver()(Window::render() 도중
 	// 호출됨)에서 바로 블로킹 실행하면 재진입 문제가 있어, update()(Window::update()
-	// 도중 호출, render()와 별개 시점)에서 처리하도록 넘겨주는 대기 플래그
-	bool mPendingWebStreamScreensaver = false;
+	// 도중 호출, render()와 별개 시점)에서 처리하도록 넘겨주는 대기값(비어있으면 대기 없음)
+	std::string mPendingExternalScreensaverScript;
 	int			mAllFilesSize;
 	std::thread*		mThread;
 	bool			mExit;

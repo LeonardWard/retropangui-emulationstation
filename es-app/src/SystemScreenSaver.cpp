@@ -155,11 +155,14 @@ void SystemScreenSaver::setVideoScreensaver(std::string& path)
 }
 
 // RetroPangui: launchGame()(FileData.cpp)과 완전히 동일한 패턴 - ES의
-// window/input/audio를 전부 deinit해서 DRM master를 넘겨준 뒤, cog(wpewebkit)
-// 외부 프로세스가 직접 화면에 그리게 하고, 스크립트가 반환되면(=사용자 입력
-// 감지) 다시 원상복구. 이 함수는 그동안 완전히 블로킹됨(게임 실행과 동일).
-// URL 목록/순환 주기는 스크립트가 retropangui.conf를 직접 읽으므로 인자 없음.
-void SystemScreenSaver::runWebStreamScreensaver()
+// window/input/audio를 전부 deinit해서 DRM master를 넘겨준 뒤, 유틸리티
+// 시스템(bundled-roms/utility/)의 스크립트가 직접 화면에 그리게 하고,
+// 스크립트가 반환되면(=사용자 입력 감지) 다시 원상복구. 이 함수는 그동안
+// 완전히 블로킹됨(게임 실행과 동일). 세 방식(외부 서버 브라우징/온디바이스
+// 브라우징/뉴스 티커 API) 전부 같은 스크립트를 유틸리티 시스템에서 수동
+// 실행할 때와 완전히 동일하게 동작 - 별도 인자 없이 스크립트가
+// retropangui.conf를 직접 읽음.
+void SystemScreenSaver::runExternalScreensaverScript(const std::string& scriptPath)
 {
 	MusicManager::getInstance()->stop();
 	AudioManager::getInstance()->deinit();
@@ -167,7 +170,7 @@ void SystemScreenSaver::runWebStreamScreensaver()
 	InputManager::getInstance()->deinit();
 	mWindow->deinit();
 
-	std::string command = "python3 /usr/share/retropangui/web-stream-screensaver.py";
+	std::string command = "python3 " + scriptPath;
 	runSystemCommand(command);
 
 	// launchGame()과 동일 - 외부 프로세스 실행 중 바뀌었을 수 있는 해상도를
@@ -283,15 +286,25 @@ void SystemScreenSaver::startScreenSaver(SystemData* system)
 			return;
 		}
 	}
-	else if (screensaver_behavior == "web stream")
+	else if (screensaver_behavior == "web stream external" ||
+		screensaver_behavior == "web stream ondevice" ||
+		screensaver_behavior == "news ticker")
 	{
 		// RetroPangui: startScreenSaver()는 Window::render() 도중에 호출됨
 		// (Window.cpp 확인 완료) - 그 안에서 곧바로 window->deinit()/init()을
 		// 부르면 진행 중이던 렌더 호출이 무너진 상태에서 계속 이어지는 재진입
-		// 문제가 생김. 그래서 여기서는 블로킹 실행을 바로 하지 않고 대기
-		// 플래그만 세우고, 훨씬 안전한 지점인 SystemScreenSaver::update()
+		// 문제가 생김. 그래서 여기서는 블로킹 실행을 바로 하지 않고 대기값만
+		// 세우고, 훨씬 안전한 지점인 SystemScreenSaver::update()
 		// (Window::update()에서 호출 - render()와 별개 시점)에서 실제로 실행.
-		mPendingWebStreamScreensaver = true;
+		// 세 방식 다 유틸리티 시스템(bundled-roms/utility/)의 스크립트를
+		// 그대로 재사용 - 수동 실행과 완전히 동일한 스크립트/경로.
+		static const std::string kUtilityDir = "/usr/share/retropangui/bundled-roms/utility/";
+		if (screensaver_behavior == "web stream external")
+			mPendingExternalScreensaverScript = kUtilityDir + "web-stream-external.py";
+		else if (screensaver_behavior == "web stream ondevice")
+			mPendingExternalScreensaverScript = kUtilityDir + "web-stream-ondevice.py";
+		else
+			mPendingExternalScreensaverScript = kUtilityDir + "news-ticker.py";
 		mState = STATE_SCREENSAVER_ACTIVE;
 		mCurrentGame = NULL;
 		return;
@@ -600,13 +613,14 @@ std::vector<std::string> SystemScreenSaver::getCustomMediaFiles(const std::strin
 
 void SystemScreenSaver::update(int deltaTime)
 {
-	// RetroPangui: "web stream" 모드의 블로킹 실행을 여기서 처리 - Window::update()
+	// RetroPangui: 뉴스 티커 3가지 방식의 블로킹 실행을 여기서 처리 - Window::update()
 	// 도중 호출되는 지점이라 Window::render() 중간에 window->deinit()을 부르는
 	// 재진입 문제 없이 안전함(startScreenSaver()의 코멘트 참고).
-	if (mPendingWebStreamScreensaver)
+	if (!mPendingExternalScreensaverScript.empty())
 	{
-		mPendingWebStreamScreensaver = false;
-		runWebStreamScreensaver();
+		std::string scriptPath = mPendingExternalScreensaverScript;
+		mPendingExternalScreensaverScript.clear();
+		runExternalScreensaverScript(scriptPath);
 		mState = STATE_INACTIVE;
 		return;
 	}

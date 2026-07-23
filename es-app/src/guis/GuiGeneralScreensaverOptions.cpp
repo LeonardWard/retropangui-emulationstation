@@ -33,7 +33,9 @@ GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const
 	screensavers.push_back("black");
 	screensavers.push_back("random video");
 	screensavers.push_back("slideshow");
-	screensavers.push_back("web stream");
+	screensavers.push_back("web stream external");
+	screensavers.push_back("web stream ondevice");
+	screensavers.push_back("news ticker");
 	for(auto it = screensavers.cbegin(); it != screensavers.cend(); it++)
 		screensaver_behavior->add(*it, *it, Settings::getInstance()->getString("ScreenSaverBehavior") == *it);
 	addWithLabel(_("SCREENSAVER BEHAVIOR"), screensaver_behavior);
