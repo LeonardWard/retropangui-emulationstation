@@ -8,6 +8,7 @@
 #include "guis/GuiSlideshowScreensaverOptions.h"
 #include "guis/GuiVideoScreensaverOptions.h"
 #include "Settings.h"
+#include "utils/FileSystemUtil.h"
 
 GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const char* title) : GuiScreensaverOptions(window, title)
 {
@@ -34,7 +35,13 @@ GuiGeneralScreensaverOptions::GuiGeneralScreensaverOptions(Window* window, const
 	screensavers.push_back("random video");
 	screensavers.push_back("slideshow");
 	screensavers.push_back("web stream external");
-	screensavers.push_back("web stream ondevice");
+	// RetroPangui: "온디바이스 브라우징"은 wpewebkit/cog가 실제로 설치된
+	// 빌드에서만 메뉴에 노출 - C5(Mali-G310)는 GPU 버퍼공유 크래시로 상류
+	// 이슈가 해결될 때까지 defconfig에서 아예 안 빌드함(2026-07-23).
+	// cog 바이너리 유무로만 판단해서, 나중에 x86 등 다른 보드가 wpewebkit을
+	// 빌드에 포함하면 이 ES 소스를 안 고쳐도 자동으로 다시 나타남.
+	if (Utils::FileSystem::exists("/usr/bin/cog"))
+		screensavers.push_back("web stream ondevice");
 	screensavers.push_back("news ticker");
 	for(auto it = screensavers.cbegin(); it != screensavers.cend(); it++)
 		screensaver_behavior->add(*it, *it, Settings::getInstance()->getString("ScreenSaverBehavior") == *it);
