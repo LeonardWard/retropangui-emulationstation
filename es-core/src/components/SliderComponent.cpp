@@ -154,7 +154,13 @@ void SliderComponent::onValueChanged()
 	// update knob position/size
 	mKnob.setResize(0, mSize.y() * 0.7f);
 	float lineLength = mSize.x() - mKnob.getSize().x() - (mValueCache ? mValueCache->metrics.size.x() + 4 : 0);
-	mKnob.setPosition(((mValue + mMin) / mMax) * lineLength + mKnob.getSize().x()/2, mSize.y() / 2);
+	// RetroPangui: 기존 (mValue + mMin) / mMax 공식은 mMin==0인 슬라이더에서만
+	// 우연히 맞는 공식이었음(대부분의 슬라이더가 0부터 시작해서 안 드러남).
+	// mMin!=0인 슬라이더(예: 진동 세기 10~100)에서는 최솟값에서도 노브가
+	// 왼쪽 끝까지 안 가고, 최댓값에서는 트랙 밖으로 넘어가는 버그가 있었음
+	// (2026-07-24, 진동 세기 슬라이더에서 발견). 표준 정규화 공식으로 수정.
+	float fraction = (mMax > mMin) ? (mValue - mMin) / (mMax - mMin) : 0.f;
+	mKnob.setPosition(fraction * lineLength + mKnob.getSize().x()/2, mSize.y() / 2);
 
 	if(mChangedCallback)
 		mChangedCallback(mValue);
