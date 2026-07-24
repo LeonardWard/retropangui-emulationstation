@@ -140,6 +140,17 @@ void Window::input(InputConfig* config, Input input)
 	if (input.value != 0 && cancelScreenSaver())
 		return;
 
+	// RetroPangui: 이스터에그 콜백이 이 안에서 새 GUI를 pushGui()할 수 있음
+	// (예: GuiPangMemorial). 그러면 checkEasterEggInput() 이후 peekGui()를
+	// 다시 조회할 경우 방금 새로 뜬 GUI가 되어버려서, 시퀀스를 완성시킨 바로
+	// 그 입력(예: back에 매핑된 버튼)이 곧바로 그 새 GUI에도 전달됨 -
+	// GuiPangMemorial처럼 back으로 즉시 닫히는 GUI라면 한 프레임도 그려지기
+	// 전에 자기 자신을 닫아버려 "안 뜨는" 것처럼 보임(2026-07-24 실기기
+	// 확인). 콜백 실행 전에 원래 최상단 GUI를 미리 잡아두고 그쪽으로만
+	// 전달해서, 이스터에그가 순수 관찰용이라는 설계 의도(입력을 소비/오염
+	// 시키지 않음)를 지킨다.
+	GuiComponent* topGuiBeforeEasterEgg = peekGui();
+
 	checkEasterEggInput(config, input);
 
 	bool dbg_keyboard_key_press = Settings::getInstance()->getBool("Debug") && config->getDeviceId() == DEVICE_KEYBOARD && input.value;
@@ -158,9 +169,9 @@ void Window::input(InputConfig* config, Input input)
 		// toggle TextComponent debug view with Ctrl-I
 		Settings::getInstance()->setBool("DebugImage", !Settings::getInstance()->getBool("DebugImage"));
 	}
-	else if (peekGui())
+	else if (topGuiBeforeEasterEgg)
 	{
-		this->peekGui()->input(config, input); // this is where the majority of inputs will be consumed: the GuiComponent Stack
+		topGuiBeforeEasterEgg->input(config, input); // this is where the majority of inputs will be consumed: the GuiComponent Stack
 	}
 }
 
