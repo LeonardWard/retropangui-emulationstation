@@ -22,7 +22,17 @@ Font::FontFace::FontFace(ResourceData&& d, int size) : data(d)
 	assert(!err);
 
 	if(!err)
+	{
 		FT_Set_Pixel_Sizes(face, 0, size);
+	}
+	else
+	{
+		// RetroPangui: release 빌드에서는 위 assert가 컴파일에서 빠지므로
+		// (NDEBUG) 여기서 명시적으로 로그를 남기고 face를 null로 유지 -
+		// 호출부(getFaceForChar)가 null을 감지해 다음 폴백 폰트로 넘어감.
+		LOG(LogError) << "Failed to load font face (FreeType error " << err << ") - font file missing or corrupt";
+		face = nullptr;
+	}
 }
 
 Font::FontFace::~FontFace()
@@ -310,12 +320,21 @@ FT_Face Font::getFaceForChar(unsigned int id)
 			fit = mFaceCache.find(i);
 		}
 
-		if(FT_Get_Char_Index(fit->second->face, id) != 0)
+		// RetroPangui: face가 null이면(파일 누락/손상으로 FontFace 생성 실패)
+		// FT_Get_Char_Index에 넘기면 세그폴트 - 다음 폴백 폰트로 넘어감.
+		if(fit->second->face && FT_Get_Char_Index(fit->second->face, id) != 0)
 			return fit->second->face;
 	}
 
-	// nothing has a valid glyph - return the "real" face so we get a "missing" character
-	return mFaceCache.cbegin()->second->face;
+	// nothing has a valid glyph - return the first non-null face so we get a
+	// "missing" character glyph, or null if every font (including fallbacks)
+	// failed to load (getGlyph() already handles a null return safely).
+	for(auto it = mFaceCache.cbegin(); it != mFaceCache.cend(); it++)
+	{
+		if(it->second->face)
+			return it->second->face;
+	}
+	return nullptr;
 }
 
 void Font::clearFaceCache()

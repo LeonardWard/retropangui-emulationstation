@@ -94,7 +94,13 @@ private:
 	struct FontFace
 	{
 		const ResourceData data;
-		FT_Face face;
+		// RetroPangui: 폰트 파일이 없거나 손상된 경우 FT_New_Memory_Face가
+		// 실패하는데, 이전엔 이 멤버가 초기화되지 않은 채로 남아있어서(release
+		// 빌드는 NDEBUG로 assert가 아예 컴파일에서 빠짐) FT_Get_Char_Index가
+		// 쓰레기 포인터를 역참조해 세그폴트가 났음(2026-07-24 실기기 확인 -
+		// 테마 fontPath가 가리키는 파일이 없을 때 재현). nullptr로 명시
+		// 초기화해서 실패 시에도 안전하게 null로 남도록 함.
+		FT_Face face = nullptr;
 
 		FontFace(ResourceData&& d, int size);
 		virtual ~FontFace();
