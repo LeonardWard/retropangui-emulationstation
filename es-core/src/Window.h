@@ -90,6 +90,9 @@ public:
 	// 처럼 폴링 방식(/proc/asound/cards + discovery.json)으로 감지한다.
 	void setAudioDeviceNotificationCallback(std::function<void(const std::string& name, bool connected)> cb) { mAudioDeviceNotificationCallback = cb; }
 
+	// 이스터에그(코나미 커맨드) 완성 시 호출 - es-app에서 실제 팝업 GUI를 등록
+	void setEasterEggCallback(std::function<void()> cb) { mEasterEggCallback = cb; }
+
 	void startScreenSaver(SystemData* system=NULL);
 	bool cancelScreenSaver();
 	void renderScreenSaver();
@@ -137,6 +140,16 @@ private:
 	bool mAudioDeviceFirstCheck; // 최초 1회는 알림 없이 스냅샷만(부팅 시 이미 꽂힌 것들 걸러내기)
 	std::function<void(const std::string& name, bool connected)> mAudioDeviceNotificationCallback;
 	void checkAudioDeviceChange();
+
+	// 이스터에그: 어느 화면에서든(메뉴 입력을 가로채지 않고 그냥 관찰만) 코나미
+	// 커맨드를 완성하면 콜백 호출 - 정상 내비게이션엔 전혀 영향 없음(input()이
+	// 이 함수 호출 후에도 그대로 peekGui()로 넘어감). 실제로 띄우는 GUI(팡이
+	// 기록 팝업)는 es-app 쪽 클래스라 es-core에서 직접 참조할 수 없으므로,
+	// 다른 알림들(storage/joystick 등)과 동일하게 콜백 등록 패턴을 씀.
+	std::vector<std::string> mEasterEggSequence;
+	size_t mEasterEggProgress;
+	std::function<void()> mEasterEggCallback;
+	void checkEasterEggInput(InputConfig* config, Input input);
 };
 
 #endif // ES_CORE_WINDOW_H

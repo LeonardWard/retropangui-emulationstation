@@ -18,7 +18,8 @@
 
 Window::Window() : mNormalizeNextUpdate(false), mFrameTimeElapsed(0), mFrameCountElapsed(0), mAverageDeltaTime(10),
 	mAllowSleep(true), mSleeping(false), mTimeSinceLastInput(0), mScreenSaver(NULL), mRenderScreenSaver(false), mInfoPopup(NULL),
-	mStorageCheckTimer(0), mAudioDeviceCheckTimer(0), mAudioDeviceFirstCheck(true)
+	mStorageCheckTimer(0), mAudioDeviceCheckTimer(0), mAudioDeviceFirstCheck(true),
+	mEasterEggSequence({ "up", "up", "down", "down", "left", "right", "left", "right", "b", "a" }), mEasterEggProgress(0)
 {
 	mHelp = new HelpComponent(this);
 	mBackgroundOverlay = new ImageComponent(this);
@@ -139,6 +140,8 @@ void Window::input(InputConfig* config, Input input)
 	if (input.value != 0 && cancelScreenSaver())
 		return;
 
+	checkEasterEggInput(config, input);
+
 	bool dbg_keyboard_key_press = Settings::getInstance()->getBool("Debug") && config->getDeviceId() == DEVICE_KEYBOARD && input.value;
 	if (dbg_keyboard_key_press && input.id == SDLK_g && SDL_GetModState() & KMOD_LCTRL)
 	{
@@ -158,6 +161,29 @@ void Window::input(InputConfig* config, Input input)
 	else if (peekGui())
 	{
 		this->peekGui()->input(config, input); // this is where the majority of inputs will be consumed: the GuiComponent Stack
+	}
+}
+
+void Window::checkEasterEggInput(InputConfig* config, Input input)
+{
+	// 방향키 반복입력 노이즈(axis repeat 등) 무시 - 눌림 이벤트만 셈
+	if (input.value == 0)
+		return;
+
+	if (config->isMappedTo(mEasterEggSequence[mEasterEggProgress], input))
+	{
+		mEasterEggProgress++;
+		if (mEasterEggProgress == mEasterEggSequence.size())
+		{
+			mEasterEggProgress = 0;
+			if (mEasterEggCallback)
+				mEasterEggCallback();
+		}
+	}
+	else
+	{
+		// 실패해도 그 입력 자체가 시퀀스의 첫 버튼(up)과 같으면 거기서부터 다시 시작
+		mEasterEggProgress = config->isMappedTo(mEasterEggSequence[0], input) ? 1 : 0;
 	}
 }
 

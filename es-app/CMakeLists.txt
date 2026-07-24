@@ -26,6 +26,7 @@ set(ES_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGameScraper.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGamelistOptions.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBiosCheck.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiPangMemorial.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGamelistRefresh.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiSaveStates.h
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiScreensaverOptions.h
@@ -95,6 +96,7 @@ set(ES_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGameScraper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGamelistOptions.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiBiosCheck.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiPangMemorial.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiGamelistRefresh.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiSaveStates.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiScreensaverOptions.cpp

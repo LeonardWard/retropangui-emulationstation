@@ -6,6 +6,7 @@
 #include "guis/GuiInfoPopup.h"
 #include "guis/GuiInputConfig.h"
 #include "guis/GuiMsgBox.h"
+#include "guis/GuiPangMemorial.h"
 #include "guis/GuiStorageSelect.h"
 #include "utils/FileSystemUtil.h"
 #include "utils/ProfilingUtil.h"
@@ -539,6 +540,12 @@ int main(int argc, char* argv[])
 	window.setAudioDeviceNotificationCallback([&window](const std::string& name, bool connected) {
 		std::string msg = name + (connected ? " 연결됨" : " 연결 해제됨");
 		window.setInfoPopup(new GuiInfoPopup(&window, msg, 3000));
+	});
+
+	// RetroPangui: 이스터에그(코나미 커맨드: 위위아래아래좌우좌우B A) - 프로젝트
+	// 이름의 유래인 반려견 "팡이" 기록 팝업 (2026-07-24)
+	window.setEasterEggCallback([&window]() {
+		window.pushGui(new GuiPangMemorial(&window));
 	});
 
 	// RetroPangui: 배경 음악 시작 (BackgroundMusic=false거나 <share>/music 비어 있으면 no-op)
