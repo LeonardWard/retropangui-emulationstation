@@ -576,6 +576,14 @@ bool CollectionSystemManager::toggleGameInCollection(FileData* file)
 			updateGamelist(file->getSourceFileData()->getSystem());
 
 			refreshCollectionSystems(file->getSourceFileData());
+
+			// RetroPangui: 즐겨찾기 토글 후 현재 리스트의 별표 아이콘이 즉시
+			// 갱신되지 않던 버그 수정(2026-07-24) - 위 두 호출은 데이터 저장과
+			// 다른 컬렉션 시스템 갱신만 하고, 지금 보고 있는 gamelist 뷰 자체를
+			// 다시 그리라는 신호를 안 보내서 별표가 안 바뀐 것처럼 보였음.
+			// BasicGameListView::onFileChanged(FILE_METADATA_CHANGED)가
+			// reloadGameListView()를 호출해야 실제로 다시 그려짐.
+			ViewController::get()->onFileChanged(file->getSourceFileData(), FILE_METADATA_CHANGED);
 		}
 		if (adding)
 		{
