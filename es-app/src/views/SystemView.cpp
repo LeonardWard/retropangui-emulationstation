@@ -205,6 +205,10 @@ bool SystemView::input(InputConfig* config, Input input)
 
 		if(config->isMappedToAction("accept", input))
 		{
+			// RetroPangui: 시스템 선택 진동 - ComponentList(메뉴)엔 있는데
+			// 여기(시스템→게임목록 진입)엔 원래 호출이 빠져있었음(2026-07-24
+			// 사용자 리포트로 발견).
+			InputManager::getInstance()->rumbleSelect(config->getDeviceId());
 			stopScrolling();
 			ViewController::get()->goToGameList(getSelected());
 			return true;

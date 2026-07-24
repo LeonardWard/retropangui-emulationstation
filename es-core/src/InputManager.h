@@ -80,7 +80,13 @@ public:
 	void rumbleAll(float strength, int durationMs);
 	// 공용 프리셋 - 이동(메뉴/캐러셀/롬리스트)과 선택을 모든 훅 지점에서
 	// 동일한 느낌으로 통일 (상대비율/길이의 단일 진실 공급원).
-	void rumbleNav(SDL_JoystickID deviceId)    { rumble(deviceId, 0.6f, 60); }
+	// RetroPangui: 기존 0.6/60ms는 모터 회전 시동 시간을 못 채워서 사실상
+	// 전혀 안 느껴지는 문제가 있었음(2026-07-24 실기기 확인 - 슬라이더의
+	// 1.0/90ms는 확실히 느껴지는데 이동 진동은 전무). GuiArcadeVirtualKeyboard가
+	// 예전에 이미 같은 이유로 select 세기를 그대로 갖다 쓴 전례가 있어서,
+	// 그 판단을 여기 기본값에도 반영 - select보다 살짝 약하게 남기되(구분감
+	// 유지) 확실히 체감되는 선(0.9/80ms)으로 상향.
+	void rumbleNav(SDL_JoystickID deviceId)    { rumble(deviceId, 0.9f, 80); }
 	void rumbleSelect(SDL_JoystickID deviceId) { rumble(deviceId, 1.0f, 90); }
 
 	InputConfig* getInputConfigByDevice(int deviceId);
