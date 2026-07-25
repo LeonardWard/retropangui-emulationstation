@@ -190,7 +190,13 @@ public:
 				open();
 				return true;
 			}
-			if(!mMultiSelect)
+			// RetroPangui: mEntries가 비어있으면(예: 스캔 결과 0개) getSelectedId()가
+			// "선택된 항목 없음 - 0으로 기본 처리"하고 경고만 남긴 채 0을 반환하는데,
+			// 그 0으로 곧장 mEntries.at(0)을 호출하는 아래 코드들이 빈 컨테이너에서
+			// std::out_of_range를 던져 앱 전체가 죽었음(2026-07-25 실기기 확인 -
+			// WiFi 네트워크 재선택 시 재현). 빈 목록에서는 애초에 옮길 항목이 없으니
+			// 조용히 무시.
+			if(!mMultiSelect && !mEntries.empty())
 			{
 				if(config->isMappedLike("left", input))
 				{
@@ -238,6 +244,17 @@ public:
 		assert(mMultiSelect == false);
 		auto selected = getSelectedObjects();
 		assert(selected.size() == 1);
+		// RetroPangui: release 빌드는 NDEBUG로 위 assert가 컴파일에서 빠지므로,
+		// mEntries가 비어있거나(예: 스캔 결과 0개) 아무 항목도 selected=true가
+		// 아닌 상태에서 selected.at(0)이 std::out_of_range를 던져 앱이 죽는
+		// 경로가 있었음(2026-07-25, getSelectedId()의 동일 계열 버그와 같은
+		// 실기기 크래시에서 발견 - OptionListComponent::input()도 참고).
+		// 기본 생성값을 안전하게 반환.
+		if (selected.empty())
+		{
+			LOG(LogWarning) << "OptionListComponent::getSelected() - no selected element found, returning default";
+			return T();
+		}
 		return selected.at(0);
 	}
 
