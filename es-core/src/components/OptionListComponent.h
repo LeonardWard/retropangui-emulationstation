@@ -78,7 +78,9 @@ private:
 					// update selected value and close
 					row.makeAcceptInputHandler([this, &e]
 					{
-						mParent->mEntries.at(mParent->getSelectedId()).selected = false;
+						LOG(LogWarning) << "OptionListPopup accept: name=" << mParent->mName << " size=" << mParent->mEntries.size();
+						if (!mParent->mEntries.empty())
+							mParent->mEntries.at(mParent->getSelectedId()).selected = false;
 						e.selected = true;
 						mParent->onSelectedChanged();
 						delete this;
@@ -368,7 +370,7 @@ private:
 				return i;
 		}
 
-		LOG(LogWarning) << "OptionListComponent::getSelectedId() - no selected element found, defaulting to 0";
+		LOG(LogWarning) << "OptionListComponent::getSelectedId() - no selected element found, defaulting to 0 (name=" << mName << " size=" << mEntries.size() << ")";
 		return 0;
 	}
 
