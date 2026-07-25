@@ -41,7 +41,6 @@ private:
 		OptionListPopup(Window* window, OptionListComponent<T>* parent, const std::string& title) : GuiComponent(window),
 			mMenu(window, title.c_str()), mParent(parent)
 		{
-			LOG(LogWarning) << "OptionListPopup CTOR: this=" << (void*)this << " mParent=" << (void*)parent << " title=" << title;
 			auto font = Font::get(FONT_SIZE_MEDIUM);
 			ComponentListRow row;
 
@@ -79,8 +78,6 @@ private:
 					// update selected value and close
 					row.makeAcceptInputHandler([this, &e]
 					{
-						LOG(LogWarning) << "OptionListPopup accept: this=" << (void*)this << " mParent=" << (void*)mParent << " &e=" << (void*)&e;
-						LOG(LogWarning) << "OptionListPopup accept: name=" << mParent->mName << " size=" << mParent->mEntries.size();
 						if (!mParent->mEntries.empty())
 							mParent->mEntries.at(mParent->getSelectedId()).selected = false;
 						e.selected = true;
@@ -120,6 +117,14 @@ private:
 			addChild(&mMenu);
 		}
 
+		~OptionListPopup()
+		{
+			// RetroPangui: open()의 mPopupOpen 가드와 짝 - 이 팝업이 닫히는
+			// 모든 경로(accept 선택, BACK 버튼, back 액션)에서 공통으로
+			// 거치므로 여기 한 곳에서만 풀어주면 됨.
+			mParent->mPopupOpen = false;
+		}
+
 		bool input(InputConfig* config, Input input) override
 		{
 			if(config->isMappedToAction("back", input) && input.value != 0)
@@ -143,7 +148,6 @@ public:
 	OptionListComponent(Window* window, const std::string& name, bool multiSelect = false) : GuiComponent(window), mMultiSelect(multiSelect), mName(name),
 		 mText(window), mLeftArrow(window), mRightArrow(window)
 	{
-		LOG(LogWarning) << "OptionListComponent CTOR: this=" << (void*)this << " name=" << name;
 		auto font = Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT);
 		mText.setFont(font);
 		mText.setColor(0x777777FF);
@@ -167,11 +171,6 @@ public:
 		}
 
 		setSize(mLeftArrow.getSize().x() + mRightArrow.getSize().x(), font->getHeight());
-	}
-
-	~OptionListComponent()
-	{
-		LOG(LogWarning) << "OptionListComponent DTOR: this=" << (void*)this << " name=" << mName;
 	}
 
 	// handles positioning/resizing of text and arrows
@@ -384,6 +383,9 @@ private:
 
 	void open()
 	{
+		if (mPopupOpen)
+			return;
+		mPopupOpen = true;
 		mWindow->pushGui(new OptionListPopup(mWindow, this, mName));
 	}
 
@@ -435,6 +437,15 @@ private:
 	ImageComponent mRightArrow;
 
 	std::vector<OptionListData> mEntries;
+
+	// RetroPangui: open()이 연타/버튼 반복입력(약 1초 뒤 재입력 등)으로 두 번
+	// 불려서 같은 OptionListComponent에 대해 OptionListPopup이 중복으로
+	// 뜨는 버그가 있었음(2026-07-25, WiFi SSID 재선택 크래시로 실기기에서
+	// 확인 - 먼저 뜬 팝업이 한 번도 안 닫힌 채 화면 스택에 좀비로 남았다가,
+	// 나중에(이 컴포넌트/list가 이미 소멸된 뒤) 그 좀비가 뒤늦게 입력을
+	// 받아 이미 죽은 mParent를 참조 - use-after-free). 팝업이 이미 떠있는
+	// 동안엔 open()을 무시.
+	bool mPopupOpen = false;
 };
 
 #endif // ES_CORE_COMPONENTS_OPTION_LIST_COMPONENT_H

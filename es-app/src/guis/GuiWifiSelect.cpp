@@ -112,15 +112,9 @@ void GuiWifiSelect::enableNetwork(const std::string& ssid, const std::string& ps
 	}
 }
 
-GuiWifiSelect::~GuiWifiSelect()
-{
-	LOG(LogWarning) << "GuiWifiSelect DTOR: this=" << (void*)this;
-}
-
 GuiWifiSelect::GuiWifiSelect(Window* window)
 	: GuiSettings(window, "WIFI 설정")
 {
-	LOG(LogWarning) << "GuiWifiSelect CTOR: this=" << (void*)this;
 	bool connected = false;
 	std::string curSsid, curIp;
 	readStatus(connected, curSsid, curIp);
