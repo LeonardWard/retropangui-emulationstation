@@ -1496,7 +1496,13 @@ void GuiMenu::openNetworkSettings()
 		});
 	}
 
-	addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this] { mWindow->pushGui(new GuiWifiSelect(mWindow)); });
+	addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this] {
+		auto gws = new GuiWifiSelect(mWindow);
+		mWindow->pushGui(gws);
+		// RetroPangui: 반드시 pushGui 이후에 호출 - GuiWifiSelect 생성자
+		// 안에서 부르면 스택 순서 버그로 크래시(GuiWifiSelect.h 주석 참고).
+		gws->openInitialPopup();
+	});
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);

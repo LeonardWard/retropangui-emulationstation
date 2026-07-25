@@ -112,15 +112,9 @@ void GuiWifiSelect::enableNetwork(const std::string& ssid, const std::string& ps
 	}
 }
 
-GuiWifiSelect::~GuiWifiSelect()
-{
-	LOG(LogWarning) << "GuiWifiSelect DTOR: this=" << (void*)this;
-}
-
 GuiWifiSelect::GuiWifiSelect(Window* window)
 	: GuiSettings(window, "WIFI 설정")
 {
-	LOG(LogWarning) << "GuiWifiSelect CTOR: this=" << (void*)this;
 	bool connected = false;
 	std::string curSsid, curIp;
 	readStatus(connected, curSsid, curIp);
@@ -136,24 +130,26 @@ GuiWifiSelect::GuiWifiSelect(Window* window)
 	// selected=true가 안 돼서 GuiStorageSelect/GuiBtDevices와 동일한 원인으로
 	// Back 시 크래시함 - 매칭 안 되면 첫 항목을 강제 선택.
 	auto networks = scanNetworks();
-	auto list = std::make_shared<OptionListComponent<std::string>>(window, "네트워크", false);
+	mSsidList = std::make_shared<OptionListComponent<std::string>>(window, "네트워크", false);
 	bool curMatches = false;
 	for (const auto& n : networks)
 		if (n == curSsid) { curMatches = true; break; }
 	for (size_t i = 0; i < networks.size(); i++)
-		list->add(networks[i], networks[i], curMatches ? (networks[i] == curSsid) : (i == 0));
+		mSsidList->add(networks[i], networks[i], curMatches ? (networks[i] == curSsid) : (i == 0));
 	if (networks.empty())
-		list->add("검색된 네트워크 없음", "", true);
-	addWithLabel(_("SSID"), list);
+		mSsidList->add("검색된 네트워크 없음", "", true);
+	addWithLabel(_("SSID"), mSsidList);
 	// 방금 위에서 강제로 골라둔 "기본 선택값" - 사용자가 실제로 다른 걸
 	// 고르지 않았다면 이 값과 같을 것이므로, 그 경우엔 연결 시도를
 	// 하면 안 됨(아래 addSaveFunc 참고).
-	std::string effectiveOrig = list->getSelected();
+	std::string effectiveOrig = mSsidList->getSelected();
 
 	// 2026-07-11: "메뉴 안에 메뉴" 느낌이 나던 것 - 화면에 들어오자마자
 	// SSID 목록 팝업을 바로 띄워서 한 번 더 클릭 안 해도 되게 함.
-	list->openPopup();
+	// 2026-07-25: 생성자 안에서 직접 호출하면 스택 순서 버그가 생겨서
+	// openInitialPopup()으로 분리 - 호출자(GuiMenu.cpp)가 pushGui 직후 호출.
 
+	auto list = mSsidList;
 	Window* win = window;
 	addSaveFunc([list, win, effectiveOrig] {
 		const std::string ssid = list->getSelected();
@@ -178,4 +174,10 @@ GuiWifiSelect::GuiWifiSelect(Window* window)
 				GuiWifiSelect::enableNetwork(ssid, psk);
 			}));
 	});
+}
+
+void GuiWifiSelect::openInitialPopup()
+{
+	if (mSsidList)
+		mSsidList->openPopup();
 }

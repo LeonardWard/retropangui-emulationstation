@@ -41,7 +41,6 @@ private:
 		OptionListPopup(Window* window, OptionListComponent<T>* parent, const std::string& title) : GuiComponent(window),
 			mMenu(window, title.c_str()), mParent(parent)
 		{
-			LOG(LogWarning) << "OptionListPopup CTOR: this=" << (void*)this << " mParent=" << (void*)parent << " title=" << title;
 			auto font = Font::get(FONT_SIZE_MEDIUM);
 			ComponentListRow row;
 
@@ -120,7 +119,6 @@ private:
 
 		~OptionListPopup()
 		{
-			LOG(LogWarning) << "OptionListPopup DTOR: this=" << (void*)this << " mParent=" << (void*)mParent;
 			// RetroPangui: open()의 mPopupOpen 가드와 짝 - 이 팝업이 닫히는
 			// 모든 경로(accept 선택, BACK 버튼, back 액션)에서 공통으로
 			// 거치므로 여기 한 곳에서만 풀어주면 됨.
@@ -150,7 +148,6 @@ public:
 	OptionListComponent(Window* window, const std::string& name, bool multiSelect = false) : GuiComponent(window), mMultiSelect(multiSelect), mName(name),
 		 mText(window), mLeftArrow(window), mRightArrow(window)
 	{
-		LOG(LogWarning) << "OptionListComponent CTOR: this=" << (void*)this << " name=" << name;
 		auto font = Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT);
 		mText.setFont(font);
 		mText.setColor(0x777777FF);
@@ -174,11 +171,6 @@ public:
 		}
 
 		setSize(mLeftArrow.getSize().x() + mRightArrow.getSize().x(), font->getHeight());
-	}
-
-	~OptionListComponent()
-	{
-		LOG(LogWarning) << "OptionListComponent DTOR: this=" << (void*)this << " name=" << mName << " mPopupOpen=" << mPopupOpen;
 	}
 
 	// handles positioning/resizing of text and arrows
@@ -373,29 +365,19 @@ public:
 
 	// 2026-07-11: 화면 진입 즉시 선택 팝업을 띄우고 싶은 화면(예: WIFI
 	// 네트워크 설정)을 위해 private open()을 밖에서 부를 수 있게 감쌈.
-	// RetroPangui: GuiWifiSelect처럼 자기 생성자 안에서 "화면 들어오자마자
-	// 팝업 자동으로 띄우기" 목적으로 이 함수를 호출하는 경우, 그 시점엔 이
-	// OptionListComponent를 담고 있는 부모(GuiWifiSelect)가 아직 window의
-	// GUI 스택에 올라가지 않은 상태임(부모 생성자가 다 끝나야 바깥의
-	// pushGui(new GuiWifiSelect(...))가 실행되므로) - 여기서 open()을 바로
-	// 부르면 팝업이 부모보다 먼저 스택에 들어가서 [..., 팝업, 부모] 순으로
-	// 뒤집힘 → 팝업이 부모 밑에 깔려 화면에 안 보이고 입력도 안 받다가,
-	// 나중에 부모가 닫히는 순간 뒤늦게 드러나서 이미 소멸된 부모/자신을
-	// 참조해 크래시함(2026-07-25 실기기 코어덤프로 확정 - WiFi 네트워크
-	// 재선택 시 재현). 다음 업데이트 프레임으로 미뤄서, 바깥 pushGui가
-	// 확실히 끝난 뒤(=이 컴포넌트 자신이 정상적으로 화면 스택에 올라간
-	// 뒤)에만 팝업을 띄우도록 함.
-	void openPopup() { mPendingOpenPopup = true; }
-
-	void update(int deltaTime) override
-	{
-		GuiComponent::update(deltaTime);
-		if (mPendingOpenPopup)
-		{
-			mPendingOpenPopup = false;
-			open();
-		}
-	}
+	// RetroPangui: 이 함수는 반드시 "부모가 이미 window의 GUI 스택에 올라간
+	// 뒤"에만 호출해야 함 - 예: GuiWifiSelect처럼 "화면 들어오자마자 팝업
+	// 자동 표시"를 하고 싶으면, 부모 생성자 안이 아니라 pushGui(부모) 호출
+	// 직후 별도로 호출할 것. 부모 생성자 안에서 부르면 그 시점엔 부모
+	// 자신이 아직 스택에 없는 상태라(부모 생성자가 다 끝나야 바깥의
+	// pushGui(new 부모(...))가 실행됨) 팝업이 부모보다 먼저 스택에 들어가
+	// [..., 팝업, 부모] 순으로 뒤집힘 → 팝업이 부모 밑에 깔려 화면에 안
+	// 보이고 입력도 안 받다가, 나중에 부모가 닫히는 순간 뒤늦게 드러나서
+	// 이미 소멸된 부모/자신을 참조해 크래시함(2026-07-25 실기기 코어덤프로
+	// 확정 - WiFi 네트워크 재선택 시 재현). update() 프레임으로 미루는
+	// 방식도 시도해봤으나 ComponentList가 커서가 가있는 행만 업데이트해서
+	// "커서를 옮겨야 팝업이 뒤늦게 뜨는" 새 문제가 생겨 폐기.
+	void openPopup() { open(); }
 
 private:
 	unsigned int getSelectedId()
@@ -413,7 +395,6 @@ private:
 
 	void open()
 	{
-		LOG(LogWarning) << "OptionListComponent::open() this=" << (void*)this << " name=" << mName << " mPopupOpen=" << mPopupOpen;
 		if (mPopupOpen)
 			return;
 		mPopupOpen = true;
@@ -477,7 +458,6 @@ private:
 	// 받아 이미 죽은 mParent를 참조 - use-after-free). 팝업이 이미 떠있는
 	// 동안엔 open()을 무시.
 	bool mPopupOpen = false;
-	bool mPendingOpenPopup = false;
 };
 
 #endif // ES_CORE_COMPONENTS_OPTION_LIST_COMPONENT_H
