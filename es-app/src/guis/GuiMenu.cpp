@@ -1469,6 +1469,10 @@ void GuiMenu::openNetworkSettings()
 		});
 		s->addRow(ssidRow);
 		s->addSaveFunc([ssidCur] {
+			// 2026-07-25: 연결 안 된 상태의 화면 표시용 placeholder "None"이
+			// 그대로 설정 파일에 저장되던 버그 - 실제로 뭔가 입력/연결된
+			// 경우에만 저장.
+			if (ssidCur->empty() || *ssidCur == "None") return;
 			cfgWriteKey(rpConfPath(), "system.wifi_ssid", *ssidCur, false);
 		});
 
