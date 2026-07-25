@@ -11,6 +11,7 @@ class GuiWifiSelect : public GuiSettings
 {
 public:
 	GuiWifiSelect(Window* window);
+	~GuiWifiSelect();
 
 	// 2026-07-11: NETWORK 화면(GuiMenu::openNetworkSettings)에서 SSID 행의
 	// 기본값(현재 연결된 SSID 또는 "None")을 보여주기 위해 외부에서 호출.
