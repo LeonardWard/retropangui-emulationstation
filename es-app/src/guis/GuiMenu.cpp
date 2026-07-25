@@ -1520,8 +1520,10 @@ void GuiMenu::openNetworkSettings()
 					*ssidCur = wSsid;
 					ssidText->setValue(wSsid);
 				}
-				std::string wifiConfPath = getShareSystemPath() + "/wifi.conf";
-				std::string psk = cfgReadKey(wifiConfPath, "psk");
+				// 2026-07-25: wifi.conf는 share가 아니라 /var/lib/retropangui(루트
+				// overlay)로 이동함 - exFAT는 Unix 권한을 실제로 강제 못 해서
+				// 평문 비밀번호를 두기엔 부적절했음(rpui_wifi.c 주석 참고).
+				std::string psk = cfgReadKey("/var/lib/retropangui/wifi.conf", "psk");
 				if (!psk.empty()) {
 					*pwCur = psk;
 					pwText->setValue(std::string(psk.size(), '*'));
