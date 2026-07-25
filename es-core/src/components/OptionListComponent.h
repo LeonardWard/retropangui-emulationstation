@@ -41,6 +41,7 @@ private:
 		OptionListPopup(Window* window, OptionListComponent<T>* parent, const std::string& title) : GuiComponent(window),
 			mMenu(window, title.c_str()), mParent(parent)
 		{
+			LOG(LogWarning) << "OptionListPopup CTOR: this=" << (void*)this << " mParent=" << (void*)parent << " title=" << title;
 			auto font = Font::get(FONT_SIZE_MEDIUM);
 			ComponentListRow row;
 
@@ -78,6 +79,7 @@ private:
 					// update selected value and close
 					row.makeAcceptInputHandler([this, &e]
 					{
+						LOG(LogWarning) << "OptionListPopup accept: this=" << (void*)this << " mParent=" << (void*)mParent << " &e=" << (void*)&e;
 						LOG(LogWarning) << "OptionListPopup accept: name=" << mParent->mName << " size=" << mParent->mEntries.size();
 						if (!mParent->mEntries.empty())
 							mParent->mEntries.at(mParent->getSelectedId()).selected = false;
@@ -141,6 +143,7 @@ public:
 	OptionListComponent(Window* window, const std::string& name, bool multiSelect = false) : GuiComponent(window), mMultiSelect(multiSelect), mName(name),
 		 mText(window), mLeftArrow(window), mRightArrow(window)
 	{
+		LOG(LogWarning) << "OptionListComponent CTOR: this=" << (void*)this << " name=" << name;
 		auto font = Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT);
 		mText.setFont(font);
 		mText.setColor(0x777777FF);
@@ -164,6 +167,11 @@ public:
 		}
 
 		setSize(mLeftArrow.getSize().x() + mRightArrow.getSize().x(), font->getHeight());
+	}
+
+	~OptionListComponent()
+	{
+		LOG(LogWarning) << "OptionListComponent DTOR: this=" << (void*)this << " name=" << mName;
 	}
 
 	// handles positioning/resizing of text and arrows
