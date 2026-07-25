@@ -1494,15 +1494,37 @@ void GuiMenu::openNetworkSettings()
 			if (pwCur->empty()) return;
 			cfgWriteKey(rpConfPath(), "system.wifi_password", *pwCur, false);
 		});
-	}
 
-	addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this] {
-		auto gws = new GuiWifiSelect(mWindow);
-		mWindow->pushGui(gws);
-		// RetroPangui: 반드시 pushGui 이후에 호출 - GuiWifiSelect 생성자
-		// 안에서 부르면 스택 순서 버그로 크래시(GuiWifiSelect.h 주석 참고).
-		gws->openInitialPopup();
-	});
+		addSubmenuEntry(s, _("SELECT WIFI NETWORK"), [this, ssidText, ssidCur, pwText, pwCur] {
+			auto gws = new GuiWifiSelect(mWindow);
+			mWindow->pushGui(gws);
+			// RetroPangui: 반드시 pushGui 이후에 호출 - GuiWifiSelect 생성자
+			// 안에서 부르면 스택 순서 버그로 크래시(GuiWifiSelect.h 주석 참고).
+			gws->openInitialPopup();
+			// 2026-07-25: SELECT WIFI NETWORK에서 새로 연결해도 위쪽 SSID/비밀번호
+			// 행이 화면 진입 시점 값 그대로 굳어있던 문제 - 이 팝업이 닫히는
+			// 시점(GuiSettings 공통 패턴, addSaveFunc은 accept/back 상관없이
+			// 항상 실행됨)에 다시 읽어서 갱신. enableNetwork()는 fork+exec로
+			// 비동기 연결이라 완전히 연결되기 전에 닫으면 아직 예전 상태로
+			// 보일 수 있음(수 초 뒤 재진입하면 반영됨) - 딱 그 순간의 실시간
+			// 반영까지는 보장 못 함.
+			gws->addSaveFunc([ssidText, ssidCur, pwText, pwCur] {
+				bool wConnected = false;
+				std::string wSsid, wIp;
+				GuiWifiSelect::readStatus(wConnected, wSsid, wIp);
+				if (wConnected && !wSsid.empty()) {
+					*ssidCur = wSsid;
+					ssidText->setValue(wSsid);
+				}
+				std::string wifiConfPath = getShareSystemPath() + "/wifi.conf";
+				std::string psk = cfgReadKey(wifiConfPath, "psk");
+				if (!psk.empty()) {
+					*pwCur = psk;
+					pwText->setValue(std::string(psk.size(), '*'));
+				}
+			});
+		});
+	}
 
 	setSaveWithRestartChecks(s, checks);
 	mWindow->pushGui(s);
