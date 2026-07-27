@@ -49,7 +49,8 @@ void BasicGameListView::populateList(const std::vector<FileData*>& files)
 	{
 		for(auto it = files.cbegin(); it != files.cend(); it++)
 		{
-			mList.add((*it)->getName(), *it, ((*it)->getType() == FOLDER), (*it)->metadata.get("favorite") == "true");
+			bool isFavorite = (*it)->getType() == GAME && (*it)->metadata.get("favorite") == "true";
+			mList.add((*it)->getName(), *it, ((*it)->getType() == FOLDER), isFavorite);
 		}
 	}
 	else
