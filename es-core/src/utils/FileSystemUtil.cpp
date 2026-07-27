@@ -669,6 +669,15 @@ namespace Utils
 
 //////////////////////////////////////////////////////////////////////////
 
+		void updateExistsCache(const std::string& _path, bool _exists)
+		{
+			const std::unique_lock<std::recursive_mutex> lock(mutex);
+			pathExistsIndex[_path] = _exists;
+
+		} // updateExistsCache
+
+//////////////////////////////////////////////////////////////////////////
+
 		bool isAbsolute(const std::string& _path)
 		{
 			const std::string path = getGenericPath(_path);

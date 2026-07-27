@@ -34,6 +34,11 @@ namespace Utils
 		bool        removeFile         (const std::string& _path);
 		bool        createDirectory    (const std::string& _path);
 		bool        exists             (const std::string& _path);
+		// RetroPangui: exists()의 pathExistsIndex 캐시를 직접 갱신 - pugixml
+		// save_file()/std::rename()처럼 이 파일의 다른 함수를 거치지 않고
+		// 파일을 만든 뒤, 같은 프로세스 내에서 곧바로 exists()를 다시
+		// 체크해야 하는 호출부(예: Gamelist.cpp의 saveGamelistXml)를 위함.
+		void        updateExistsCache  (const std::string& _path, bool _exists);
 		bool        isAbsolute         (const std::string& _path);
 		bool        isRegularFile      (const std::string& _path);
 		bool        isDirectory        (const std::string& _path);

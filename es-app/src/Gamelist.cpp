@@ -32,6 +32,18 @@ bool saveGamelistXml(const pugi::xml_document& doc, const std::string& path)
 		LOG(LogError) << "saveGamelistXml: " << tmpPath << " → " << path << " 교체 실패";
 		return false;
 	}
+
+	// RetroPangui: pugixml save_file()/std::rename()은 Utils::FileSystem을
+	// 거치지 않으므로 exists()의 pathExistsIndex 캐시가 이 파일이 새로
+	// 생겼다는 걸 모른다. generateGamelist()가 파일을 방금 여기서 처음
+	// 만들었는데, 바로 이어서 실행되는 parseGamelist()가 getGamelistPath(false)
+	// 로 exists()를 다시 물어보면 SystemData 생성자 초반에 캐시된 낡은
+	// "없음"을 그대로 돌려받아 엉뚱한 fallback 경로로 새는 버그가 있었음
+	// (2026-07-28 실기기 확인 - generateGamelist 직후 같은 프로세스에서
+	// gamelist.xml이 실제로는 잘 써졌는데도 parseGamelist가 그걸 못 찾고
+	// 조용히 스킵, ES 재시작 후에야(캐시 초기화) 정상 인식됨).
+	Utils::FileSystem::updateExistsCache(path, true);
+
 	return true;
 }
 
