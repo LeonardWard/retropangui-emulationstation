@@ -4,21 +4,14 @@
 #include "components/TextComponent.h"
 #include "resources/Font.h"
 #include "renderers/Renderer.h"
-#include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
 #include "LocaleES.h"
 #include "Log.h"
 #include "Window.h"
 
 #include <rapidjson/document.h>
-#include <rapidjson/error/en.h>
 
-#include <cstdio>
-#include <cstdlib>
-#include <fstream>
-#include <sstream>
-
-#define BIOS_DEFINITION_FILE "/usr/share/retropangui/bios-check.json"
+#define BIOS_CHECK_SCRIPT "python3 /usr/share/retropangui/bios-check.py 2>/dev/null"
 
 // 상태 색상 - 정상/주의/누락 (Recalbox식 3단계 Green/Yellow/Red 모델)
 #define COLOR_OK      0x44AA44FF
@@ -27,50 +20,10 @@
 #define COLOR_HEADER  0x8899AAFF
 #define COLOR_TEXT    0x777777FF
 
-// RETROPANGUI_SHARE 환경 변수 → /share → ~/share 순서로 탐색
-// (MusicManager.cpp getMusicDirectory()와 동일 규칙)
-static std::string getShareRoot()
-{
-	const char* env = getenv("RETROPANGUI_SHARE");
-	if (env && env[0] != '\0')
-		return std::string(env);
-
-	if (Utils::FileSystem::isDirectory("/share"))
-		return "/share";
-
-	const char* home = getenv("HOME");
-	return home ? std::string(home) + "/share" : "/share";
-}
-
-// popen("md5sum ...") 첫 토큰. ES 자체에 md5 구현이 없어서 busybox md5sum을
-// 빌려 씀 - 바이오스 파일은 수십KB~수MB라 프레임당 1개 동기 호출로 충분.
-static std::string md5OfFile(const std::string& path)
-{
-	// 작은따옴표 이스케이프: ' → '\''
-	std::string escaped;
-	for (size_t i = 0; i < path.size(); ++i)
-	{
-		if (path[i] == '\'')
-			escaped += "'\\''";
-		else
-			escaped += path[i];
-	}
-
-	FILE* p = popen(("md5sum '" + escaped + "' 2>/dev/null").c_str(), "r");
-	if (p == nullptr)
-		return "";
-
-	char buf[64] = {0};
-	size_t n = fread(buf, 1, 32, p);
-	pclose(p);
-	if (n != 32)
-		return "";
-	return Utils::String::toLower(std::string(buf, 32));
-}
-
 GuiBiosCheck::GuiBiosCheck(Window* window)
 	: GuiComponent(window), mBackground(window, ":/frame.png"),
-	  mIndex(0), mDone(false), mOkCount(0), mWarnCount(0), mMissingCount(0)
+	  mPipe(nullptr), mTotal(0), mIndex(0), mDone(false),
+	  mOkCount(0), mWarnCount(0), mMissingCount(0)
 {
 	addChild(&mBackground);
 
@@ -94,7 +47,7 @@ GuiBiosCheck::GuiBiosCheck(Window* window)
 		Font::get(FONT_SIZE_SMALL), COLOR_TEXT, ALIGN_CENTER);
 	addChild(mDetail.get());
 
-	loadDefinitions();
+	startScan();
 	updateSummaryChips();
 
 	setSize(Renderer::getScreenWidth() * 0.72f, Renderer::getScreenHeight() * 0.82f);
@@ -102,119 +55,100 @@ GuiBiosCheck::GuiBiosCheck(Window* window)
 	            (Renderer::getScreenHeight() - mSize.y()) / 2);
 }
 
-void GuiBiosCheck::loadDefinitions()
+GuiBiosCheck::~GuiBiosCheck()
 {
-	std::ifstream f(BIOS_DEFINITION_FILE);
-	if (!f.is_open())
+	// 스캔 도중 이 GUI가 파괴되는 경로가 생기더라도(예: ES 종료) 파이프를
+	// 반드시 닫아 좀비 프로세스/fd 누수를 막는다. input()이 스캔 중엔
+	// 닫기를 막아두지만 방어적으로 둔다.
+	if (mPipe != nullptr)
+		pclose(mPipe);
+}
+
+// mPipe에서 한 줄 읽는다. 개별 항목 detail 텍스트가 아무리 길어도 넉넉한
+// 고정 버퍼(bios-check.json의 note는 실측상 수백 바이트를 넘지 않음).
+static bool readLine(FILE* pipe, std::string& out)
+{
+	if (pipe == nullptr)
+		return false;
+	char buf[8192];
+	if (fgets(buf, sizeof(buf), pipe) == nullptr)
+		return false;
+	out = buf;
+	while (!out.empty() && (out.back() == '\n' || out.back() == '\r'))
+		out.pop_back();
+	return true;
+}
+
+void GuiBiosCheck::startScan()
+{
+	mPipe = popen(BIOS_CHECK_SCRIPT, "r");
+	if (mPipe == nullptr)
 	{
-		LOG(LogError) << "GuiBiosCheck: 정의 파일 없음 - " << BIOS_DEFINITION_FILE;
+		LOG(LogError) << "GuiBiosCheck: bios-check.py 실행 실패";
 		mDetail->setText(_("BIOS DEFINITION FILE NOT FOUND"));
 		mDone = true;
 		return;
 	}
 
-	std::stringstream ss;
-	ss << f.rdbuf();
-
-	rapidjson::Document doc;
-	doc.Parse(ss.str().c_str());
-	if (doc.HasParseError() || !doc.IsObject())
+	std::string headerLine;
+	if (!readLine(mPipe, headerLine))
 	{
-		LOG(LogError) << "GuiBiosCheck: JSON 파싱 실패 - "
-			<< (doc.HasParseError() ? rapidjson::GetParseError_En(doc.GetParseError()) : "루트가 오브젝트 아님");
+		LOG(LogError) << "GuiBiosCheck: bios-check.py 헤더 줄 없음";
+		pclose(mPipe);
+		mPipe = nullptr;
 		mDetail->setText(_("BIOS DEFINITION FILE NOT FOUND"));
 		mDone = true;
 		return;
 	}
 
-	for (auto sys = doc.MemberBegin(); sys != doc.MemberEnd(); ++sys)
+	rapidjson::Document header;
+	header.Parse(headerLine.c_str());
+	if (header.HasParseError() || !header.IsObject() || !header.HasMember("total") || !header["total"].IsUint())
 	{
-		// "_comment" 같은 메타 키는 건너뜀
-		if (!sys->value.IsObject() || !sys->value.HasMember("bios"))
-			continue;
-
-		const std::string sysKey = sys->name.GetString();
-		const std::string sysName = (sys->value.HasMember("name") && sys->value["name"].IsString())
-			? sys->value["name"].GetString() : sysKey;
-
-		const rapidjson::Value& biosArr = sys->value["bios"];
-		if (!biosArr.IsArray())
-			continue;
-
-		for (auto it = biosArr.Begin(); it != biosArr.End(); ++it)
-		{
-			if (!it->IsObject() || !it->HasMember("path") || !(*it)["path"].IsString())
-				continue;
-
-			BiosEntry e;
-			e.system = sysKey;
-			e.systemName = sysName;
-			e.path = (*it)["path"].GetString();
-			e.mandatory = it->HasMember("mandatory") && (*it)["mandatory"].IsBool() && (*it)["mandatory"].GetBool();
-			e.hashMandatory = it->HasMember("hashMandatory") && (*it)["hashMandatory"].IsBool() && (*it)["hashMandatory"].GetBool();
-			if (it->HasMember("note") && (*it)["note"].IsString())
-				e.note = (*it)["note"].GetString();
-			if (it->HasMember("md5") && (*it)["md5"].IsArray())
-				for (auto m = (*it)["md5"].Begin(); m != (*it)["md5"].End(); ++m)
-					if (m->IsString())
-						e.md5.push_back(Utils::String::toLower(m->GetString()));
-
-			e.status = BiosStatus::Missing;
-			mEntries.push_back(e);
-		}
+		LOG(LogError) << "GuiBiosCheck: bios-check.py 헤더 파싱 실패 - " << headerLine;
+		pclose(mPipe);
+		mPipe = nullptr;
+		mDetail->setText(_("BIOS DEFINITION FILE NOT FOUND"));
+		mDone = true;
+		return;
 	}
 
-	if (mEntries.empty())
+	mTotal = header["total"].GetUint();
+	if (mTotal == 0)
 	{
+		pclose(mPipe);
+		mPipe = nullptr;
 		mDetail->setText(_("BIOS DEFINITION FILE NOT FOUND"));
 		mDone = true;
 	}
 }
 
-void GuiBiosCheck::checkEntry(BiosEntry& e)
+bool GuiBiosCheck::readNextEntry(BiosEntry& e)
 {
-	const std::string full = getShareRoot() + "/bios/" + e.path;
+	std::string line;
+	if (!readLine(mPipe, line))
+		return false;
 
-	if (!Utils::FileSystem::exists(full))
+	rapidjson::Document doc;
+	doc.Parse(line.c_str());
+	if (doc.HasParseError() || !doc.IsObject())
 	{
-		e.status = e.mandatory ? BiosStatus::Missing : BiosStatus::Warning;
-		e.statusText = e.mandatory ? _("MISSING") : _("MISSING (OPTIONAL)");
-		e.detail = e.note;
-		return;
+		LOG(LogError) << "GuiBiosCheck: 항목 파싱 실패 - " << line;
+		return false;
 	}
 
-	if (e.md5.empty())
-	{
-		e.status = BiosStatus::Ok;
-		e.statusText = "FOUND";
-		e.detail = e.note;
-		return;
-	}
+	e.system     = doc.HasMember("system") && doc["system"].IsString() ? doc["system"].GetString() : "";
+	e.systemName = doc.HasMember("systemName") && doc["systemName"].IsString() ? doc["systemName"].GetString() : e.system;
+	e.path       = doc.HasMember("path") && doc["path"].IsString() ? doc["path"].GetString() : "";
+	e.statusText = doc.HasMember("statusText") && doc["statusText"].IsString() ? doc["statusText"].GetString() : "";
+	e.detail     = doc.HasMember("detail") && doc["detail"].IsString() ? doc["detail"].GetString() : "";
 
-	const std::string hash = md5OfFile(full);
-	if (hash.empty())
-	{
-		e.status = BiosStatus::Warning;
-		e.statusText = _("MD5 CHECK FAILED");
-		e.detail = e.note;
-		return;
-	}
+	const std::string statusStr = doc.HasMember("status") && doc["status"].IsString() ? doc["status"].GetString() : "";
+	if (statusStr == "ok")           e.status = BiosStatus::Ok;
+	else if (statusStr == "missing") e.status = BiosStatus::Missing;
+	else                              e.status = BiosStatus::Warning;
 
-	for (size_t i = 0; i < e.md5.size(); ++i)
-	{
-		if (e.md5[i] == hash)
-		{
-			e.status = BiosStatus::Ok;
-			e.statusText = "OK";
-			e.detail = e.note;
-			return;
-		}
-	}
-
-	e.status = e.hashMandatory ? BiosStatus::Missing : BiosStatus::Warning;
-	e.statusText = _("MD5 MISMATCH");
-	// 어떤 파일이 온 건지 사용자가 추적할 수 있게 실측 해시를 상세줄에 노출
-	e.detail = e.note + (e.note.empty() ? "" : " · ") + "md5 " + hash;
+	return true;
 }
 
 void GuiBiosCheck::addSystemHeaderRow(const std::string& name)
@@ -271,7 +205,7 @@ void GuiBiosCheck::updateSummaryChips()
 
 void GuiBiosCheck::updateDetail()
 {
-	if (!mDone && mIndex < mEntries.size())
+	if (!mDone && mIndex < mTotal)
 		return; // 스캔 중엔 진행 표시를 유지
 
 	const int cursor = mList->getCursorId();
@@ -296,52 +230,42 @@ void GuiBiosCheck::update(int deltaTime)
 	if (mDone)
 		return;
 
-	// 프레임당 1개 파일 - md5 계산이 프레임을 잡아먹지 않게 (GuiGamelistRefresh 관례)
-	if (mIndex < mEntries.size())
+	// 프레임당 1줄 - bios-check.py가 한 항목 검사할 때마다 stdout에 flush한
+	// 줄을 그때그때 읽으므로, md5 계산 시간이 여러 프레임에 자연히 분산됨
+	// (GuiGamelistRefresh 관례와 동일한 체감).
+	if (mIndex < mTotal)
 	{
-		BiosEntry& e = mEntries.at(mIndex);
-		checkEntry(e);
-		if (e.status == BiosStatus::Ok) mOkCount++;
-		else if (e.status == BiosStatus::Warning) mWarnCount++;
-		else mMissingCount++;
-		addResultRow(e);
-		updateSummaryChips();
-		mDetail->setColor(COLOR_TEXT);
-		mDetail->setText(std::string(_("SCANNING...")) + " " + std::to_string(mIndex + 1)
-			+ " / " + std::to_string(mEntries.size()));
-		mIndex++;
-		return;
+		BiosEntry e;
+		if (!readNextEntry(e))
+		{
+			// 스크립트가 예상보다 일찍 끝남(에러 등) - 남은 항목은 포기하고 종료
+			LOG(LogWarning) << "GuiBiosCheck: bios-check.py가 " << mIndex << "/" << mTotal << "에서 끊김";
+			mTotal = mIndex;
+		}
+		else
+		{
+			mEntries.push_back(e);
+			if (e.status == BiosStatus::Ok) mOkCount++;
+			else if (e.status == BiosStatus::Warning) mWarnCount++;
+			else mMissingCount++;
+			addResultRow(e);
+			updateSummaryChips();
+			mDetail->setColor(COLOR_TEXT);
+			mDetail->setText(std::string(_("SCANNING...")) + " " + std::to_string(mIndex + 1)
+				+ " / " + std::to_string(mTotal));
+			mIndex++;
+			return;
+		}
 	}
 
-	writeReport();
+	if (mPipe != nullptr)
+	{
+		pclose(mPipe);
+		mPipe = nullptr;
+	}
 	mDone = true;
 	updateDetail();
 	updateHelpPrompts();
-}
-
-void GuiBiosCheck::writeReport()
-{
-	const std::string path = getShareRoot() + "/system/bios_report.txt";
-	std::ofstream out(path);
-	if (!out.is_open())
-	{
-		LOG(LogWarning) << "GuiBiosCheck: 리포트 저장 실패 - " << path;
-		return;
-	}
-
-	out << "RetroPangUI BIOS report\n";
-	for (size_t i = 0; i < mEntries.size(); ++i)
-	{
-		const BiosEntry& e = mEntries.at(i);
-		const char* tag = (e.status == BiosStatus::Ok) ? "[OK]  "
-			: (e.status == BiosStatus::Warning) ? "[WARN]" : "[MISS]";
-		out << tag << " " << e.system << " " << e.path << " — " << e.statusText;
-		if (!e.note.empty())
-			out << " (" << e.note << ")";
-		out << "\n";
-	}
-	out << "\nOK " << mOkCount << " / WARNING " << mWarnCount
-		<< " / MISSING " << mMissingCount << "\n";
 }
 
 void GuiBiosCheck::onSizeChanged()

@@ -5,6 +5,7 @@
 #include "GuiComponent.h"
 #include "components/NinePatchComponent.h"
 
+#include <cstdio>
 #include <memory>
 #include <string>
 #include <vector>
@@ -14,15 +15,21 @@ class TextComponent;
 class Window;
 
 // RetroPangUI: 바이오스 체크 화면.
-// /usr/share/retropangui/bios-check.json 정의를 share/bios/ 실물과 대조(md5 포함)해
-// 시스템별 그룹 + 색상 상태점 행으로 보여준다. 커서를 움직이면 하단 상세줄에
-// 그 파일의 설명(note)이 뜬다 - "텍스트 나열이라 투박하다"는 사용자 지적(2026-07-17)로
-// 요약 칩/그룹 헤더/한국어 상태 라벨/상세줄 구조로 재설계.
-// 스캔은 GuiGamelistRefresh처럼 update()에서 프레임당 1개 파일씩 동기 처리.
+// 실제 점검 로직(bios-check.json 파싱, share/bios/ 실물 대조, md5 포함)은
+// /usr/share/retropangui/bios-check.py로 위임(2026-08-01) - 구조적 데이터
+// 처리는 외부 스크립트로 분리한다는 프로젝트 원칙(rpui-launcher.py 등과
+// 동일). ES는 이 스크립트를 popen으로 실행해서 나오는 결과를 화면에
+// 그리기만 한다. 시스템별 그룹 + 색상 상태점 행으로 보여준다. 커서를
+// 움직이면 하단 상세줄에 그 파일의 설명(note)이 뜬다 - "텍스트 나열이라
+// 투박하다"는 사용자 지적(2026-07-17)로 요약 칩/그룹 헤더/한국어 상태
+// 라벨/상세줄 구조로 재설계.
+// 스캔은 GuiGamelistRefresh처럼 update()에서 프레임당 1줄씩 파이프에서
+// 읽어 처리(스크립트가 한 항목 검사할 때마다 stdout에 한 줄씩 flush).
 class GuiBiosCheck : public GuiComponent
 {
 public:
 	GuiBiosCheck(Window* window);
+	~GuiBiosCheck();
 
 	bool input(InputConfig* config, Input input) override;
 	void update(int deltaTime) override;
@@ -34,26 +41,21 @@ private:
 
 	struct BiosEntry
 	{
-		std::string system;      // JSON 키 (예: "psx")
-		std::string systemName;  // JSON "name"
+		std::string system;      // "system" (예: "psx")
+		std::string systemName;  // "systemName"
 		std::string path;        // share/bios/ 기준 상대 경로
-		std::vector<std::string> md5;
-		bool mandatory;
-		bool hashMandatory;
-		std::string note;
-		// 스캔 결과
+		// bios-check.py가 이미 계산해서 주는 결과 - ES는 그리기만 함
 		BiosStatus status;
 		std::string statusText;  // 영문 키(리포트용) - 화면엔 _()로 번역해 표시
 		std::string detail;      // 하단 상세줄용 (note + 실측 해시 등)
 	};
 
-	void loadDefinitions();          // JSON 파싱 → mEntries (스캔 전 상태)
-	void checkEntry(BiosEntry& e);   // 파일 존재 + md5 대조 → status/statusText 채움
+	void startScan();                // bios-check.py popen, 헤더 줄(total) 읽기
+	bool readNextEntry(BiosEntry& e);// 파이프에서 한 줄 읽어 BiosEntry로 파싱 (실패 시 false)
 	void addSystemHeaderRow(const std::string& name);
 	void addResultRow(const BiosEntry& e);
 	void updateSummaryChips();       // 정상/주의/누락 칩 텍스트+배치 갱신
 	void updateDetail();             // 커서 행의 note를 하단 상세줄에 반영
-	void writeReport();              // share/system/bios_report.txt
 
 	NinePatchComponent mBackground;
 	std::shared_ptr<TextComponent> mTitle;
@@ -65,6 +67,8 @@ private:
 	std::vector<BiosEntry> mEntries;
 	std::vector<int> mRowEntry;      // 리스트 행 → mEntries 인덱스 (-1 = 시스템 헤더 행)
 	std::string mLastSystem;         // 그룹 헤더 삽입 판단용
+	FILE* mPipe;     // bios-check.py의 popen 결과 - 프레임마다 한 줄씩 읽음
+	size_t mTotal;   // 헤더 줄에서 받은 전체 항목 수
 	size_t mIndex;   // update()에서 다음에 처리할 항목
 	bool mDone;
 	int mOkCount, mWarnCount, mMissingCount;
