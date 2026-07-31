@@ -11,7 +11,7 @@
 
 #include <rapidjson/document.h>
 
-#define BIOS_CHECK_SCRIPT "python3 /usr/share/retropangui/bios-check.py 2>/dev/null"
+#define BIOS_CHECK_SCRIPT "rpui-bios-check 2>/dev/null"
 
 // 상태 색상 - 정상/주의/누락 (Recalbox식 3단계 Green/Yellow/Red 모델)
 #define COLOR_OK      0x44AA44FF
