@@ -591,6 +591,33 @@ void GuiMenu::openAdvancedSettings()
 	});
 #endif
 
+	// DEBUG MODE - retropangui.conf의 system.debug. RetroArch(rpui-launcher.py
+	// debug_enabled())/Kodi(S99emulationstation DEBUG_FLAG)는 실행할 때마다
+	// 이 값을 직접 읽어서 --verbose/--debug로 반영하므로 재시작 없이도 다음
+	// 실행부터 바로 적용되지만, ES 자신의 로그 레벨은 --debug 플래그로 기동
+	// 시점에만 정해지므로 반영하려면 ES 재시작이 필요 - SHOW BUNDLED GAMES와
+	// 동일한 재시작 확인 패턴을 그대로 씀.
+	{
+		auto debug_mode = std::make_shared<SwitchComponent>(mWindow);
+		bool origDebug = cfgReadKey(rpConfPath(), "system.debug", "false") != "false";
+		debug_mode->setState(origDebug);
+		s->addWithLabel(_("DEBUG MODE"), debug_mode);
+		s->addSaveFunc([this, debug_mode, origDebug] {
+			bool newState = debug_mode->getState();
+			if (newState == origDebug) return;
+			mWindow->pushGui(new GuiMsgBox(mWindow,
+				_("ES 재시작이 필요합니다.\n지금 재시작하시겠습니까?"),
+				_("OK"), [newState] {
+					cfgWriteKey(rpConfPath(), "system.debug", newState ? "true" : "false", false);
+					quitES(QuitMode::RESTART);
+				},
+				_("CANCEL"), [debug_mode, origDebug] {
+					debug_mode->setState(origDebug);
+				}
+			));
+		});
+	}
+
 	// 공장 초기화
 	{
 		ComponentListRow row;
