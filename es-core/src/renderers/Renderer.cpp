@@ -89,25 +89,44 @@ namespace Renderer
 	// "모듈화").
 	static bool getRealDisplaySize(int& outW, int& outH)
 	{
-		FILE* pipe = popen("/usr/sbin/odroid-drm-fbset -getcurrentmode 2>/dev/null", "r");
+		// RetroPangui(2026-08-07, 임시 진단): 실기기에서 이 경로가 왜 한
+		// 번도 개입하지 않는지(SDL 값과 항상 같다고 나오는지, 아니면
+		// 조용히 실패하는지) 원인을 못 찾아서 stderr까지 같이 캡처해서
+		// 로그에 남김 - 원인 확인되면 되돌릴 것.
+		FILE* pipe = popen("/usr/sbin/odroid-drm-fbset -getcurrentmode 2>&1", "r");
 		if(!pipe)
+		{
+			LOG(LogWarning) << "getRealDisplaySize: popen 실패(" << strerror(errno) << ")";
 			return false;
+		}
 
 		char buf[256] = {0};
 		bool gotLine = (fgets(buf, sizeof(buf), pipe) != nullptr);
 		int  exitStatus = pclose(pipe);
 
+		// 개행 제거(로그 가독성용)
+		size_t len = strlen(buf);
+		while(len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r'))
+			buf[--len] = '\0';
+
 		if(!gotLine || exitStatus != 0)
+		{
+			LOG(LogWarning) << "getRealDisplaySize: 실패(gotLine=" << gotLine << " exitStatus=" << exitStatus << " out=[" << buf << "])";
 			return false;
+		}
 
 		// odroid-drm-fbset -getcurrentmode의 출력 포맷: "너비 높이 새로고침율 이름"
 		int w = 0, h = 0, refresh = 0;
 		if(sscanf(buf, "%d %d %d", &w, &h, &refresh) != 3)
+		{
+			LOG(LogWarning) << "getRealDisplaySize: 출력 파싱 실패(out=[" << buf << "])";
 			return false;
+		}
 
 		if(w <= 0 || h <= 0)
 			return false;
 
+		LOG(LogInfo) << "getRealDisplaySize: 성공(" << w << "x" << h << "@" << refresh << ")";
 		outW = w;
 		outH = h;
 		return true;
