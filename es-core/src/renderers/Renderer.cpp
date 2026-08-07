@@ -10,6 +10,15 @@
 #include <SDL.h>
 #include <stack>
 
+#include <fcntl.h>
+#include <unistd.h>
+#include <cerrno>
+#include <cstring>
+
+extern "C" {
+#include <xf86drm.h>
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 namespace Renderer
@@ -113,6 +122,48 @@ namespace Renderer
 
 //////////////////////////////////////////////////////////////////////////
 
+	// RetroPangui(2026-08-07): SIGUSR1 모니터 핫스왑 시 SDL_Quit() 이후에도
+	// DRM master가 완전히 반납되지 않은 채로 남는 경우가 실기기에서
+	// 재현됨(todo-20260807-hdmi-hotswap-blank-screen.html) - 뒤이어 실행되는
+	// apply-resolution.sh의 odroid-drm-fbset -outputmode가
+	// hdmitx_common_validate_mode_locked: state_sequence_id failed로
+	// 반복 실패하는 원인이었음(ES 프로세스가 살아있는 채로 deinit만 했을 때만
+	// 재현, killall로 완전 종료했을 때는 재현 안 됨 - 통제실험으로 확인).
+	// SDL 내부 타이밍을 추측하지 않고, 실제로 이 프로세스가 다시 DRM
+	// master가 될 수 있는지 직접 확인(짧게 재시도)한 뒤에야 다음 단계로
+	// 넘어가도록 함.
+	static void waitForDrmMasterRelease()
+	{
+		const char* device        = "/dev/dri/card0";
+		const int   maxAttempts   = 20;
+		const int   retryDelayUs  = 25000; // 25ms * 20회 = 최대 500ms 대기
+
+		for(int attempt = 0; attempt < maxAttempts; attempt++)
+		{
+			int fd = open(device, O_RDWR | O_CLOEXEC);
+			if(fd < 0)
+			{
+				LOG(LogWarning) << "waitForDrmMasterRelease: " << device << " open 실패(" << strerror(errno) << ") - 확인 건너뜀";
+				return;
+			}
+
+			if(drmSetMaster(fd) == 0)
+			{
+				drmDropMaster(fd);
+				close(fd);
+				if(attempt > 0)
+					LOG(LogInfo) << "waitForDrmMasterRelease: DRM master 반납 확인(" << (attempt + 1) << "번째 시도, 약 " << (attempt * retryDelayUs / 1000) << "ms 대기)";
+				return;
+			}
+
+			close(fd);
+			usleep(retryDelayUs);
+		}
+
+		LOG(LogWarning) << "waitForDrmMasterRelease: " << maxAttempts << "회 시도(최대 " << (maxAttempts * retryDelayUs / 1000) << "ms) 후에도 DRM master 미확인 - 계속 진행";
+
+	} // waitForDrmMasterRelease
+
 	static void destroyWindow()
 	{
 		destroyContext();
@@ -123,6 +174,8 @@ namespace Renderer
 		SDL_ShowCursor(initialCursorState);
 
 		SDL_Quit();
+
+		waitForDrmMasterRelease();
 
 	} // destroyWindow
 

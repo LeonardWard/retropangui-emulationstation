@@ -114,6 +114,14 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     find_package(ALSA REQUIRED)
 endif()
 
+# RetroPangui: libdrm for Linux (SIGUSR1 모니터 핫스왑 시 DRM master 반납
+# 확인용, es-core/src/renderers/Renderer.cpp 참고)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBDRM REQUIRED libdrm)
+    link_directories(${LIBDRM_LIBRARY_DIRS})
+endif()
+
 #-------------------------------------------------------------------------------
 #set up compiler flags and excutable names
 if(DEFINED BCMHOST OR RPI)
@@ -230,6 +238,13 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     )
 endif()
 
+#add libdrm for Linux (RetroPangui)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    LIST(APPEND COMMON_INCLUDE_DIRS
+        ${LIBDRM_INCLUDE_DIRS}
+    )
+endif()
+
 #-------------------------------------------------------------------------------
 #define libraries and directories
 
@@ -260,6 +275,13 @@ endif()
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     LIST(APPEND COMMON_LIBRARIES
         ${ALSA_LIBRARY}
+    )
+endif()
+
+#add libdrm for Linux (RetroPangui)
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    LIST(APPEND COMMON_LIBRARIES
+        ${LIBDRM_LIBRARIES}
     )
 endif()
 
