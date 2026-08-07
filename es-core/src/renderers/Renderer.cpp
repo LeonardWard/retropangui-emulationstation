@@ -14,6 +14,9 @@
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
+#include <cstdlib>
+#include <fstream>
+#include <string>
 
 extern "C" {
 #include <xf86drm.h>
@@ -72,6 +75,52 @@ namespace Renderer
 
 //////////////////////////////////////////////////////////////////////////
 
+	// RetroPangui(2026-08-07, 테스트 구현): SDL2 KMSDRM 백엔드
+	// (SDL_kmsdrmvideo.c의 CreateDisplay(), 약 776행)는 CRTC에 지금 실제로
+	// 걸린 모드를 커넥터가 광고하는 모드 목록(EDID 기반)과 SDL_memcmp로
+	// 바이트 단위 매칭을 시도하는데, odroid-drm-fbset이 동적으로 등록한
+	// 커스텀 모드라인은 이 목록에 없을 수 있어 매칭 실패 시 SDL이 실제
+	// 활성 모드를 완전히 무시하고 EDID preferred 모드로 조용히 대체함 -
+	// 그 결과 SDL_GetDesktopDisplayMode()가 실제와 다른 크기를 돌려줘서
+	// 창이 실제 화면보다 작게 만들어지는 문제를 실기기로 확인함
+	// (todo-20260807-hdmi-hotswap-blank-screen.html). SDL을 믿는 대신
+	// 커널이 보고하는 실제 활성 해상도를 직접 읽어서 덮어쓴다.
+	static bool getRealDisplaySize(int& outW, int& outH)
+	{
+		std::ifstream f("/sys/class/amhdmitx/amhdmitx0/disp_mode");
+		if(!f.is_open())
+			return false;
+
+		std::string line;
+		long tmdsClk = 0;
+		int  w = 0;
+		int  h = 0;
+		while(std::getline(f, line))
+		{
+			if(line.rfind("tmds_clk:", 0) == 0)
+				tmdsClk = atol(line.c_str() + 9);
+			else if(line.rfind("width/height:", 0) == 0)
+			{
+				size_t slash = line.find('/', 13);
+				if(slash != std::string::npos)
+				{
+					w = atoi(line.c_str() + 13);
+					h = atoi(line.c_str() + slash + 1);
+				}
+			}
+		}
+
+		// tmds_clk이 0이면 실제로 물리 링크가 안 잡힌 상태(disp_mode: (null))
+		// - 이럴 땐 이 값을 못 믿으므로 SDL의 값을 그대로 쓰게 실패 반환.
+		if(tmdsClk <= 0 || w <= 0 || h <= 0)
+			return false;
+
+		outW = w;
+		outH = h;
+		return true;
+
+	} // getRealDisplaySize
+
 	static bool createWindow()
 	{
 		LOG(LogInfo) << "Creating window...";
@@ -92,6 +141,16 @@ namespace Renderer
 
 		SDL_DisplayMode dispMode;
 		SDL_GetDesktopDisplayMode(displayIndex, &dispMode);
+
+		int realW = 0, realH = 0;
+		if(getRealDisplaySize(realW, realH) && (realW != dispMode.w || realH != dispMode.h))
+		{
+			LOG(LogWarning) << "createWindow: SDL이 돌려준 데스크톱 모드(" << dispMode.w << "x" << dispMode.h
+				<< ")가 실제 활성 해상도(" << realW << "x" << realH << ")와 다름 - 실제 값으로 대체";
+			dispMode.w = realW;
+			dispMode.h = realH;
+		}
+
 		windowWidth   = Settings::getInstance()->getInt("WindowWidth")   ? Settings::getInstance()->getInt("WindowWidth")   : dispMode.w;
 		windowHeight  = Settings::getInstance()->getInt("WindowHeight")  ? Settings::getInstance()->getInt("WindowHeight")  : dispMode.h;
 		screenWidth   = Settings::getInstance()->getInt("ScreenWidth")   ? Settings::getInstance()->getInt("ScreenWidth")   : windowWidth;
