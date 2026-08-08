@@ -158,6 +158,10 @@ namespace Renderer
 		screenOffsetY = Settings::getInstance()->getInt("ScreenOffsetY") ? Settings::getInstance()->getInt("ScreenOffsetY") : 0;
 		screenRotate  = Settings::getInstance()->getInt("ScreenRotate")  ? Settings::getInstance()->getInt("ScreenRotate")  : 0;
 
+		LOG(LogWarning) << "rpui-diag: dispMode=" << dispMode.w << "x" << dispMode.h
+			<< " windowWidth/Height=" << windowWidth << "x" << windowHeight
+			<< " screenWidth/Height=" << screenWidth << "x" << screenHeight;
+
 		setupWindow();
 
 		const unsigned int windowFlags = (Settings::getInstance()->getBool("Windowed") ? 0 : (Settings::getInstance()->getBool("FullscreenBorderless") ? SDL_WINDOW_BORDERLESS : SDL_WINDOW_FULLSCREEN)) | getWindowFlags();
@@ -170,7 +174,20 @@ namespace Renderer
 
 		LOG(LogInfo) << "Created window successfully.";
 
+		{
+			int sdlW = 0, sdlH = 0;
+			SDL_GetWindowSize(sdlWindow, &sdlW, &sdlH);
+			LOG(LogWarning) << "rpui-diag: SDL_GetWindowSize=" << sdlW << "x" << sdlH;
+		}
+
 		createContext();
+
+		{
+			int drawW = 0, drawH = 0;
+			SDL_GL_GetDrawableSize(sdlWindow, &drawW, &drawH);
+			LOG(LogWarning) << "rpui-diag: SDL_GL_GetDrawableSize=" << drawW << "x" << drawH;
+		}
+
 		setIcon();
 		setSwapInterval();
 
@@ -310,6 +327,9 @@ namespace Renderer
 			}
 			break;
 		}
+
+		LOG(LogWarning) << "rpui-diag: screenRotate=" << screenRotate
+			<< " viewport=" << viewport.x << "," << viewport.y << "," << viewport.w << "," << viewport.h;
 
 		setViewport(viewport);
 		setProjection(projection);
