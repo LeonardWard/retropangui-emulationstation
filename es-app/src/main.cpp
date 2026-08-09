@@ -597,19 +597,26 @@ int main(int argc, char* argv[])
 			MusicManager::getInstance()->start();
 			lastTime = SDL_GetTicks();
 		}
-		// 롬 폴더 변경(SIGUSR2) - "UPDATE GAMELISTS" 메뉴와 동일한 경로
-		// (GuiGamelistRefresh가 시스템별 refreshGamelist() + 화면 표시 +
-		// 바뀐 시스템의 reloadGameListView()까지 전부 처리) 재사용.
+		// 롬 폴더 변경(SIGUSR2) - 리콜박스의 "ROM FOLDERS MODIFIED!" 팝업과
+		// 동일하게 바로 갱신하지 않고 먼저 확인을 받는다(2026-08-09 사용자
+		// 지시: "확인 후 실행해야지"). UPDATE를 누르면 "UPDATE GAMELISTS"
+		// 메뉴와 동일한 경로(GuiGamelistRefresh가 시스템별 refreshGamelist()
+		// + 화면 표시 + reloadGameListView()까지 전부 처리)를 그대로 재사용.
 		if(gGamelistRefreshRequested)
 		{
 			gGamelistRefreshRequested = 0;
 			LOG(LogInfo) << "rom folder watcher: gamelist refresh requested";
-			std::vector<SystemData*> systems;
-			for(auto sys : SystemData::sSystemVector)
-				if(sys->isGameSystem() && !sys->isCollection())
-					systems.push_back(sys);
-			if(!systems.empty())
-				window.pushGui(new GuiGamelistRefresh(&window, systems));
+			window.pushGui(new GuiMsgBox(&window,
+				_("NEW FILES WERE FOUND IN A ROM FOLDER. UPDATE GAME LISTS NOW?"),
+				_("UPDATE"), [&window] {
+					std::vector<SystemData*> systems;
+					for(auto sys : SystemData::sSystemVector)
+						if(sys->isGameSystem() && !sys->isCollection())
+							systems.push_back(sys);
+					if(!systems.empty())
+						window.pushGui(new GuiGamelistRefresh(&window, systems));
+				},
+				_("LATER"), nullptr));
 		}
 		SDL_Event event;
 		bool ps_standby = PowerSaver::getState() && (int) SDL_GetTicks() - ps_time > PowerSaver::getMode();
