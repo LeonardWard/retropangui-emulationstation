@@ -25,6 +25,7 @@
 #include "Settings.h"
 #include "SystemData.h"
 #include "SystemScreenSaver.h"
+#include "guis/GuiGamelistRefresh.h"
 #include <SDL_events.h>
 #include <dirent.h>
 #include <unistd.h>
@@ -58,6 +59,14 @@ bool scrape_cmdline = false;
 // 처리는 메인 루프가 프레임 사이에서 수행(launchGame 복귀 경로와 동일 패턴).
 static volatile sig_atomic_t gDisplayResetRequested = 0;
 static void displayResetSignalHandler(int) { gDisplayResetRequested = 1; }
+
+// 2026-08-09: 롬 폴더 자동 감지 대응. rpui-romwatch.py가 gamelist.xml에
+// 없는 롬 파일이 생긴 걸 감지하면 ES에 SIGUSR2를 보냄 - "UPDATE GAMELISTS"
+// 메뉴가 쓰는 것과 동일한 GuiGamelistRefresh를 그대로 띄워서 재스캔+표시를
+// 위임한다(todo-20260809-rom-autowatch-notification.html). SIGUSR1과 동일한
+// async-safe 플래그 패턴.
+static volatile sig_atomic_t gGamelistRefreshRequested = 0;
+static void gamelistRefreshSignalHandler(int) { gGamelistRefreshRequested = 1; }
 
 bool parseArgs(int argc, char* argv[])
 {
@@ -553,6 +562,8 @@ int main(int argc, char* argv[])
 
 	// 모니터 핫스왑 시 hdmi-hotplug가 보내는 비디오 재초기화 요청 수신
 	signal(SIGUSR1, displayResetSignalHandler);
+	// 롬 폴더 변경 시 rpui-romwatch.py가 보내는 gamelist 갱신 요청 수신
+	signal(SIGUSR2, gamelistRefreshSignalHandler);
 
 	int lastTime = SDL_GetTicks();
 	int ps_time = SDL_GetTicks();
@@ -585,6 +596,20 @@ int main(int argc, char* argv[])
 			VolumeControl::getInstance()->init();
 			MusicManager::getInstance()->start();
 			lastTime = SDL_GetTicks();
+		}
+		// 롬 폴더 변경(SIGUSR2) - "UPDATE GAMELISTS" 메뉴와 동일한 경로
+		// (GuiGamelistRefresh가 시스템별 refreshGamelist() + 화면 표시 +
+		// 바뀐 시스템의 reloadGameListView()까지 전부 처리) 재사용.
+		if(gGamelistRefreshRequested)
+		{
+			gGamelistRefreshRequested = 0;
+			LOG(LogInfo) << "rom folder watcher: gamelist refresh requested";
+			std::vector<SystemData*> systems;
+			for(auto sys : SystemData::sSystemVector)
+				if(sys->isGameSystem() && !sys->isCollection())
+					systems.push_back(sys);
+			if(!systems.empty())
+				window.pushGui(new GuiGamelistRefresh(&window, systems));
 		}
 		SDL_Event event;
 		bool ps_standby = PowerSaver::getState() && (int) SDL_GetTicks() - ps_time > PowerSaver::getMode();
