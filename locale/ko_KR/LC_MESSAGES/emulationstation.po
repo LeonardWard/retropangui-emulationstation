@@ -700,6 +700,15 @@ msgstr "게임 리스트 갱신 실패 - 로그를 확인하세요"
 msgid "DONE. %i NEW GAMES ADDED"
 msgstr "완료 - 새 게임 %i개 등록됨"
 
+msgid "NEW FILES WERE FOUND IN A ROM FOLDER. UPDATE GAME LISTS NOW?"
+msgstr "롬 폴더에서 새 파일을 발견했습니다. 지금 게임 리스트를 갱신할까요?"
+
+msgid "UPDATE"
+msgstr "지금 갱신"
+
+msgid "LATER"
+msgstr "나중에"
+
 msgid "FAILED"
 msgstr "실패"
 
