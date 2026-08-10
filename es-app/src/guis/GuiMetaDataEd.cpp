@@ -24,70 +24,6 @@
 #include "Window.h"
 #include "Log.h"
 #include "LocaleES.h"
-#include <fstream>
-#include <sys/stat.h>
-
-// retropangui.conf의 system.<system>.core= 시스템 기본 코어 override를 읽는다.
-// rpui-launcher.py의 resolve_core_override_from_conf()와 동일한 조회를
-// C++쪽에서도 해야 함 - 안 그러면 이 EMULATOR 드롭다운의 "(Default)" 표시가
-// systems.json priority만 보고 매겨져서, retropangui.conf로 시스템 기본
-// 코어를 바꿔도 실제 실행되는 코어와 라벨이 어긋난다(2026-08-10,
-// todo-20260810-system-default-core-conf-gap.html).
-//
-// share 경로 탐색 순서(RETROPANGUI_SHARE 환경변수 → /share → ~/share)는
-// GuiMenu.cpp의 getSharePath()와 반드시 동일해야 함 - S99emulationstation이
-// RETROPANGUI_SHARE=/retropangui/share를 export해서 ES를 띄우므로, 이 순서를
-// 안 지키면(예: ~/share만 확인) 실기기에서 조용히 항상 빈 값만 돌려주게 된다.
-static std::string getRetropanguiShareSystemPath()
-{
-	const char* env = getenv("RETROPANGUI_SHARE");
-	if (env && env[0] != '\0')
-		return std::string(env) + "/system";
-
-	struct stat st;
-	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
-		return "/share/system";
-
-	const char* home = getenv("HOME");
-	return (home ? std::string(home) : "") + "/share/system";
-}
-
-// 2026-08-10 수정: GuiMenu.cpp EMULATOR SETTINGS 화면이 저장할 때
-// "key = value"처럼 = 앞뒤에 공백을 넣는데(cfgWriteKey() 관례, 이 파일의
-// 다른 모든 키와 동일), "system.<system>.core="로 시작하는지만 보는 단순
-// 접두어 비교로는 그 줄을 못 찾아서 조용히 빈 값을 반환하는 버그가
-// 있었음(실기기에서 발견 - 메뉴엔 저장됐는데 실제 게임 실행은 예전
-// 우선순위대로 되는 증상). = 위치를 찾아 키/값 양쪽 공백을 trim하는
-// 방식으로 변경 - GuiMenu.cpp의 cfgReadKey()와 동일한 방식.
-static std::string getSystemDefaultCoreModuleId(const std::string& systemName)
-{
-	std::string confPath = getRetropanguiShareSystemPath() + "/retropangui.conf";
-	std::ifstream f(confPath);
-	if (!f.is_open())
-		return "";
-
-	std::string key = "system." + systemName + ".core";
-	std::string line;
-	while (std::getline(f, line))
-	{
-		line = Utils::String::trim(line);
-		if (line.empty() || line[0] == '#')
-			continue;
-
-		auto eq = line.find('=');
-		if (eq == std::string::npos)
-			continue;
-
-		if (Utils::String::trim(line.substr(0, eq)) != key)
-			continue;
-
-		std::string val = Utils::String::trim(line.substr(eq + 1));
-		if (!val.empty() && val.front() == '"') val.erase(val.begin());
-		if (!val.empty() && val.back() == '"') val.pop_back();
-		return val;
-	}
-	return "";
-}
 
 GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector<MetaDataDecl>& mdd, ScraperSearchParams scraperParams,
 	const std::string& /*header*/, std::function<void()> saveCallback, std::function<void()> deleteFunc) : GuiComponent(window),
@@ -198,18 +134,18 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 						std::string currentCore = mMetaData->get("core");
 						coreList->add(_("SYSTEM DEFAULT"), "", currentCore.empty());
 
-						// "(Default)" 라벨 - retropangui.conf에 시스템 기본 코어
-						// override가 있으면 그 module_id를 우선 쓰고, 없으면
-						// priority 1 코어로 폴백(priorities.conf와 동일 순서).
-						std::string defaultModuleId = getSystemDefaultCoreModuleId(system->getName());
-
 						// Add all available cores
+						// "(Default)" 라벨 = 시스템에 내장된 고정 기준값(priority
+						// 1). retropangui.conf 시스템 기본값(사용자가 바꿀 수
+						// 있는 값)과는 별개 - "default"가 지금 설정값과 항상
+						// 같아지면 그 단어 자체가 무의미해짐(2026-08-10 실기기
+						// 테스트로 확인). SYSTEM DEFAULT 선택 시 실제로 뭐가
+						// 실행될지는 rpui-launcher.py가 conf를 보고 결정하는
+						// 별개 로직 - 여기 라벨과는 무관.
 						for (const auto& core : availableCores)
 						{
 							std::string label = core.fullname;
-							bool isDefault = defaultModuleId.empty() ? (core.priority == 1)
-							                                          : (core.module_id == defaultModuleId);
-							if (isDefault)
+							if (core.priority == 1)
 								label += " (Default)";
 
 							bool selected = (!currentCore.empty() && currentCore == core.name);

@@ -2129,22 +2129,32 @@ void GuiMenu::openEmulatorSettings()
 		std::string confKey = "system." + systemName + ".core";
 		std::string overrideModuleId = cfgReadKey(rpConfPath(), confKey, "");
 
-		// 현재 기본값: conf override가 있으면 그 코어, 없으면 priority 1(기존 폴백)
-		std::string currentDefault;
+		// "(Default)" 라벨 = 시스템에 내장된 고정 기준값(systems.json priority
+		// 1). retropangui.conf로 사용자가 뭘 골라 저장하든 이 라벨은 절대
+		// 안 움직임 - "default"가 매번 "지금 고른 값"과 같아지면 그 단어
+		// 자체가 무의미해짐(2026-08-10 사용자 지적). "지금 실제로 적용
+		//중인 값"은 아래 currentSelection으로 별도 관리 - 선택자 커서
+		// 위치로만 표현하고 텍스트 라벨은 안 붙임.
+		std::string factoryDefault;
 		for (const auto& core : cores)
 		{
-			if (!overrideModuleId.empty())
+			if (core.priority == 1)
+			{
+				factoryDefault = core.name;
+				break;
+			}
+		}
+
+		std::string currentSelection = factoryDefault;
+		if (!overrideModuleId.empty())
+		{
+			for (const auto& core : cores)
 			{
 				if (core.module_id == overrideModuleId)
 				{
-					currentDefault = core.name;
+					currentSelection = core.name;
 					break;
 				}
-			}
-			else if (core.priority == 1)
-			{
-				currentDefault = core.name;
-				break;
 			}
 		}
 
@@ -2154,19 +2164,18 @@ void GuiMenu::openEmulatorSettings()
 		for (const auto& core : cores)
 		{
 			std::string label = core.fullname;
-			bool isDefault = (core.name == currentDefault);
-			if (isDefault)
+			if (core.name == factoryDefault)
 				label += " (Default)";
 
-			emulatorList->add(label, core.name, isDefault);
+			emulatorList->add(label, core.name, core.name == currentSelection);
 		}
 
 		s->addWithLabel(Utils::String::toUpper(systemName), emulatorList);
-		s->addSaveFunc([systemName, confKey, cores, emulatorList, currentDefault] {
+		s->addSaveFunc([systemName, confKey, cores, emulatorList, currentSelection] {
 			std::string selectedCore = emulatorList->getSelected();
 
 			// Only update if selection changed
-			if (selectedCore == currentDefault)
+			if (selectedCore == currentSelection)
 			{
 				LOG(LogDebug) << "No change in default emulator for " << systemName << ", skipping update";
 				return;
