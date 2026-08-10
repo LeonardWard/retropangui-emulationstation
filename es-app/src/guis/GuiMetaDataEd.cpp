@@ -25,6 +25,7 @@
 #include "Log.h"
 #include "LocaleES.h"
 #include <fstream>
+#include <sys/stat.h>
 
 // retropangui.conf의 system.<system>.core= 시스템 기본 코어 override를 읽는다.
 // rpui-launcher.py의 resolve_core_override_from_conf()와 동일한 조회를
@@ -32,10 +33,28 @@
 // systems.json priority만 보고 매겨져서, retropangui.conf로 시스템 기본
 // 코어를 바꿔도 실제 실행되는 코어와 라벨이 어긋난다(2026-08-10,
 // todo-20260810-system-default-core-conf-gap.html).
+//
+// share 경로 탐색 순서(RETROPANGUI_SHARE 환경변수 → /share → ~/share)는
+// GuiMenu.cpp의 getSharePath()와 반드시 동일해야 함 - S99emulationstation이
+// RETROPANGUI_SHARE=/retropangui/share를 export해서 ES를 띄우므로, 이 순서를
+// 안 지키면(예: ~/share만 확인) 실기기에서 조용히 항상 빈 값만 돌려주게 된다.
+static std::string getRetropanguiShareSystemPath()
+{
+	const char* env = getenv("RETROPANGUI_SHARE");
+	if (env && env[0] != '\0')
+		return std::string(env) + "/system";
+
+	struct stat st;
+	if (stat("/share", &st) == 0 && S_ISDIR(st.st_mode))
+		return "/share/system";
+
+	const char* home = getenv("HOME");
+	return (home ? std::string(home) : "") + "/share/system";
+}
+
 static std::string getSystemDefaultCoreModuleId(const std::string& systemName)
 {
-	const char* home = getenv("HOME");
-	std::string confPath = (home ? std::string(home) : "") + "/share/system/retropangui.conf";
+	std::string confPath = getRetropanguiShareSystemPath() + "/retropangui.conf";
 	std::ifstream f(confPath);
 	if (!f.is_open())
 		return "";
