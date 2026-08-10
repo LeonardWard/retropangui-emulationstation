@@ -52,6 +52,13 @@ static std::string getRetropanguiShareSystemPath()
 	return (home ? std::string(home) : "") + "/share/system";
 }
 
+// 2026-08-10 수정: GuiMenu.cpp EMULATOR SETTINGS 화면이 저장할 때
+// "key = value"처럼 = 앞뒤에 공백을 넣는데(cfgWriteKey() 관례, 이 파일의
+// 다른 모든 키와 동일), "system.<system>.core="로 시작하는지만 보는 단순
+// 접두어 비교로는 그 줄을 못 찾아서 조용히 빈 값을 반환하는 버그가
+// 있었음(실기기에서 발견 - 메뉴엔 저장됐는데 실제 게임 실행은 예전
+// 우선순위대로 되는 증상). = 위치를 찾아 키/값 양쪽 공백을 trim하는
+// 방식으로 변경 - GuiMenu.cpp의 cfgReadKey()와 동일한 방식.
 static std::string getSystemDefaultCoreModuleId(const std::string& systemName)
 {
 	std::string confPath = getRetropanguiShareSystemPath() + "/retropangui.conf";
@@ -59,12 +66,25 @@ static std::string getSystemDefaultCoreModuleId(const std::string& systemName)
 	if (!f.is_open())
 		return "";
 
-	std::string prefix = "system." + systemName + ".core=";
+	std::string key = "system." + systemName + ".core";
 	std::string line;
 	while (std::getline(f, line))
 	{
-		if (line.compare(0, prefix.size(), prefix) == 0)
-			return Utils::String::trim(line.substr(prefix.size()));
+		line = Utils::String::trim(line);
+		if (line.empty() || line[0] == '#')
+			continue;
+
+		auto eq = line.find('=');
+		if (eq == std::string::npos)
+			continue;
+
+		if (Utils::String::trim(line.substr(0, eq)) != key)
+			continue;
+
+		std::string val = Utils::String::trim(line.substr(eq + 1));
+		if (!val.empty() && val.front() == '"') val.erase(val.begin());
+		if (!val.empty() && val.back() == '"') val.pop_back();
+		return val;
 	}
 	return "";
 }
