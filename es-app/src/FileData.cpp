@@ -554,10 +554,17 @@ void FileData::launchGame(Window* window, int entrySlot)
 
 	std::string command = mEnvData->mLaunchCommand;
 
-	// %CORE%를 module_id로 치환 — .so 경로 결정은 retropangui-launcher가 담당
+	// %CORE%를 module_id로 치환 — .so 경로 결정은 retropangui-launcher가 담당.
+	// 게임별 오버라이드(core 메타데이터)가 있을 때만 여기서 module_id를
+	// 확정하고, 없으면 "default"를 그대로 넘긴다 - 예전엔 여기서 확장자
+	// 매칭/mCores[0](XML 선언 순서상 첫 번째)로 시스템 기본 코어까지 미리
+	// 계산해버려서, retropangui.conf의 시스템 기본값이 개입할 여지가 아예
+	// 없었음(뭘 넘기든 이미 확정된 module_id라 런처가 "이게 사용자의 게임별
+	// 선택인지 ES의 임시 폴백인지" 구분 불가). 판단을 rpui-launcher.py로
+	// 전부 위임(2026-08-10, todo-20260810-system-default-core-conf-gap.html).
 	if (command.find("%CORE%") != std::string::npos)
 	{
-		const CoreInfo* selectedCoreInfo = nullptr;
+		std::string moduleId = "default";
 
 		std::string userSelectedCore = metadata.get("core");
 		if (!userSelectedCore.empty())
@@ -566,29 +573,12 @@ void FileData::launchGame(Window* window, int entrySlot)
 			{
 				if (core.name == userSelectedCore)
 				{
-					selectedCoreInfo = &core;
+					moduleId = core.module_id;
 					break;
 				}
 			}
 		}
 
-		if (selectedCoreInfo == nullptr)
-		{
-			std::string gameExt = Utils::FileSystem::getExtension(getPath());
-			for (const auto& core : mEnvData->mCores)
-			{
-				for (const auto& ext : core.extensions)
-				{
-					if (ext == gameExt) { selectedCoreInfo = &core; break; }
-				}
-				if (selectedCoreInfo) break;
-			}
-		}
-
-		if (selectedCoreInfo == nullptr && !mEnvData->mCores.empty())
-			selectedCoreInfo = &mEnvData->mCores[0];
-
-		std::string moduleId = selectedCoreInfo ? selectedCoreInfo->module_id : "default";
 		if (moduleId.empty()) moduleId = "default";
 		LOG(LogInfo) << "Core module_id: " << moduleId;
 		command = Utils::String::replace(command, "%CORE%", moduleId);
