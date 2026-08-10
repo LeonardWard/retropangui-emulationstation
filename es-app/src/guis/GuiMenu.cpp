@@ -2045,6 +2045,15 @@ bool GuiMenu::input(InputConfig* config, Input input)
 	return false;
 }
 
+// 시스템 전체 기본 코어 선택 화면 - retropangui.conf의 system.<system>.core=
+// override를 실제로 읽고 쓴다. 예전엔 systems.json priority만 보고 "Current
+// Default"를 표시했고, 저장도 존재하지 않는 스크립트
+// (es_systems_updater.sh, 빌드머신/실기기 어디에도 없었음)를 호출하는
+// 죽은 코드라 항상 조용히 실패했음 - 재부팅하면 원래대로 돌아가는 상태로
+// 오래 방치돼 있었음. GuiMetaDataEd.cpp의 EMULATOR 드롭다운,
+// rpui-launcher.py의 resolve_core_override_from_conf()와 동일한 conf
+// 키를 공유해야 셋이 서로 다른 값을 보여주는 일이 없다(2026-08-10,
+// todo-20260810-system-default-core-conf-gap.html).
 void GuiMenu::openEmulatorSettings()
 {
 	auto s = new GuiSettings(mWindow, _("EMULATOR SETTINGS"));
@@ -2059,28 +2068,45 @@ void GuiMenu::openEmulatorSettings()
 		if (cores.empty())
 			continue;
 
-		// Create emulator selection list for this system
+		std::string systemName = system->getName();
+		std::string confKey = "system." + systemName + ".core";
+		std::string overrideModuleId = cfgReadKey(rpConfPath(), confKey, "");
+
+		// 현재 기본값: conf override가 있으면 그 코어, 없으면 priority 1(기존 폴백)
+		std::string currentDefault;
+		for (const auto& core : cores)
+		{
+			if (!overrideModuleId.empty())
+			{
+				if (core.module_id == overrideModuleId)
+				{
+					currentDefault = core.name;
+					break;
+				}
+			}
+			else if (core.priority == 1)
+			{
+				currentDefault = core.name;
+				break;
+			}
+		}
+
 		auto emulatorList = std::make_shared<OptionListComponent<std::string>>(mWindow,
 			_("DEFAULT EMULATOR"), false);
 
-		// Add all available emulators sorted by priority
-		std::string currentDefault = "";
 		for (const auto& core : cores)
 		{
-			if (core.priority == 1)
-				currentDefault = core.name;
-
 			std::string label = core.fullname;
-			if (core.priority == 1)
+			bool isDefault = (core.name == currentDefault);
+			if (isDefault)
 				label += " (Current Default)";
 
-			emulatorList->add(label, core.name, core.priority == 1);
+			emulatorList->add(label, core.name, isDefault);
 		}
 
-		s->addWithLabel(Utils::String::toUpper(system->getName()), emulatorList);
-		s->addSaveFunc([system, emulatorList, currentDefault] {
+		s->addWithLabel(Utils::String::toUpper(systemName), emulatorList);
+		s->addSaveFunc([systemName, confKey, cores, emulatorList, currentDefault] {
 			std::string selectedCore = emulatorList->getSelected();
-			std::string systemName = system->getName();
 
 			// Only update if selection changed
 			if (selectedCore == currentDefault)
@@ -2089,41 +2115,23 @@ void GuiMenu::openEmulatorSettings()
 				return;
 			}
 
-			// Step 1: Update memory (immediate effect)
-			// First, increment all cores' priority by 1
-			for (auto& core : system->getSystemEnvData()->mCores)
-			{
-				core.priority++;
-			}
-
-			// Then, set selected core to priority 1
-			for (auto& core : system->getSystemEnvData()->mCores)
+			std::string moduleId;
+			for (const auto& core : cores)
 			{
 				if (core.name == selectedCore)
 				{
-					core.priority = 1;
+					moduleId = core.module_id;
 					break;
 				}
 			}
-
-			// Re-sort cores by priority to ensure correct order
-			std::sort(system->getSystemEnvData()->mCores.begin(),
-			          system->getSystemEnvData()->mCores.end(),
-			          [](const CoreInfo& a, const CoreInfo& b) {
-			              return a.priority < b.priority;
-			          });
-
-			LOG(LogInfo) << "Updated in-memory default emulator for " << systemName << " to " << selectedCore;
-
-			// Step 2: Update XML file (persist for next launch)
-			std::string cmd = "bash -c 'source /home/pangui/scripts/retropangui/scriptmodules/es_systems_updater.sh && "
-				"set_default_core \"" + systemName + "\" \"" + selectedCore + "\"'";
-
-			int result = ::system(cmd.c_str());
-			if (result != 0)
+			if (moduleId.empty())
 			{
-				LOG(LogError) << "Failed to update XML for " << systemName;
+				LOG(LogError) << "Unknown core selected for " << systemName << ": " << selectedCore;
+				return;
 			}
+
+			cfgWriteKey(rpConfPath(), confKey, moduleId, false);
+			LOG(LogInfo) << "System default core saved: " << confKey << "=" << moduleId;
 		});
 	}
 
