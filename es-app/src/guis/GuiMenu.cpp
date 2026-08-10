@@ -2156,7 +2156,7 @@ void GuiMenu::openEmulatorSettings()
 			std::string label = core.fullname;
 			bool isDefault = (core.name == currentDefault);
 			if (isDefault)
-				label += " (Current Default)";
+				label += " (Default)";
 
 			emulatorList->add(label, core.name, isDefault);
 		}
