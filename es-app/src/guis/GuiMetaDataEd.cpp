@@ -24,6 +24,31 @@
 #include "Window.h"
 #include "Log.h"
 #include "LocaleES.h"
+#include <fstream>
+
+// retropangui.conf의 system.<system>.core= 시스템 기본 코어 override를 읽는다.
+// rpui-launcher.py의 resolve_core_override_from_conf()와 동일한 조회를
+// C++쪽에서도 해야 함 - 안 그러면 이 EMULATOR 드롭다운의 "(Default)" 표시가
+// systems.json priority만 보고 매겨져서, retropangui.conf로 시스템 기본
+// 코어를 바꿔도 실제 실행되는 코어와 라벨이 어긋난다(2026-08-10,
+// todo-20260810-system-default-core-conf-gap.html).
+static std::string getSystemDefaultCoreModuleId(const std::string& systemName)
+{
+	const char* home = getenv("HOME");
+	std::string confPath = (home ? std::string(home) : "") + "/share/system/retropangui.conf";
+	std::ifstream f(confPath);
+	if (!f.is_open())
+		return "";
+
+	std::string prefix = "system." + systemName + ".core=";
+	std::string line;
+	while (std::getline(f, line))
+	{
+		if (line.compare(0, prefix.size(), prefix) == 0)
+			return Utils::String::trim(line.substr(prefix.size()));
+	}
+	return "";
+}
 
 GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector<MetaDataDecl>& mdd, ScraperSearchParams scraperParams,
 	const std::string& /*header*/, std::function<void()> saveCallback, std::function<void()> deleteFunc) : GuiComponent(window),
@@ -134,11 +159,18 @@ GuiMetaDataEd::GuiMetaDataEd(Window* window, MetaDataList* md, const std::vector
 						std::string currentCore = mMetaData->get("core");
 						coreList->add(_("SYSTEM DEFAULT"), "", currentCore.empty());
 
+						// "(Default)" 라벨 - retropangui.conf에 시스템 기본 코어
+						// override가 있으면 그 module_id를 우선 쓰고, 없으면
+						// priority 1 코어로 폴백(priorities.conf와 동일 순서).
+						std::string defaultModuleId = getSystemDefaultCoreModuleId(system->getName());
+
 						// Add all available cores
 						for (const auto& core : availableCores)
 						{
 							std::string label = core.fullname;
-							if (core.priority == 1)
+							bool isDefault = defaultModuleId.empty() ? (core.priority == 1)
+							                                          : (core.module_id == defaultModuleId);
+							if (isDefault)
 								label += " (Default)";
 
 							bool selected = (!currentCore.empty() && currentCore == core.name);
