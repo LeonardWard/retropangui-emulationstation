@@ -2045,6 +2045,69 @@ bool GuiMenu::input(InputConfig* config, Input input)
 	return false;
 }
 
+namespace
+{
+	struct EmulatorSettingsSystemInfo
+	{
+		std::string name;
+		std::string fullname;
+		std::vector<CoreInfo> cores;
+	};
+
+	// es_systems.xml을 직접 파싱해서 게임 유무와 무관하게 코어가 정의된
+	// 모든 시스템을 나열한다. SystemData::sSystemVector는 게임이 하나도
+	// 없는 시스템을 아예 만들지 않고 버리므로(SystemData.cpp
+	// loadSystem() - 메인 캐러셀에 빈 시스템이 안 뜨게 하는 의도적 동작,
+	// 손대지 않음) EMULATOR SETTINGS는 그 목록을 못 쓴다. "게임 유무와
+	// 상관없이 시스템에 설치된 모든 코어를 조절할 수 있어야 한다"는
+	// 요구사항 때문에 이 화면만 별도로 XML을 직접 읽는다(2026-08-10,
+	// todo-20260810-system-default-core-conf-gap.html).
+	std::vector<EmulatorSettingsSystemInfo> loadAllSystemCoresFromXml()
+	{
+		std::vector<EmulatorSettingsSystemInfo> result;
+
+		pugi::xml_document doc;
+		if (!doc.load_file(SystemData::getConfigPath(false).c_str()))
+			return result;
+
+		pugi::xml_node systemList = doc.child("systemList");
+		for (pugi::xml_node system = systemList.child("system"); system; system = system.next_sibling("system"))
+		{
+			std::string name = system.child("name").text().get();
+			pugi::xml_node coresNode = system.child("cores");
+			if (name.empty() || !coresNode)
+				continue;
+
+			EmulatorSettingsSystemInfo info;
+			info.name = name;
+			info.fullname = system.child("fullname").text().get();
+
+			for (pugi::xml_node coreNode = coresNode.child("core"); coreNode; coreNode = coreNode.next_sibling("core"))
+			{
+				CoreInfo core;
+				core.name = coreNode.attribute("name").as_string();
+				core.fullname = coreNode.attribute("fullname").as_string();
+				if (core.fullname.empty())
+					core.fullname = core.name;
+				core.module_id = coreNode.attribute("module_id").as_string();
+				core.priority = coreNode.attribute("priority").as_int(999);
+				if (!core.name.empty())
+					info.cores.push_back(core);
+			}
+
+			if (info.cores.empty())
+				continue;
+
+			std::sort(info.cores.begin(), info.cores.end(),
+				[](const CoreInfo& a, const CoreInfo& b) { return a.priority < b.priority; });
+
+			result.push_back(info);
+		}
+
+		return result;
+	}
+}
+
 // 시스템 전체 기본 코어 선택 화면 - retropangui.conf의 system.<system>.core=
 // override를 실제로 읽고 쓴다. 예전엔 systems.json priority만 보고 "Current
 // Default"를 표시했고, 저장도 존재하지 않는 스크립트
@@ -2058,17 +2121,11 @@ void GuiMenu::openEmulatorSettings()
 {
 	auto s = new GuiSettings(mWindow, _("EMULATOR SETTINGS"));
 
-	// Iterate through all game systems (not collections)
-	for (auto system : SystemData::sSystemVector)
+	// 게임 유무와 무관하게 코어가 정의된 시스템 전체를 대상으로 함
+	for (const auto& sysInfo : loadAllSystemCoresFromXml())
 	{
-		if (system->isCollection() || !system->isGameSystem())
-			continue;
-
-		std::vector<CoreInfo> cores = system->getCores();
-		if (cores.empty())
-			continue;
-
-		std::string systemName = system->getName();
+		const std::vector<CoreInfo>& cores = sysInfo.cores;
+		std::string systemName = sysInfo.name;
 		std::string confKey = "system." + systemName + ".core";
 		std::string overrideModuleId = cfgReadKey(rpConfPath(), confKey, "");
 
