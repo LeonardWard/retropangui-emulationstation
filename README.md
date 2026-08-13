@@ -12,7 +12,6 @@ Buildroot 패키지의 소스로 사용됩니다.
 -------------------------------
 
 - **`retropangui.conf` 통합 설정** — RetroArch 전역 설정(`global.*`)과 OS 설정(`system.*`)을 단일 파일로 관리
-- **YAML 기반 동적 메뉴** — C++ 재빌드 없이 `retropangui_features.yml` 파일 수정만으로 설정 메뉴 항목 추가/변경
 - **멀티코어 지원** — `es_systems.xml`에서 시스템당 여러 에뮬레이터 코어 지정, 우선순위 기반 자동 선택
 - **Odroid C5 (Mali-G310 GLES)** 네이티브 빌드 지원
 - **restart 변경 감지** — 설정 변경 시 실제 값이 바뀐 경우에만 재시작 팝업 표시
@@ -40,78 +39,6 @@ C5에서는 init 스크립트가 `RETROPANGUI_SHARE=/retropangui/share`를 expor
 `emulationstation.*` 키는 **양방향 동기화**됩니다: 부팅 시 conf 값이 ES 설정에 주입되고,
 메뉴에서 설정을 저장하면 conf에 존재하던 키가 현재 값으로 역기록됩니다.
 conf에 없는 ES 설정은 conf를 건드리지 않고 es_settings.cfg에만 저장됩니다.
-
-
-YAML 메뉴 엔진
-==============
-
-ES 시작 시 `retropangui_features.yml` 파일을 파싱하여 설정 메뉴 항목을 자동 생성합니다.
-
-**파일 위치 (우선순위 순):**
-
-1. `/share/system/retropangui_features.yml` — 사용자 정의 (C5 데이터 파티션)
-2. `~/share/system/retropangui_features.yml` — 데스크탑 개발 시
-3. `/opt/retropangui/retropangui_features.yml` — 시스템 기본 (C5 rootfs)
-
-**새 메뉴 항목 추가 예시:**
-
-```yaml
-menus:
-  - id: my_settings
-    label: "MY SETTINGS"
-    parent: main          # main 메뉴에 최상위 항목으로 추가
-    items:
-      - id: my.toggle
-        label: "SOME OPTION"
-        type: toggle
-        conf_key: global.some_option   # retropangui.conf에 기록될 키
-        restart: none                  # none | es | system
-
-      - id: my.list
-        label: "CHOOSE ONE"
-        type: list
-        conf_key: system.my_choice
-        restart: system
-        options:
-          - value: a
-            label: "Option A"
-          - value: b
-            label: "Option B"
-
-      - id: my.slider
-        label: "NUMERIC VALUE"
-        type: slider
-        conf_key: global.my_value
-        min: 0
-        max: 100
-        step: 5
-        unit: "%"
-        restart: none
-```
-
-**항목 타입:**
-
-| type | 설명 | 저장값 |
-|------|------|--------|
-| `toggle` | ON/OFF 스위치 | `true` / `false` |
-| `list` | 드롭다운 선택 | `options[n].value` |
-| `slider` | 수치 슬라이더 | 정수 문자열 |
-
-**restart 값:**
-
-| restart | 동작 |
-|---------|------|
-| `none` | 재시작 없이 즉시 적용 |
-| `es` | ES 재시작 팝업 표시 |
-| `system` | 시스템 재부팅 팝업 표시 |
-
-**파서 단위 테스트:**
-
-```bash
-cd es-app/src
-g++ -std=c++17 -o /tmp/test_rp_parser test_rp_parser.cpp RetropanguiFeatures.cpp
-/tmp/test_rp_parser
-```
 
 
 빌드하기
@@ -144,9 +71,6 @@ cmake --build build --target emulationstation -- -j$(nproc)
 ```bash
 ./emulationstation
 ```
-
-`~/share/system/retropangui_features.yml`이 있으면 YAML 메뉴가 자동으로 로드됩니다.
-
 
 Odroid C5에서 빌드하기
 ----------------------

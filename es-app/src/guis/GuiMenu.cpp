@@ -62,7 +62,7 @@ static void removeAllBtPairings()
 	}
 }
 
-// forward declarations — 정의는 YAML 엔진 블록에 있음
+// forward declarations — 정의는 파일 하단 공개 헬퍼 블록에 있음
 static std::string rpConfPath();
 static std::string cfgReadKey(const std::string& filePath, const std::string& fullKey,
                               const std::string& def);
@@ -72,26 +72,17 @@ GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN M
 {
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 
-	// YAML 메뉴 로드
-	mFeatureMenus = RetropanguiFeatures::load();
-
 	if (isFullUI) {
 		// RetroPangui: 메인 8개 골격 — 세부 항목은 각 카테고리 서브메뉴로 통합
 		// (RETROACHIEVEMENTS/EMULATOR→GAME, CONFIGURE INPUT→CONTROLLER,
-		//  COLLECTION→UI, UPDATES/OTHER→SYSTEM. YAML 메뉴는 parent로 흡수)
+		//  COLLECTION→UI, UPDATES/OTHER→SYSTEM. YAML 메뉴 엔진은 제거되고 각
+		//  항목은 네이티브로 흡수됨)
 		addEntry(_("KODI MEDIA CENTER"),    0x777777FF, true, [this] { openKodiMediaCenter(); });
 		addEntry(_("GAME SETTINGS"),        0x777777FF, true, [this] { openGameSettings(); });
 		addEntry(_("CONTROLLER SETTINGS"),  0x777777FF, true, [this] { openControllerSettings(); });
 		addEntry(_("UI SETTINGS"),          0x777777FF, true, [this] { openUISettings(); });
 		addEntry(_("SOUND SETTINGS"),       0x777777FF, true, [this] { openSoundSettings(); });
 		addEntry(_("SYSTEM SETTINGS"),      0x777777FF, true, [this] { openSystemSettings(); });
-		// YAML parent=main 메뉴 삽입 (현재 기본 yml에는 없음 — 확장용)
-		for (auto& fm : mFeatureMenus) {
-			if (fm.parent == "main") {
-				std::string id = fm.id;
-				addEntry(_(fm.label.c_str()), 0x777777FF, true, [this, id] { openFeatureMenu(id); });
-			}
-		}
 	} else {
 		addEntry(_("SOUND SETTINGS"), 0x777777FF, true, [this] { openSoundSettings(); });
 	}
@@ -279,7 +270,120 @@ void GuiMenu::openSoundSettings()
 		});
 	}
 
-	addFeatureItemsTo(s, "sound", *checks);
+	// YAML→네이티브 이관(audio_settings): rp.bgm — BACKGROUND MUSIC
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.BackgroundMusic", "true");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto bgm_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("BACKGROUND MUSIC"), bgm_sw);
+
+		// BackgroundMusic: toggle 변경 즉시 conf + 메모리 반영 (메뉴를 닫기 전에도 적용).
+		// addSaveFunc 는 BACK으로 닫을 때만 실행되므로, 비정상 종료나 다른 경로 재시작 대비
+		// setChangedCallback 에서도 conf에 즉시 기록한다.
+		bgm_sw->setChangedCallback([](bool val) {
+			Settings::getInstance()->setBool("BackgroundMusic", val);
+			cfgWriteKey(rpConfPath(), "emulationstation.BackgroundMusic", val ? "true" : "false", false);
+			if (val) MusicManager::getInstance()->start();
+			else     MusicManager::getInstance()->stop();
+		});
+
+		s->addSaveFunc([bgm_sw] {
+			bool newVal = bgm_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.BackgroundMusic", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("BackgroundMusic", newVal);
+			if (newVal) MusicManager::getInstance()->start();
+			else MusicManager::getInstance()->stop();
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(audio_settings): rp.volume — SYSTEM VOLUME
+	{
+		std::string raw = cfgReadKey(rpConfPath(), "system.volume");
+		float orig = 0.f;
+		if (!raw.empty()) { try { orig = std::stof(raw); } catch (...) {} }
+		auto vol_sl = std::make_shared<SliderComponent>(mWindow, 0.f, 100.f, 1.f, "%");
+		vol_sl->setValue(orig);
+
+		// 슬라이더는 좌우 입력을 누르고 있으면 40ms(MOVE_REPEAT_RATE)마다 setValue()를
+		// 호출해 이 콜백을 매번 실행함 — VolumeControl::setVolume()은 ALSA 믹서 호출
+		// (snd_mixer_selem_*)이라 매번 정확히 얼마나 걸릴지 예측 불가. 백그라운드 음악
+		// 재생 중 등 조건에 따라 지연되면, 메인 스레드가 그동안 막혀서 큐에 쌓인 입력
+		// 이벤트가 한꺼번에 재생되어 "커서가 미끄러지듯 계속 이동"하는 것처럼 보임
+		// (2026-07-05, 다른 슬라이더(VRAM 제한)는 이런 콜백 자체가 없어서 재현 안 됨 —
+		// 볼륨 슬라이더 전용 문제로 확인). 실제 ALSA 반영 빈도를 제한(스로틀)해서
+		// 연타로 인한 블로킹 누적을 방지.
+		auto lastCallTick = std::make_shared<Uint32>(0);
+		vol_sl->setChangedCallback([lastCallTick](float val) {
+			Uint32 now = SDL_GetTicks();
+			if (now - *lastCallTick < 80) return;
+			*lastCallTick = now;
+			VolumeControl::getInstance()->setVolume((int)Math::round(val));
+		});
+
+		s->addWithLabel(_("SYSTEM VOLUME"), vol_sl);
+		s->addSaveFunc([vol_sl] {
+			cfgWriteKey(rpConfPath(), "system.volume", std::to_string((int)vol_sl->getValue()), false);
+			// 스로틀 때문에 조작 중 마지막 값이 ALSA에 반영 안 됐을 수 있어 나갈 때 최종 동기화
+			VolumeControl::getInstance()->setVolume((int)Math::round(vol_sl->getValue()));
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(audio_settings): rp.enable_sounds — ENABLE NAVIGATION SOUNDS
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.EnableSounds", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto snd_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("ENABLE NAVIGATION SOUNDS"), snd_sw);
+
+		s->addSaveFunc([snd_sw] {
+			bool newVal = snd_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.EnableSounds", newVal ? "true" : "false", false);
+
+			// PowerSaver 전환 판단은 이번에 갱신하기 전의 "이전" 메모리값이 필요하므로,
+			// 아래 Settings 동기화보다 먼저 확인한다.
+			if (newVal && !Settings::getInstance()->getBool("EnableSounds")
+			    && PowerSaver::getMode() == PowerSaver::INSTANT) {
+				Settings::getInstance()->setString("PowerSaverMode", "default");
+				PowerSaver::init();
+			}
+
+			// emulationstation.* 토글은 항상 Settings 메모리도 같이 갱신 - 누락되면
+			// 같은 세션 안에서 반영이 안 되고 재부팅해야만 적용되는 회귀가 생김
+			// (SaveStatePreview 사례로 실기기에서 확인됨).
+			Settings::getInstance()->setBool("EnableSounds", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(audio_settings): rp.video_audio — ENABLE VIDEO AUDIO
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.VideoAudio", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto va_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("ENABLE VIDEO AUDIO"), va_sw);
+		s->addSaveFunc([va_sw] {
+			bool newVal = va_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.VideoAudio", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("VideoAudio", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(audio_settings): rp.audio_latency — RA AUDIO LATENCY
+	{
+		std::string raw = cfgReadKey(rpConfPath(), "global.audio_latency");
+		float orig = 16.f;
+		if (!raw.empty()) { try { orig = std::stof(raw); } catch (...) {} }
+		auto lat_sl = std::make_shared<SliderComponent>(mWindow, 16.f, 256.f, 8.f, "ms");
+		lat_sl->setValue(orig);
+		s->addWithLabel(_("RA AUDIO LATENCY"), lat_sl);
+		s->addSaveFunc([lat_sl] {
+			cfgWriteKey(rpConfPath(), "global.audio_latency", std::to_string((int)lat_sl->getValue()), false);
+		});
+		// restart: none
+	}
 
 	// 실시간 스캔 목록 표시가 필요해 YAML로 표현 불가 (BLUETOOTH DEVICES와 동일 이유)
 	addSubmenuEntry(s, _("PAIR A BLUETOOTH AUDIO DEVICE"), [this] {
@@ -562,8 +666,167 @@ void GuiMenu::openUISettings()
 	s->addWithLabel(_("ES SHOW FRAMERATE"), framerate);
 	s->addSaveFunc([framerate] { Settings::getInstance()->setBool("DrawFramerate", framerate->getState()); });
 
-	// YAML: UI 관련 항목 (LANGUAGE 등)
-	addFeatureItemsTo(s, "ui", *checks);
+	// YAML→네이티브 이관(ui_settings): rp.language — LANGUAGE
+	// 2026-07-21: system.language → emulationstation.Language로 개명. 예전엔
+	// apply_retropangui_conf.sh(첫 부팅/키 병합 시에만, 또는 ES 설정 메뉴 저장
+	// 이벤트로만 트리거)가 es_settings.cfg에 비동기로 동기화해야만 ES가 이 값을
+	// 읽었음 - 그 사이 시점에 ES가 먼저 뜨면(예: 공장 초기화 직후 몇 차례 재부팅)
+	// es_settings.cfg가 stale해서 영어로 뜨는 레이스가 있었음(사용자가 2번 겪음).
+	// 다른 emulationstation.* 항목들과 동일한 이름으로 바꿔서
+	// Settings::loadRetropanguiConf()가 "매 ES 시작마다" 직접 읽도록 함 - 비동기
+	// 동기화 의존성 제거.
+	{
+		std::string confVal = cfgReadKey(rpConfPath(), "emulationstation.Language");
+		auto lang_list = std::make_shared<OptionListComponent<std::string>>(
+			mWindow, _("LANGUAGE"), false);
+		struct { const char* value; const char* label; } langOptions[] = {
+			{ "en_US", "English (US)" },
+			{ "ko_KR", "한국어 (Korean)" },
+			{ "ja_JP", "日本語 (Japanese)" },
+			{ "zh_CN", "中文简体 (Chinese)" },
+		};
+		bool anySelected = false;
+		bool isFirst = true;
+		for (auto& opt : langOptions) {
+			bool sel = (std::string(opt.value) == confVal) || (isFirst && confVal.empty());
+			isFirst = false;
+			if (sel) anySelected = true;
+			lang_list->add(opt.label, opt.value, sel);
+		}
+		if (!anySelected)
+			lang_list->add(langOptions[0].label, langOptions[0].value, true);
+		std::string effectiveOrig = lang_list->getSelected();
+		s->addWithLabel(_("LANGUAGE"), lang_list);
+		s->addSaveFunc([lang_list, effectiveOrig] {
+			std::string newVal = lang_list->getSelected();
+			cfgWriteKey(rpConfPath(), "emulationstation.Language", newVal, false);
+			// emulationstation.* 항목은 항상 Settings 메모리도 같이 갱신 - 누락되면
+			// 같은 세션 안에서 반영이 안 되고 재부팅해야만 적용되는 회귀가 생김
+			// (SaveStatePreview 사례로 실기기에서 확인됨).
+			Settings::getInstance()->setString("Language", newVal);
+		});
+		checks->push_back({ [lang_list, effectiveOrig]{ return lang_list->getSelected() != effectiveOrig; }, "es" });
+	}
+
+	// 2026-07-06: 아래 7개는 GuiMenu.cpp에 하드코딩돼 있던 단순 토글/리스트를 YAML로
+	// 옮겼다가(이제 다시 네이티브로) - conf_key는 Settings:: 키 이름과 정확히 일치해야
+	// emulationstation.* 브릿지(Settings::loadRetropanguiConf(), apply_retropangui_conf.sh)가
+	// 작동함.
+	// 2026-07-11: 아래 둘은 C++ 시절 실제 기본값이 true였는데(Settings.cpp
+	// QuickSystemSelect/ShowHelpPrompts) YAML 이관 때 default: 필드를 안 넣어서
+	// fallback("false")을 그대로 타고 있었음 - conf 파일에 이 키가 아직 없는 기기에서
+	// UI SETTINGS를 한 번이라도 열었다 닫으면 조용히 false로 저장돼버려서, 특히
+	// ShowHelpPrompts는 하단 도움말 표시줄이 통째로 사라지는 버그로 이어졌음
+	// (todo-20260710-helpbar-missing.html). 기본값 "true"를 반드시 유지할 것.
+	// YAML→네이티브 이관(ui_settings): rp.quick_system_select — QUICK SYSTEM SELECT
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.QuickSystemSelect", "true");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto qss_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("QUICK SYSTEM SELECT"), qss_sw);
+		s->addSaveFunc([qss_sw] {
+			bool newVal = qss_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.QuickSystemSelect", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("QuickSystemSelect", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(ui_settings): rp.show_help_prompts — ON-SCREEN HELP
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.ShowHelpPrompts", "true");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto shp_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("ON-SCREEN HELP"), shp_sw);
+		s->addSaveFunc([shp_sw] {
+			bool newVal = shp_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.ShowHelpPrompts", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("ShowHelpPrompts", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(ui_settings): rp.show_hidden_files — SHOW HIDDEN FILES
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.ShowHiddenFiles", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto shf_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("SHOW HIDDEN FILES"), shf_sw);
+		s->addSaveFunc([shf_sw] {
+			bool newVal = shf_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.ShowHiddenFiles", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("ShowHiddenFiles", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(ui_settings): rp.use_fullscreen_paging — USE FULL SCREEN PAGING FOR LB/RB
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.UseFullscreenPaging", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto ufp_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("USE FULL SCREEN PAGING FOR LB/RB"), ufp_sw);
+		s->addSaveFunc([ufp_sw] {
+			bool newVal = ufp_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.UseFullscreenPaging", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("UseFullscreenPaging", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(ui_settings): rp.save_gamelists_mode — SAVE METADATA
+	{
+		std::string confVal = cfgReadKey(rpConfPath(), "emulationstation.SaveGamelistsMode");
+		auto sgm_list = std::make_shared<OptionListComponent<std::string>>(
+			mWindow, _("SAVE METADATA"), false);
+		const char* sgmOptions[] = { "on exit", "always", "never" };
+		bool anySelected = false;
+		bool isFirst = true;
+		for (auto& opt : sgmOptions) {
+			bool sel = (std::string(opt) == confVal) || (isFirst && confVal.empty());
+			isFirst = false;
+			if (sel) anySelected = true;
+			sgm_list->add(opt, opt, sel);
+		}
+		if (!anySelected)
+			sgm_list->add(sgmOptions[0], sgmOptions[0], true);
+		s->addWithLabel(_("SAVE METADATA"), sgm_list);
+		s->addSaveFunc([sgm_list] {
+			std::string newVal = sgm_list->getSelected();
+			cfgWriteKey(rpConfPath(), "emulationstation.SaveGamelistsMode", newVal, false);
+			Settings::getInstance()->setString("SaveGamelistsMode", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(ui_settings): rp.parse_gamelist_only — PARSE GAMESLISTS ONLY
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.ParseGamelistOnly", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto pgo_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("PARSE GAMESLISTS ONLY"), pgo_sw);
+		s->addSaveFunc([pgo_sw] {
+			bool newVal = pgo_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.ParseGamelistOnly", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("ParseGamelistOnly", newVal);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(ui_settings): rp.local_art — SEARCH FOR LOCAL ART
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.LocalArt", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto la_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("SEARCH FOR LOCAL ART"), la_sw);
+		s->addSaveFunc([la_sw] {
+			bool newVal = la_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.LocalArt", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("LocalArt", newVal);
+		});
+		// restart: none
+	}
+
 	setSaveWithRestartChecks(s, checks);
 
 	mWindow->pushGui(s);
@@ -953,7 +1216,7 @@ static void raCfgSet(const std::string& key, const std::string& value)
 }
 
 // ---------------------------------------------------------------------------
-// YAML 메뉴 엔진 — addFeatureItem / openFeatureMenu
+// restart 레벨 병합 헬퍼 (setSaveWithRestartChecks에서 사용)
 // ---------------------------------------------------------------------------
 
 static std::string strongerRestart(const std::string& a, const std::string& b)
@@ -961,228 +1224,6 @@ static std::string strongerRestart(const std::string& a, const std::string& b)
 	if (a == "system" || b == "system") return "system";
 	if (a == "es"     || b == "es")     return "es";
 	return "none";
-}
-
-void GuiMenu::addFeatureItem(GuiSettings* s, const FeatureItem& item,
-                              std::vector<RestartCheck>& checks)
-{
-	if (item.type == "toggle")
-	{
-		// conf.default는 0/1 컨벤션, ES는 true/false로 기록 — 양쪽 모두 인식
-		std::string fallback = item.default_val.empty() ? "false" : item.default_val;
-		std::string orig = cfgReadKey(rpConfPath(), item.conf_key, fallback);
-		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
-		auto sw = std::make_shared<SwitchComponent>(mWindow, state);
-		s->addWithLabel(_(item.label.c_str()), sw);
-
-		// BackgroundMusic: toggle 변경 즉시 conf + 메모리 반영 (메뉴를 닫기 전에도 적용)
-		// addSaveFunc 는 BACK으로 닫을 때만 실행되므로, 비정상 종료나 다른 경로 재시작 대비
-		// setChangedCallback 에서도 conf에 즉시 기록한다.
-		if (item.conf_key == "emulationstation.BackgroundMusic") {
-			sw->setChangedCallback([item](bool val) {
-				Settings::getInstance()->setBool("BackgroundMusic", val);
-				cfgWriteKey(rpConfPath(), item.conf_key, val ? "true" : "false", false);
-				if (val) MusicManager::getInstance()->start();
-				else     MusicManager::getInstance()->stop();
-			});
-		}
-
-		s->addSaveFunc([item, sw] {
-			bool newVal = sw->getState();
-			cfgWriteKey(rpConfPath(), item.conf_key, newVal ? "true" : "false", false);
-
-			// PowerSaver 전환 판단은 이번에 갱신하기 전의 "이전" 메모리값이
-			// 필요하므로, 아래 일반화된 동기화보다 먼저 확인한다.
-			if (item.conf_key == "emulationstation.EnableSounds"
-			    && newVal && !Settings::getInstance()->getBool("EnableSounds")
-			    && PowerSaver::getMode() == PowerSaver::INSTANT) {
-				Settings::getInstance()->setString("PowerSaverMode", "default");
-				PowerSaver::init();
-			}
-
-			// 2026-07-19: emulationstation.* 토글은 항상 Settings 메모리도 같이
-			// 갱신 - 예전엔 특정 키만 골라서 동기화하다가 SaveStatePreview가
-			// 누락돼서, 켜도 같은 세션 안에서 반영이 안 되고(ViewController::
-			// launch()가 Settings::getBool()로 읽음) saveFile() 호출 시
-			// saveRetropanguiConf()가 stale한 메모리값으로 conf를 다시 덮어써
-			// 재부팅해도 꺼진 채로 되돌아가는 버그로 실기기에서 재현됨. conf_key
-			// 접두사 기준으로 일반화해서 새 토글이 추가돼도 같은 버그가 재발하지
-			// 않게 함.
-			static const std::string ES_PREFIX = "emulationstation.";
-			if (item.conf_key.compare(0, ES_PREFIX.size(), ES_PREFIX) == 0)
-				Settings::getInstance()->setBool(item.conf_key.substr(ES_PREFIX.size()), newVal);
-
-			if (item.conf_key == "emulationstation.BackgroundMusic") {
-				if (newVal) MusicManager::getInstance()->start();
-				else MusicManager::getInstance()->stop();
-			}
-		});
-		if (item.restart != "none")
-			checks.push_back({ [sw, state]{ return sw->getState() != state; },
-			                   item.restart });
-	}
-	else if (item.type == "list")
-	{
-		std::string confVal = cfgReadKey(rpConfPath(), item.conf_key);
-		auto list = std::make_shared<OptionListComponent<std::string>>(
-			mWindow, _(item.label.c_str()), false);
-		bool anySelected = false;
-		bool isFirst = true;
-		for (auto& opt : item.options) {
-			// conf 값이 없으면 첫 번째 옵션을 기본 선택
-			bool sel = (opt.value == confVal) || (isFirst && confVal.empty());
-			isFirst = false;
-			if (sel) anySelected = true;
-			list->add(opt.label, opt.value, sel);
-		}
-		if (!anySelected && !item.options.empty())
-			list->add(item.options[0].label, item.options[0].value, true);
-		// 화면에 실제 표시된 초기값 기준으로 비교 (conf 없을 때도 정확히 동작)
-		std::string effectiveOrig = list->getSelected();
-		s->addWithLabel(_(item.label.c_str()), list);
-		s->addSaveFunc([item, list, effectiveOrig] {
-			std::string newVal = list->getSelected();
-			cfgWriteKey(rpConfPath(), item.conf_key, newVal, false);
-			// 값이 실제로 안 바뀌었으면 ALSA 믹서 재초기화(deinit+init)를 스킵 —
-			// 이 메뉴를 나가기만 해도 매번 무조건 재초기화(무거운 작업, 카드
-			// 재검색 등)가 실행돼서 메인 스레드가 블로킹되고, 그 사이 쌓인
-			// 입력 이벤트가 한꺼번에 재생되어 "커서가 미끄러지듯 계속 이동"하는
-			// 것처럼 보이는 버그의 원인이었음(2026-07-05 실기기 로그로 확인 —
-			// SOUND SETTINGS를 나갈 때마다 VolumeControl::init()이 AUDIO CARD/
-			// AUDIO DEVICE 두 항목 분량 연달아 2번 호출됨).
-			if (newVal == effectiveOrig) return;
-			if (item.conf_key == "global.audio_device") {
-				Settings::getInstance()->setString("AudioCard", newVal);
-				VolumeControl::getInstance()->deinit();
-				VolumeControl::getInstance()->init();
-			} else if (item.conf_key == "emulationstation.AudioDevice") {
-				Settings::getInstance()->setString("AudioDevice", newVal);
-				VolumeControl::getInstance()->deinit();
-				VolumeControl::getInstance()->init();
-			}
-		});
-		if (item.restart != "none")
-			checks.push_back({ [list, effectiveOrig]{ return list->getSelected() != effectiveOrig; },
-			                   item.restart });
-	}
-	else if (item.type == "input")
-	{
-		std::string orig = cfgReadKey(rpConfPath(), item.conf_key);
-		auto curVal = std::make_shared<std::string>(orig);
-
-		auto lbl = std::make_shared<TextComponent>(mWindow, _(item.label.c_str()),
-			Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
-		// 2026-07-11: 다른 값 표시 텍스트(OptionListComponent 선택값,
-		// 슬라이더 등)는 전부 FONT_PATH_LIGHT(콘덴스드 라이트체)를 쓰는데
-		// 여기만 기본 폰트라 눈에 띄게 달라 보이던 것을 통일.
-		auto valText = std::make_shared<TextComponent>(mWindow, orig,
-			Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
-
-		ComponentListRow row;
-		row.addElement(lbl, true);
-		row.addElement(valText, false);
-
-		Window* window = mWindow;
-		std::string label = item.label;
-		row.makeAcceptInputHandler([window, label, valText, curVal] {
-			window->pushGui(new GuiArcadeVirtualKeyboard(window, _(label.c_str()),
-				*curVal,
-				[valText, curVal](const std::string& v) {
-					*curVal = v;
-					valText->setValue(v);
-				}));
-		});
-		s->addRow(row);
-
-		s->addSaveFunc([item, curVal] {
-			cfgWriteKey(rpConfPath(), item.conf_key, *curVal, false);
-		});
-		if (item.restart != "none")
-			checks.push_back({ [curVal, orig]{ return *curVal != orig; },
-			                   item.restart });
-	}
-	else if (item.type == "slider")
-	{
-		std::string raw = cfgReadKey(rpConfPath(), item.conf_key);
-		float orig = item.min;
-		if (!raw.empty()) { try { orig = std::stof(raw); } catch (...) {} }
-		auto sl = std::make_shared<SliderComponent>(mWindow, item.min, item.max, item.step, item.unit);
-		sl->setValue(orig);
-		if (item.conf_key == "system.volume") {
-			// 슬라이더는 좌우 입력을 누르고 있으면 40ms(MOVE_REPEAT_RATE)마다
-			// setValue()를 호출해 이 콜백을 매번 실행함 — VolumeControl::setVolume()은
-			// ALSA 믹서 호출(snd_mixer_selem_*)이라 매번 정확히 얼마나 걸릴지 예측 불가.
-			// 백그라운드 음악 재생 중 등 조건에 따라 지연되면, 메인 스레드가 그동안
-			// 막혀서 큐에 쌓인 입력 이벤트가 한꺼번에 재생되어 "커서가 미끄러지듯
-			// 계속 이동"하는 것처럼 보임(2026-07-05, 다른 슬라이더(VRAM 제한)는
-			// 이런 콜백 자체가 없어서 재현 안 됨 — 볼륨 슬라이더 전용 문제로 확인).
-			// 실제 ALSA 반영 빈도를 제한(스로틀)해서 연타로 인한 블로킹 누적을 방지.
-			auto lastCallTick = std::make_shared<Uint32>(0);
-			sl->setChangedCallback([lastCallTick](float val) {
-				Uint32 now = SDL_GetTicks();
-				if (now - *lastCallTick < 80) return;
-				*lastCallTick = now;
-				VolumeControl::getInstance()->setVolume((int)Math::round(val));
-			});
-		}
-		else if (item.conf_key == "emulationstation.MenuRumbleStrength") {
-			// 조절 즉시 Settings에 반영 + 그 세기로 바로 진동을 울려서
-			// 사용자가 움직이면서 느낌을 확인할 수 있게 함(어느 패드로 조작
-			// 중인지는 여기서 모르므로 rumbleAll).
-			sl->setChangedCallback([](float val) {
-				Settings::getInstance()->setInt("MenuRumbleStrength", (int)Math::round(val));
-				InputManager::getInstance()->rumbleAll(1.0f, 90);
-			});
-		}
-		s->addWithLabel(_(item.label.c_str()), sl);
-		s->addSaveFunc([item, sl] {
-			cfgWriteKey(rpConfPath(), item.conf_key, std::to_string((int)sl->getValue()), false);
-			// 스로틀 때문에 조작 중 마지막 값이 ALSA에 반영 안 됐을 수 있어 나갈 때 최종 동기화
-			if (item.conf_key == "system.volume")
-				VolumeControl::getInstance()->setVolume((int)Math::round(sl->getValue()));
-		});
-		if (item.restart != "none")
-			checks.push_back({ [sl, orig]{ return (int)sl->getValue() != (int)orig; },
-			                   item.restart });
-	}
-	else if (item.type == "submenu")
-	{
-		// item.id가 다른 FeatureMenu 블록의 id를 그대로 가리킴 - 그 블록은
-		// parent를 6개 고정 카테고리가 아닌 값(관례상 자기 id)으로 둬서
-		// addFeatureItemsTo()의 자동 flatten 대상이 안 되게 하고, 여기서만
-		// 명시적으로 열림(2026-07-10, network_settings에서 처음 쓴 패턴을
-		// 재사용 가능한 일반 기능으로 승격 - ticker_settings에도 적용).
-		std::string targetId = item.id;
-		addSubmenuEntry(s, _(item.label.c_str()), [this, targetId] { openFeatureMenu(targetId); });
-	}
-	else if (item.type == "command")
-	{
-		if (item.exec.empty()) return;
-		// exec의 첫 번째 단어(바이너리)가 PATH에 존재하는지 확인
-		std::string bin = item.exec.substr(0, item.exec.find(' '));
-		if (!isBinAvailable(bin)) return;
-		std::string exec = item.exec;
-		std::string feedbackMsg = item.feedback_msg;
-		ComponentListRow row;
-		row.makeAcceptInputHandler([this, exec, feedbackMsg] {
-			::system((exec + " &").c_str());
-			if (!feedbackMsg.empty())
-				mWindow->pushGui(new GuiMsgBox(mWindow, _(feedbackMsg.c_str())));
-		});
-		auto lbl = std::make_shared<TextComponent>(mWindow, _(item.label.c_str()),
-		                                           Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
-		row.addElement(lbl, true);
-		s->addRow(row);
-	}
-}
-
-void GuiMenu::addFeatureItemsTo(GuiSettings* s, const std::string& parent,
-                                std::vector<RestartCheck>& checks)
-{
-	for (auto& fm : mFeatureMenus)
-		if (fm.parent == parent)
-			for (auto& item : fm.items)
-				addFeatureItem(s, item, checks);
 }
 
 void GuiMenu::addSubmenuEntry(GuiSettings* s, const std::string& label,
@@ -1227,24 +1268,7 @@ void GuiMenu::setSaveWithRestartChecks(GuiSettings* s,
 	});
 }
 
-void GuiMenu::openFeatureMenu(const std::string& menuId)
-{
-	auto it = std::find_if(mFeatureMenus.begin(), mFeatureMenus.end(),
-		[&menuId](const FeatureMenu& m){ return m.id == menuId; });
-	if (it == mFeatureMenus.end()) return;
-
-	auto s = new GuiSettings(mWindow, _(it->label.c_str()));
-	auto checks = std::make_shared<std::vector<RestartCheck>>();
-
-	for (auto& item : it->items)
-		addFeatureItem(s, item, *checks);
-
-	setSaveWithRestartChecks(s, checks);
-
-	mWindow->pushGui(s);
-}
-
-// GAME SETTINGS — 에뮬레이터(코어) 선택 + YAML(비디오/게임 옵션) + RetroAchievements
+// GAME SETTINGS — 에뮬레이터(코어) 선택 + 비디오/게임 옵션(네이티브) + RetroAchievements
 void GuiMenu::openGameSettings()
 {
 	auto s = new GuiSettings(mWindow, _("GAME SETTINGS"));
@@ -1254,8 +1278,114 @@ void GuiMenu::openGameSettings()
 	// SETTINGS는 맨 아래(자주 안 쓰는 설정이라는 판단, 사용자 요청).
 	addSubmenuEntry(s, _("RETROACHIEVEMENTS"), [this] { openRetroAchievements(); });
 
-	// YAML: 스무딩/정수 스케일(구 VIDEO SETTINGS) + 되감기/자동저장(구 GAME SETTINGS)
-	addFeatureItemsTo(s, "game", *checks);
+	// 2026-07-10: video_settings/bundlegame_settings/game_settings 3블록을 하나로
+	// 통합했던 YAML을 그대로 네이티브로 이관 - 아이템 순서는 원래 파일 순서
+	// (video_smooth/video_scale_integer → video_driver 이하) 그대로 유지.
+	// YAML→네이티브 이관(game_settings): rp.video_smooth — SMOOTH SCALING
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "global.video_smooth", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto vs_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("SMOOTH SCALING"), vs_sw);
+		s->addSaveFunc([vs_sw] {
+			cfgWriteKey(rpConfPath(), "global.video_smooth", vs_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(game_settings): rp.video_scale_integer — INTEGER SCALING
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "global.video_scale_integer", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto vsi_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("INTEGER SCALING"), vsi_sw);
+		s->addSaveFunc([vsi_sw] {
+			cfgWriteKey(rpConfPath(), "global.video_scale_integer", vsi_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(game_settings): rp.video_driver — VIDEO DRIVER
+	{
+		std::string confVal = cfgReadKey(rpConfPath(), "global.video_driver");
+		auto vd_list = std::make_shared<OptionListComponent<std::string>>(
+			mWindow, _("VIDEO DRIVER"), false);
+		struct { const char* value; const char* label; } vdOptions[] = {
+			{ "vulkan", "Vulkan (권장)" },
+			{ "gl",     "OpenGL ES (호환성 폴백)" },
+		};
+		bool anySelected = false;
+		bool isFirst = true;
+		for (auto& opt : vdOptions) {
+			bool sel = (std::string(opt.value) == confVal) || (isFirst && confVal.empty());
+			isFirst = false;
+			if (sel) anySelected = true;
+			vd_list->add(opt.label, opt.value, sel);
+		}
+		if (!anySelected)
+			vd_list->add(vdOptions[0].label, vdOptions[0].value, true);
+		s->addWithLabel(_("VIDEO DRIVER"), vd_list);
+		s->addSaveFunc([vd_list] {
+			cfgWriteKey(rpConfPath(), "global.video_driver", vd_list->getSelected(), false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(game_settings): rp.rewind — REWIND
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "global.rewind_enable", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto rw_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("REWIND"), rw_sw);
+		s->addSaveFunc([rw_sw] {
+			cfgWriteKey(rpConfPath(), "global.rewind_enable", rw_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(game_settings): rp.savestate_auto_save — AUTO SAVE STATE
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "global.savestate_auto_save", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto sas_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("AUTO SAVE STATE"), sas_sw);
+		s->addSaveFunc([sas_sw] {
+			cfgWriteKey(rpConfPath(), "global.savestate_auto_save", sas_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(game_settings): rp.savestate_auto_load — AUTO LOAD STATE
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "global.savestate_auto_load", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto sal_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("AUTO LOAD STATE"), sal_sw);
+		s->addSaveFunc([sal_sw] {
+			cfgWriteKey(rpConfPath(), "global.savestate_auto_load", sal_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// 2026-07-17: 게임 실행 전 세이브 스테이트 목록+썸네일 화면. 실행 흐름을
+	// 가로채는 기능이라 설계 문서대로 기본 꺼짐이었으나, 2026-07-20 기본값을
+	// 켜짐으로 변경.
+	// YAML→네이티브 이관(game_settings): rp.savestate_preview — SHOW SAVE STATES BEFORE LAUNCH
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.SaveStatePreview", "true");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto ssp_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("SHOW SAVE STATES BEFORE LAUNCH"), ssp_sw);
+		s->addSaveFunc([ssp_sw] {
+			bool newVal = ssp_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.SaveStatePreview", newVal ? "true" : "false", false);
+			// emulationstation.* 토글은 항상 Settings 메모리도 같이 갱신 - 누락되면
+			// 같은 세션 안에서 반영이 안 되고 재부팅해야만 적용되는 회귀가 실기기에서
+			// 확인됨(이 항목이 그 최초 사례).
+			Settings::getInstance()->setBool("SaveStatePreview", newVal);
+		});
+		// restart: none
+	}
 
 	// 2026-07-12: SHOW BUNDLED GAMES - 예전엔 YAML toggle(restart: none) +
 	// apply_retropangui_conf.sh가 rpui-bundlegame show/hide를 호출하고 그
@@ -1340,7 +1470,7 @@ void GuiMenu::openGameSettings()
 	mWindow->pushGui(s);
 }
 
-// CONTROLLER SETTINGS — 입력 설정 + 버튼 방식 + YAML(드라이버/통합 컨트롤)
+// CONTROLLER SETTINGS — 입력 설정 + 버튼 방식 + 드라이버/통합 컨트롤(네이티브)
 void GuiMenu::openControllerSettings()
 {
 	auto s = new GuiSettings(mWindow, _("CONTROLLER SETTINGS"));
@@ -1376,8 +1506,58 @@ void GuiMenu::openControllerSettings()
 		));
 	});
 
-	// YAML: 조이패드 드라이버 / 통합 컨트롤 설정 (구 ADVANCED SETTINGS)
-	addFeatureItemsTo(s, "controller", *checks);
+	// 2026-07-11: JOYPAD DRIVER 제거 - 실제 기본값은 udev인데 라벨은 "linuxraw
+	// (기본)"이라 되어 있어서 오해를 주고 있었고, 일반 사용자가 판단할 필요 없는
+	// 설정이라는 사용자 결정으로 삭제. retroarch.cfg의 input_joypad_driver=udev는
+	// 그대로 유지됨.
+	// YAML→네이티브 이관(advanced_settings, 구 ADVANCED SETTINGS): rp.menu_unified_controls — UNIFIED CONTROLS
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "global.menu_unified_controls", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto muc_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("UNIFIED CONTROLS"), muc_sw);
+		s->addSaveFunc([muc_sw] {
+			cfgWriteKey(rpConfPath(), "global.menu_unified_controls", muc_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// 2026-07-17: ES 메뉴 이동/선택 시 짧은 진동 피드백
+	// YAML→네이티브 이관(advanced_settings): rp.menu_rumble — MENU RUMBLE
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "emulationstation.MenuRumble", "true");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto mr_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("MENU RUMBLE"), mr_sw);
+		s->addSaveFunc([mr_sw] {
+			bool newVal = mr_sw->getState();
+			cfgWriteKey(rpConfPath(), "emulationstation.MenuRumble", newVal ? "true" : "false", false);
+			Settings::getInstance()->setBool("MenuRumble", newVal);
+		});
+		// restart: none
+	}
+
+	// 세기 슬라이더 - 조절 중 즉시 그 세기로 진동 피드백. PS2 패드류는 모터 특성상
+	// 저세기 단펄스가 무감각해 사용자별 튜닝 필요(2026-07-17 사용자 요청).
+	// YAML→네이티브 이관(advanced_settings): rp.menu_rumble_strength — MENU RUMBLE STRENGTH
+	{
+		std::string raw = cfgReadKey(rpConfPath(), "emulationstation.MenuRumbleStrength");
+		float orig = 10.f;
+		if (!raw.empty()) { try { orig = std::stof(raw); } catch (...) {} }
+		auto mrs_sl = std::make_shared<SliderComponent>(mWindow, 10.f, 100.f, 10.f, "%");
+		mrs_sl->setValue(orig);
+		// 조절 즉시 Settings에 반영 + 그 세기로 바로 진동을 울려서 사용자가 움직이면서
+		// 느낌을 확인할 수 있게 함(어느 패드로 조작 중인지는 여기서 모르므로 rumbleAll).
+		mrs_sl->setChangedCallback([](float val) {
+			Settings::getInstance()->setInt("MenuRumbleStrength", (int)Math::round(val));
+			InputManager::getInstance()->rumbleAll(1.0f, 90);
+		});
+		s->addWithLabel(_("MENU RUMBLE STRENGTH"), mrs_sl);
+		s->addSaveFunc([mrs_sl] {
+			cfgWriteKey(rpConfPath(), "emulationstation.MenuRumbleStrength", std::to_string((int)mrs_sl->getValue()), false);
+		});
+		// restart: none
+	}
 
 	// 실시간 스캔 목록 표시가 필요해 YAML로 표현 불가 (BLUETOOTH DEVICES와 동일 이유)
 	addSubmenuEntry(s, _("PAIR A BLUETOOTH CONTROLLER"), [this] {
@@ -1447,16 +1627,15 @@ void GuiMenu::openControllerSettings()
 	mWindow->pushGui(s);
 }
 
-// SYSTEM SETTINGS — 언어 + YAML(시간대/SSH) + 업데이트(준비 중) + 고급
 void GuiMenu::openStorageSettings()
 {
 	mWindow->pushGui(new GuiStorageSelect(mWindow));
 }
 
 // NETWORK — SYSTEM SETTINGS 안의 서브메뉴. IP 표시(네이티브) + SSH/SAMBA/WIFI
-// 토글(YAML network_settings, parent를 "network_settings"로 둬서 SYSTEM
-// SETTINGS 최상위엔 안 풀리고 여기서만 명시적으로 끌어옴) + WiFi 스캔·연결
-// 화면(실시간 데이터라 YAML로 표현 불가, 기존 GuiWifiSelect 재사용).
+// 토글(예전 YAML network_settings 블록을 네이티브로 이관 - SYSTEM SETTINGS
+// 최상위엔 안 풀리고 여기서만 보여주던 배치를 그대로 유지) + WiFi 스캔·연결
+// 화면(실시간 데이터라 정적 목록으로 표현 불가, 기존 GuiWifiSelect 재사용).
 void GuiMenu::openNetworkSettings()
 {
 	auto s = new GuiSettings(mWindow, _("NETWORK"));
@@ -1466,7 +1645,41 @@ void GuiMenu::openNetworkSettings()
 		Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
 	s->addWithLabel(_("CURRENT IP ADDRESS"), ipText);
 
-	addFeatureItemsTo(s, "network_settings", *checks);
+	// YAML→네이티브 이관(network_settings): rp.ssh — SSH
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "system.ssh", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto ssh_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("SSH"), ssh_sw);
+		s->addSaveFunc([ssh_sw] {
+			cfgWriteKey(rpConfPath(), "system.ssh", ssh_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(network_settings): rp.samba — SAMBA
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "system.samba", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto samba_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("SAMBA"), samba_sw);
+		s->addSaveFunc([samba_sw] {
+			cfgWriteKey(rpConfPath(), "system.samba", samba_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(network_settings): rp.wifi — WIFI
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "system.wifi.enabled", "false");
+		bool state = (orig == "true" || orig == "1" || orig == "yes" || orig == "on");
+		auto wifi_sw = std::make_shared<SwitchComponent>(mWindow, state);
+		s->addWithLabel(_("WIFI"), wifi_sw);
+		s->addSaveFunc([wifi_sw] {
+			cfgWriteKey(rpConfPath(), "system.wifi.enabled", wifi_sw->getState() ? "true" : "false", false);
+		});
+		// restart: none
+	}
 
 	// 2026-07-11: WIFI 토글 바로 아래에 SSID/비밀번호를 미리 입력해둘 수
 	// 있게 함 - SSID는 현재 연결된 걸 기본값으로 보여주되(없으면 "None")
@@ -1692,8 +1905,67 @@ void GuiMenu::openSystemSettings()
 		});
 	}
 
-	// YAML: 시간대 등 system 최상위 항목
-	addFeatureItemsTo(s, "system", *checks);
+	// YAML→네이티브 이관(system_settings): rp.hostname — HOSTNAME
+	{
+		std::string orig = cfgReadKey(rpConfPath(), "system.hostname");
+		auto curVal = std::make_shared<std::string>(orig);
+
+		auto lbl = std::make_shared<TextComponent>(mWindow, _("HOSTNAME"),
+			Font::get(FONT_SIZE_MEDIUM), 0x777777FF);
+		auto valText = std::make_shared<TextComponent>(mWindow, orig,
+			Font::get(FONT_SIZE_MEDIUM, FONT_PATH_LIGHT), 0x777777FF, ALIGN_RIGHT);
+
+		ComponentListRow row;
+		row.addElement(lbl, true);
+		row.addElement(valText, false);
+
+		Window* hostnameWindow = mWindow;
+		row.makeAcceptInputHandler([hostnameWindow, valText, curVal] {
+			hostnameWindow->pushGui(new GuiArcadeVirtualKeyboard(hostnameWindow, _("HOSTNAME"),
+				*curVal,
+				[valText, curVal](const std::string& v) {
+					*curVal = v;
+					valText->setValue(v);
+				}));
+		});
+		s->addRow(row);
+
+		s->addSaveFunc([curVal] {
+			cfgWriteKey(rpConfPath(), "system.hostname", *curVal, false);
+		});
+		// restart: none
+	}
+
+	// YAML→네이티브 이관(system_settings): rp.timezone — TIMEZONE
+	{
+		std::string confVal = cfgReadKey(rpConfPath(), "system.timezone");
+		auto tz_list = std::make_shared<OptionListComponent<std::string>>(
+			mWindow, _("TIMEZONE"), false);
+		struct { const char* value; const char* label; } tzOptions[] = {
+			{ "Asia/Seoul",          "Seoul (KST)" },
+			{ "America/New_York",    "New York (EST)" },
+			{ "Europe/Paris",        "Paris (CET)" },
+			{ "America/Los_Angeles", "Los Angeles (PST)" },
+		};
+		bool anySelected = false;
+		bool isFirst = true;
+		for (auto& opt : tzOptions) {
+			bool sel = (std::string(opt.value) == confVal) || (isFirst && confVal.empty());
+			isFirst = false;
+			if (sel) anySelected = true;
+			tz_list->add(opt.label, opt.value, sel);
+		}
+		if (!anySelected)
+			tz_list->add(tzOptions[0].label, tzOptions[0].value, true);
+		s->addWithLabel(_("TIMEZONE"), tz_list);
+		s->addSaveFunc([tz_list] {
+			cfgWriteKey(rpConfPath(), "system.timezone", tz_list->getSelected(), false);
+		});
+		// restart: none
+	}
+	// HDMI 출력 해상도(OUTPUT RESOLUTION)는 잘못 고르면 화면이 안 보이게 될 수
+	// 있는 위험한 설정이라 위 두 항목과 달리 이 함수 위쪽에 이미 확인+되돌리기
+	// 포함 네이티브로 구현돼 있음 - A/B 버튼전환(SWAP BUTTONS A/B)과 동일한 패턴.
 
 	// NETWORK 서브메뉴 — SSH/SAMBA/WIFI 토글 + IP + WiFi 선택을 한 화면으로 묶음.
 	// 2026-07-10: 예전엔 이 항목들이 SYSTEM SETTINGS에 flat하게 다 풀려있었음

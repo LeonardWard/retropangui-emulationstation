@@ -6,7 +6,6 @@
 #include "GuiComponent.h"
 #include "components/OptionListComponent.h"
 #include "FileData.h"
-#include "RetropanguiFeatures.h"
 
 class GuiSettings;
 
@@ -41,15 +40,8 @@ private:
 	void openUISettings();
 	void openUpdatesAndDownloads();
 
-	void openFeatureMenu(const std::string& menuId);
-
 	// restart 체크용 타입: {값이_변경됐는지_반환하는_람다, restart_레벨}
 	using RestartCheck = std::pair<std::function<bool()>, std::string>;
-	void addFeatureItem(GuiSettings* s, const FeatureItem& item,
-	                    std::vector<RestartCheck>& checks);
-	// parent가 일치하는 YAML 메뉴들의 항목을 s에 직접 삽입
-	void addFeatureItemsTo(GuiSettings* s, const std::string& parent,
-	                       std::vector<RestartCheck>& checks);
 	// 서브메뉴로 들어가는 행 (라벨 + 화살표)
 	void addSubmenuEntry(GuiSettings* s, const std::string& label,
 	                     const std::function<void()>& openFunc);
@@ -59,7 +51,6 @@ private:
 
 	MenuComponent mMenu;
 	TextComponent mVersion;
-	std::vector<FeatureMenu> mFeatureMenus;
 
 	typedef OptionListComponent<const FileData::SortType*> SortList;
 	std::shared_ptr<SortList> mListSort;
