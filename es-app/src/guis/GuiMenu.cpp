@@ -65,7 +65,7 @@ static void removeAllBtPairings()
 // forward declarations — 정의는 파일 하단 공개 헬퍼 블록에 있음
 static std::string rpConfPath();
 static std::string cfgReadKey(const std::string& filePath, const std::string& fullKey,
-                              const std::string& def);
+                              const std::string& def = "");
 static void cfgWriteKey(const std::string& filePath, const std::string& fullKey,
                         const std::string& value, bool quote);
 GuiMenu::GuiMenu(Window* window) : GuiComponent(window), mMenu(window, _("MAIN MENU")), mVersion(window)
@@ -1055,7 +1055,7 @@ static std::string raCfgPath()          { return getShareSystemPath() + "/retroa
 
 // key=value 행 파서 (공백·따옴표 제거)
 static std::string cfgReadKey(const std::string& filePath, const std::string& fullKey,
-                               const std::string& def = "")
+                               const std::string& def)
 {
 	std::ifstream f(filePath);
 	if (!f.is_open()) return def;
