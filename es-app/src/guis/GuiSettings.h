@@ -14,6 +14,8 @@ public:
 	void save();
 	inline void addRow(const ComponentListRow& row) { mMenu.addRow(row); };
 	inline void addWithLabel(const std::string& label, const std::shared_ptr<GuiComponent>& comp) { mMenu.addWithLabel(label, comp); };
+	// 라벨 밑에 작은 설명 문구를 붙이는 배리언트 - 필요한 항목에만 골라서 사용
+	inline void addWithDescription(const std::string& label, const std::string& description, const std::shared_ptr<GuiComponent>& comp) { mMenu.addWithDescription(label, description, comp); };
 	inline void addSaveFunc(const std::function<void()>& func) { mSaveFuncs.push_back(func); };
 
 	void setOnSave(const std::function<void()>& func) { mOnSaveFunc = func; };
